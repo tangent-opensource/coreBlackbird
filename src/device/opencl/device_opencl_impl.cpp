@@ -1982,7 +1982,15 @@ string OpenCLDevice::kernel_build_options(const string *debug_src)
   string build_options = "-cl-no-signed-zeros -cl-mad-enable ";
 
   if (kernel_build_opencl_2(cdDevice)) {
-    build_options += "-cl-std=CL2.0 ";
+    /* This appears to trigger a driver bug in Radeon RX cards, so we
+      * don't use OpenCL 2.0 for those. */
+    string device_name = OpenCLInfo::get_readable_device_name(cdDevice);
+    if (!(string_startswith(device_name, "Radeon RX 4") ||
+          string_startswith(device_name, "Radeon (TM) RX 4") ||
+          string_startswith(device_name, "Radeon RX 5") ||
+          string_startswith(device_name, "Radeon (TM) RX 5"))) {
+      build_options += "-cl-std=CL2.0 ";
+    }
   }
 
   if (platform_name == "NVIDIA CUDA") {
