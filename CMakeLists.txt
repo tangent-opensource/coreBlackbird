@@ -96,6 +96,9 @@ endif()
 option(WITH_CUDA_DYNLOAD           "Dynamically load CUDA libraries at runtime" ON)
 mark_as_advanced(WITH_CUDA_DYNLOAD)
 
+# ====== Tangent Rez Deps
+include(${CMAKE_CURRENT_SOURCE_DIR}/rez_deps.cmake)
+
 include(external_libs)
 
 ###########################################################################
