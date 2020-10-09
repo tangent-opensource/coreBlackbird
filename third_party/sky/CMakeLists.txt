@@ -38,3 +38,4 @@ include_directories(
 )
 
 add_library(extern_sky "${SRC}" "${INC}" "${INC_SYS}")
+install_external_library(extern_sky)

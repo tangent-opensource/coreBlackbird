@@ -12,3 +12,4 @@ include_directories(
 )
 
 add_library(extern_cuew ${SRC} ${SRC_HEADERS})
+install_external_library(extern_cuew)

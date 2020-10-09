@@ -20,8 +20,16 @@ function(cycles_set_solution_folder target)
   endif()
 endfunction()
 
+macro(install_external_library target_ext)
+  install(TARGETS ${target_ext} DESTINATION lib)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+endmacro()
+
 macro(cycles_add_library target library_deps)
   add_library(${target} ${ARGN})
+
+  install(TARGETS ${target} ARCHIVE DESTINATION lib)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 
   # On Windows certain libraries have two sets of binaries: one for debug builds and one for
   # release builds. The root of this requirement goes into ABI, I believe, but that's outside

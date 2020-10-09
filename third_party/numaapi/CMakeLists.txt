@@ -41,3 +41,4 @@ include_directories(
 add_definitions(-DWITH_DYNLOAD)
 
 add_library(extern_numaapi "${SRC}" "${INC}" "${INC_SYS}")
+install_external_library(extern_numaapi)
