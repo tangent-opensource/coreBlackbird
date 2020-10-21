@@ -186,19 +186,21 @@ endmacro()
 
 macro(cycles_install_libraries target)
   # Copy DLLs for dynamically linked libraries.
-  if(WIN32)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      install(
-        FILES
-	${TBB_ROOT_DIR}/lib/debug/tbb_debug${CMAKE_SHARED_LIBRARY_SUFFIX}
-        ${OPENVDB_ROOT_DIR}/bin/openvdb_d${CMAKE_SHARED_LIBRARY_SUFFIX}
-	DESTINATION $<TARGET_FILE_DIR:${target}>)
-    else()
-      install(
-        FILES
-	${TBB_ROOT_DIR}/lib/tbb${CMAKE_SHARED_LIBRARY_SUFFIX}
-        ${OPENVDB_ROOT_DIR}/bin/openvdb${CMAKE_SHARED_LIBRARY_SUFFIX}
-	DESTINATION $<TARGET_FILE_DIR:${target}>)
-    endif()
-  endif()
+  # Tangent (bjs): Disabled install because of openvdb, technically we don't need any install
+  # but this build doesnt use vdb, so breaks regardless
+  # if(WIN32)
+  #   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  #     install(
+  #       FILES
+	# ${TBB_ROOT_DIR}/lib/debug/tbb_debug${CMAKE_SHARED_LIBRARY_SUFFIX}
+  #       ${OPENVDB_ROOT_DIR}/bin/openvdb_d${CMAKE_SHARED_LIBRARY_SUFFIX}
+	# DESTINATION $<TARGET_FILE_DIR:${target}>)
+  #   else()
+  #     install(
+  #       FILES
+	# ${TBB_ROOT_DIR}/lib/tbb${CMAKE_SHARED_LIBRARY_SUFFIX}
+  #       ${OPENVDB_ROOT_DIR}/bin/openvdb${CMAKE_SHARED_LIBRARY_SUFFIX}
+	# DESTINATION $<TARGET_FILE_DIR:${target}>)
+  #   endif()
+  # endif()
 endmacro()

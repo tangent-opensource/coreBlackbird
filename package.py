@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.1.0'
+version = '1.13.0-ta.1.2.0'
 
 authors = [
     'benjamin.skinner',
@@ -10,30 +10,38 @@ authors = [
 ]
 
 requires = [
-    'python-3',
+    #'boost', # Technically houdini uses a different version which will clash with openvdb
     'glew-2.0.0',
-    'boost-1.69.0',
-    'oiio-1.8.9',
+    'oiio',
     'libjpeg_turbo-2.0.5',
-    'embree-3.8.0',
     'opensubdiv-3.4.3',
-    'openvdb-7.0.0',
+    'ocio-1.1.1',
     'tbb-2019',
-    #'osl-1.10.9',
-    #'nvidia',
+    'openexr-2.4.0',
+    #'embree-3.8.0',
+    #'openvdb-7.0.0', #'openvdb-6.2.1-houdini',
 ]
 
 
 @early()
 def private_build_requires():
+    
+    # Tangent(bjs): Currently all variants are built with boost-1.69
+    # However technically houdini should be built against boost-1.61.0
+    # When it is resolved with HdCycles, it uses the correct boost
+    common = [
+        'boost-1.69.0',
+    ]
+
     import sys
     if 'win' in str(sys.platform):
-        return ['visual_studio']
+        return common + ['visual_studio']
     else:
-        return ['gcc-7']
+        return common + ['gcc-7']
 
 variants = [
-    ['platform-windows', 'arch-x64', 'os-windows-10'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini']
     #['platform-linux', 'arch-x64'],
 ]
 
