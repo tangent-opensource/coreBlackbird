@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.2.0'
+version = '1.13.0-ta.1.3.0'
 
 authors = [
     'benjamin.skinner',
@@ -18,7 +18,7 @@ requires = [
     'ocio-1.1.1',
     'tbb-2019',
     'openexr-2.4.0',
-    #'embree-3.8.0',
+    'embree-3.8.0',
     #'openvdb-7.0.0', #'openvdb-6.2.1-houdini',
 ]
 

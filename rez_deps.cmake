@@ -45,6 +45,7 @@ else()
 endif()
 
 if(DEFINED ENV{REZ_EMBREE_BASE})
+    message("WITH REZ EMBREE")
     set(WITH_CYCLES_EMBREE ON CACHE BOOL "Build Cycles with embree support" FORCE)
 else()
     set(WITH_CYCLES_EMBREE OFF CACHE BOOL "Build Cycles with embree support" FORCE)
