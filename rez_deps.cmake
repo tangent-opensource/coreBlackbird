@@ -57,3 +57,8 @@ set(WITH_CYCLES_CUDA_BINARIES OFF CACHE BOOL "Build Cycles CUDA binaries" FORCE)
 
 # TODO: These might not be set properly. Denoise still seems to print ON in console
 set(WITH_CYCLES_OPENIMAGEDENOISE OFF CACHE BOOL "Build Cycles with OpenImageDenoise support" FORCE)
+
+if(DEFINED ENV{REZ_GLOG_BASE} AND DEFINED ENV{REZ_GFLAGS_BASE})
+    set(WITH_CYCLES_LOGGING ON CACHE BOOL "Build Cycles with logging support" FORCE)
+    add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
+endif()
