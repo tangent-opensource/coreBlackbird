@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.4.0'
+version = '1.13.0-ta.1.5.0'
 
 authors = [
     'benjamin.skinner',
@@ -11,12 +11,12 @@ authors = [
 
 requires = [
     #'boost', # Technically houdini uses a different version which will clash with openvdb
-    'glew-2.0.0',
+    'glew',
     'oiio',
     'libjpeg_turbo-2.0.5',
-    'opensubdiv-3.4.3',
+    'opensubdiv',
     'ocio-1.1.1',
-    'tbb-2019',
+    'tbb-2019.U9',
     'openexr-2.4.0',
     'embree-3.8.0',
     #'openvdb-7.0.0', #'openvdb-6.2.1-houdini',
@@ -44,8 +44,8 @@ def private_build_requires():
         return common + ['gcc-7']
 
 variants = [
-    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9'],
-    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini']
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.3.3-houdini'],
     #['platform-linux', 'arch-x64'],
 ]
 
