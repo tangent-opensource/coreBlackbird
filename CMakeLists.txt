@@ -17,7 +17,7 @@ endif()
 ###########################################################################
 # Policies
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 
 # So library linking is more sane.
 cmake_policy(SET CMP0003 NEW)
@@ -68,10 +68,12 @@ set(CYCLES_STANDALONE_REPOSITORY TRUE)
 set(WITH_CYCLES_STANDALONE TRUE)
 
 # Global compile definitions since add_definitions() adds for all.
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG           DEBUG _DEBUG)
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASE         NDEBUG)
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_MINSIZEREL      NDEBUG)
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELWITHDEBINFO  NDEBUG)
+set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+  $<$<CONFIG:Debug>:DEBUG;_DEBUG>
+  $<$<CONFIG:Release>:NDEBUG>
+  $<$<CONFIG:MinSizeRel>:NDEBUG>
+  $<$<CONFIG:RelWithDebInfo>:NDEBUG>
+)
 
 ###########################################################################
 # Options.

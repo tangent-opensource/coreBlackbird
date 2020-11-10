@@ -1136,10 +1136,11 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       }
     }
 
+    // TANGENT PATCH: Removed to allow geometry overrides
     if (geom->type == Geometry::HAIR) {
       /* Set curve shape, still a global scene setting for now. */
-      Hair *hair = static_cast<Hair *>(geom);
-      hair->curve_shape = scene->params.hair_shape;
+      //Hair *hair = static_cast<Hair *>(geom);
+      //hair->curve_shape = scene->params.hair_shape;
     }
   }
 
