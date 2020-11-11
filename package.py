@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.5.1'
+version = '1.13.0-ta.1.6.0'
 
 authors = [
     'benjamin.skinner',
@@ -46,6 +46,7 @@ def private_build_requires():
 variants = [
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3'],
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.3.3-houdini'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini'],
     #['platform-linux', 'arch-x64'],
 ]
 
