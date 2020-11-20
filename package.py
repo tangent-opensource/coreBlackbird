@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.6.0'
+version = '1.13.0-ta.1.7.0'
 
 authors = [
     'benjamin.skinner',
@@ -10,8 +10,7 @@ authors = [
 ]
 
 requires = [
-    #'boost', # Technically houdini uses a different version which will clash with openvdb
-    'glew',
+    'glew', # Specified in opensubdiv... (Revist this later)
     'oiio',
     'libjpeg_turbo-2.0.5',
     'opensubdiv',
@@ -19,8 +18,7 @@ requires = [
     'tbb-2019.U9',
     'openexr-2.4.0',
     'embree-3.8.0',
-    #'openvdb-7.0.0', #'openvdb-6.2.1-houdini',
-    
+
     # Only needed for logging
     'glog-0.4.0',
     'gflags-2.2.2',
@@ -29,26 +27,26 @@ requires = [
 
 @early()
 def private_build_requires():
-    
-    # Tangent(bjs): Currently all variants are built with boost-1.69
-    # However technically houdini should be built against boost-1.61.0
-    # When it is resolved with HdCycles, it uses the correct boost
-    common = [
-        'boost-1.69.0',
-    ]
-
     import sys
     if 'win' in str(sys.platform):
-        return common + ['visual_studio']
+        return ['visual_studio']
     else:
-        return common + ['gcc-7']
+        return ['gcc-7']
 
 variants = [
-    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3'],
-    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.3.3-houdini'],
-    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3', 'boost-1.69.0', 'openvdb-7.0.0'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.3.3-houdini', 'boost-1.65.1'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.1.0-houdini'],
     #['platform-linux', 'arch-x64'],
 ]
+
+# Using an external openvdb build caused instant crashes when hdcycles ran inside of houdini.
+# Ben might have missed something, however tried and failed.
+# Because of this, we need to use Houdini's openvdb version. And only 18.5 used a compatible version of openvdb
+# as such, only houdini-18.5 is compatible with hdcycles volumes
+# Also, because openvdb-7.1.0-houdini needs hboost, we have to modify some cmake lists to use hboost includes....
+
+hashed_variants = True
 
 build_system = "cmake"
 

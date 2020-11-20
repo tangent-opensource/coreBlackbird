@@ -20,7 +20,9 @@ set(INC
 
 set(INC_SYS
   ${GLEW_INCLUDE_DIR}
+  ${HBoost_INCLUDE_DIRS}
 )
+# TANGENT Added HBoost include dirs. This is because openvdb-7.1.0-houdini requires it...
 
 set(SRC
   attribute.cpp
