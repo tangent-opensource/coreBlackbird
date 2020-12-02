@@ -508,17 +508,19 @@ void GeometryManager::create_volume_mesh(Volume *volume, Progress &progress)
   Shader *volume_shader = NULL;
   int pad_size = 0;
 
-  foreach (Shader *shader, volume->used_shaders) {
+  foreach (Node *node, volume->get_used_shaders()) {
+    Shader *shader = static_cast<Shader *>(node);
+
     if (!shader->has_volume) {
       continue;
     }
 
     volume_shader = shader;
 
-    if (shader->volume_interpolation_method == VOLUME_INTERPOLATION_LINEAR) {
+    if (shader->get_volume_interpolation_method() == VOLUME_INTERPOLATION_LINEAR) {
       pad_size = max(1, pad_size);
     }
-    else if (shader->volume_interpolation_method == VOLUME_INTERPOLATION_CUBIC) {
+    else if (shader->get_volume_interpolation_method() == VOLUME_INTERPOLATION_CUBIC) {
       pad_size = max(2, pad_size);
     }
 
@@ -526,8 +528,10 @@ void GeometryManager::create_volume_mesh(Volume *volume, Progress &progress)
   }
 
   /* Clear existing volume mesh, done here in case we early out due to
-   * empty grid or missing volume shader. */
-  volume->clear();
+   * empty grid or missing volume shader.
+   * Also keep the shaders to avoid infinite loops when synchronizing, as this will tag the shaders
+   * as having changed. */
+  volume->clear(true);
   volume->need_update_rebuild = true;
 
   if (!volume_shader) {
