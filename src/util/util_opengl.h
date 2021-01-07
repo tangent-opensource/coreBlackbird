@@ -20,6 +20,8 @@
 /* OpenGL header includes, used everywhere we use OpenGL, to deal with
  * platform differences in one central place. */
 
-#include <GL/glew.h>
+#ifdef USE_OPENGL
+  #include <GL/glew.h>
+#endif
 
 #endif /* __UTIL_OPENGL_H__ */

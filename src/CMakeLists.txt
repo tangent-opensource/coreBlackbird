@@ -365,8 +365,12 @@ if(WITH_CYCLES_NETWORK)
   add_definitions(-DWITH_NETWORK)
 endif()
 
-if(WITH_CYCLES_STANDALONE OR WITH_CYCLES_NETWORK OR WITH_CYCLES_CUBIN_COMPILER)
-  add_subdirectory(app)
+# TANGENT: We do not need this and was causing build errors
+# For now we check if GUI
+if(WITH_CYCLES_STANDALONE_GUI)
+  if(WITH_CYCLES_STANDALONE OR WITH_CYCLES_NETWORK OR WITH_CYCLES_CUBIN_COMPILER)
+    add_subdirectory(app)
+  endif()
 endif()
 
 add_subdirectory(bvh)

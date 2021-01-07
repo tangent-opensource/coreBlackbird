@@ -31,13 +31,15 @@ def private_build_requires():
     if 'win' in str(sys.platform):
         return ['visual_studio']
     else:
-        return ['gcc-7']
+        return ['gcc-6']
 
 variants = [
+    # Windows
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3', 'boost-1.69.0', 'openvdb-7.0.0'],
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.3.3-houdini', 'boost-1.65.1'],
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.1.0-houdini'],
-    #['platform-linux', 'arch-x64'],
+    # Linux
+    ['platform-linux', 'arch-x86_64', 'os-centos-7', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.1.0-houdini'],
 ]
 
 # Using an external openvdb build caused instant crashes when hdcycles ran inside of houdini.

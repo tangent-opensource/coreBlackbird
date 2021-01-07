@@ -35,7 +35,9 @@
 #  include "util/util_logging.h"
 #  include "util/util_map.h"
 #  include "util/util_md5.h"
+#ifdef USE_OPENGL
 #  include "util/util_opengl.h"
+#endif
 #  include "util/util_path.h"
 #  include "util/util_string.h"
 #  include "util/util_system.h"
@@ -2125,7 +2127,7 @@ void CUDADevice::pixels_alloc(device_memory &mem)
   pmem.h = mem.data_height;
 
   CUDAContextScope scope(this);
-
+#ifdef USE_OPENGL
   glGenBuffers(1, &pmem.cuPBO);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pmem.cuPBO);
   if (mem.data_type == TYPE_HALF)
@@ -2167,10 +2169,12 @@ void CUDADevice::pixels_alloc(device_memory &mem)
 
     background = true;
   }
+#endif
 }
 
 void CUDADevice::pixels_copy_from(device_memory &mem, int y, int w, int h)
 {
+#ifdef USE_OPENGL
   PixelMem pmem = pixel_mem_map[mem.device_pointer];
 
   CUDAContextScope scope(this);
@@ -2181,10 +2185,12 @@ void CUDADevice::pixels_copy_from(device_memory &mem, int y, int w, int h)
   memcpy((uchar *)mem.host_pointer + offset, pixels + offset, sizeof(uchar) * 4 * w * h);
   glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+#endif
 }
 
 void CUDADevice::pixels_free(device_memory &mem)
 {
+#ifdef USE_OPENGL
   if (mem.device_pointer) {
     PixelMem pmem = pixel_mem_map[mem.device_pointer];
 
@@ -2200,6 +2206,7 @@ void CUDADevice::pixels_free(device_memory &mem)
     stats.mem_free(mem.device_size);
     mem.device_size = 0;
   }
+#endif
 }
 
 void CUDADevice::draw_pixels(device_memory &mem,
@@ -2216,7 +2223,7 @@ void CUDADevice::draw_pixels(device_memory &mem,
                              const DeviceDrawParams &draw_params)
 {
   assert(mem.type == MEM_PIXELS);
-
+#ifdef USE_OPENGL
   if (!background) {
     const bool use_fallback_shader = (draw_params.bind_display_space_shader_cb == NULL);
     PixelMem pmem = pixel_mem_map[mem.device_pointer];
@@ -2335,7 +2342,7 @@ void CUDADevice::draw_pixels(device_memory &mem,
 
     return;
   }
-
+#endif
   Device::draw_pixels(mem, y, w, h, width, height, dx, dy, dw, dh, transparent, draw_params);
 }
 
