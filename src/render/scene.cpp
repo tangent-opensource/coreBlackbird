@@ -53,6 +53,7 @@ DeviceScene::DeviceScene(Device *device)
       prim_time(device, "__prim_time", MEM_GLOBAL),
       tri_shader(device, "__tri_shader", MEM_GLOBAL),
       tri_vnormal(device, "__tri_vnormal", MEM_GLOBAL),
+      object_vnormal_offset(device, "__object_vnormal_offset", MEM_GLOBAL),
       tri_vindex(device, "__tri_vindex", MEM_GLOBAL),
       tri_patch(device, "__tri_patch", MEM_GLOBAL),
       tri_patch_uv(device, "__tri_patch_uv", MEM_GLOBAL),

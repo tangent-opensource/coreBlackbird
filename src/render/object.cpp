@@ -689,6 +689,7 @@ void ObjectManager::device_update_flags(
     }
   }
 
+  printf("ObjectManager::device_update_flags\n");
   foreach (Object *object, scene->objects) {
     if (object->geometry->has_volume) {
       object_flag[object->index] |= SD_OBJECT_HAS_VOLUME;
@@ -727,6 +728,12 @@ void ObjectManager::device_update_flags(
        * of bounds not being up to date.
        */
       object_flag[object->index] |= SD_OBJECT_INTERSECTS_VOLUME;
+    }
+
+    // The if (volume) loop already goes through all the attributes
+    if (object->geometry->attributes.find(ATTR_STD_FACEVARYING_NORMAL)) {
+      printf("setting object %d as using facevarying normals\n", (int)object->index);
+      object_flag[object->index] |= SD_OBJECT_HAS_FACEVARYING_NORMALS;
     }
   }
 

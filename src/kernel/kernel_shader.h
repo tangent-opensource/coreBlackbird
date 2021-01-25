@@ -80,6 +80,9 @@ ccl_device_noinline
   sd->prim = kernel_tex_fetch(__prim_index, isect->prim);
   sd->ray_length = isect->t;
 
+  //printf("Object %d ShaderData::prim %d Intersection::prim %d prim_index x %d\n", sd->object, sd->prim, isect->prim,
+    //kernel_tex_fetch(__prim_index, isect->prim));
+
   sd->u = isect->u;
   sd->v = isect->v;
 
@@ -101,8 +104,10 @@ ccl_device_noinline
     sd->N = Ng;
 
     /* smooth normal */
-    if (sd->shader & SHADER_SMOOTH_NORMAL)
-      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->u, sd->v);
+    if (sd->object_flag & SD_OBJECT_HAS_FACEVARYING_NORMALS)
+      sd->N = triangle_facevarying_normal2(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+    else if (sd->shader & SHADER_SMOOTH_NORMAL)
+      sd->N = triangle_smooth_normal2(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
 #ifdef __DPDU__
     /* dPdu/dPdv */
