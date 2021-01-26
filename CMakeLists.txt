@@ -123,4 +123,5 @@ include_directories(
 ###########################################################################
 # Sources.
 
+add_subdirectory(third_party)
 add_subdirectory(src)

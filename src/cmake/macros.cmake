@@ -31,6 +31,9 @@ macro(cycles_add_library target library_deps)
   install(TARGETS ${target} ARCHIVE DESTINATION lib)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 
+  get_directory_property(DIRECTORY_DEFINITIONS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS)
+  target_compile_definitions(${target} PUBLIC ${DIRECTORY_DEFINITIONS})
+
   # On Windows certain libraries have two sets of binaries: one for debug builds and one for
   # release builds. The root of this requirement goes into ABI, I believe, but that's outside
   # of a scope of this comment.

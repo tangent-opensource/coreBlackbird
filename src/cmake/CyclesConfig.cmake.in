@@ -1,0 +1,13 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+if(@WITH_CYCLES_OSL@)
+    find_dependency(OSL)
+endif()
+
+if(@WITH_CYCLES_OPENVDB@)
+    find_dependency(OpenVDB)
+endif()
+
+include(${CMAKE_CURRENT_LIST_DIR}/CyclesTargets.cmake)
