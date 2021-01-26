@@ -476,6 +476,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
     if (mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION)) {
       flag |= SD_OBJECT_HAS_VERTEX_MOTION;
     }
+
+    if (mesh->has_volume) {
+      kobject.velocity_scale = ob->velocity_scale;
+    }
   }
 
   if (state->need_motion == Scene::MOTION_PASS) {
@@ -516,6 +520,8 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
       state->have_motion = true;
     }
   }
+
+  kobject.use_motion_blur = ob->use_motion();
 
   /* Dupli object coords and motion info. */
   kobject.dupli_generated[0] = ob->dupli_generated[0];

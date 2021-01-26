@@ -626,6 +626,18 @@ enum PanoramaType {
   PANORAMA_NUM_TYPES,
 };
 
+/* Specifies an offset for the shutter's time interval. */
+enum MotionPosition {
+  /* Shutter opens at the current frame. */
+  MOTION_POSITION_START = 0,
+  /* Shutter is fully open at the current frame. */
+  MOTION_POSITION_CENTER = 1,
+  /* Shutter closes at the current frame. */
+  MOTION_POSITION_END = 2,
+
+  MOTION_NUM_POSITIONS,
+};
+
 /* Differential */
 
 typedef struct differential3 {
@@ -1147,6 +1159,8 @@ typedef struct KernelCamera {
 
   /* motion blur */
   float shuttertime;
+  int motion_position;
+  float inv_fps;
   int num_motion_steps, have_perspective_motion;
 
   /* clipping */
@@ -1477,6 +1491,9 @@ typedef struct KernelObject {
   uint patch_map_offset;
   uint attribute_map_offset;
   uint motion_offset;
+
+  bool use_motion_blur;
+  float velocity_scale;
 
   float cryptomatte_object;
   float cryptomatte_asset;

@@ -61,6 +61,9 @@ class Object : public Node {
   bool is_shadow_catcher;
   float shadow_terminator_offset;
 
+  /* This scale is applied to volumetric motion blur. */
+  float velocity_scale;
+
   float3 dupli_generated;
   float2 dupli_uv;
 
