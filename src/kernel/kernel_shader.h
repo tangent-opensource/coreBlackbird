@@ -104,10 +104,10 @@ ccl_device_noinline
     sd->N = Ng;
 
     /* smooth normal */
-    if (sd->object_flag & SD_OBJECT_HAS_FACEVARYING_NORMALS)
-      sd->N = triangle_facevarying_normal2(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS)
+      sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
     else if (sd->shader & SHADER_SMOOTH_NORMAL)
-      sd->N = triangle_smooth_normal2(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
 #ifdef __DPDU__
     /* dPdu/dPdv */
@@ -194,8 +194,10 @@ ccl_device_inline
     sd->Ng = Ng;
     sd->N = Ng;
 
-    if (sd->shader & SHADER_SMOOTH_NORMAL)
-      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->u, sd->v);
+    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS)
+      sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+    else if (sd->shader & SHADER_SMOOTH_NORMAL)
+      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
 #  ifdef __DPDU__
     /* dPdu/dPdv */
@@ -314,9 +316,17 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
   }
 
   if (sd->type & PRIMITIVE_TRIANGLE) {
+    /* corner normal */
+    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS) {
+      sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+
+      if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
+        object_normal_transform_auto(kg, sd, &sd->N);
+      }
+    }
     /* smooth normal */
-    if (sd->shader & SHADER_SMOOTH_NORMAL) {
-      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->u, sd->v);
+    else if (sd->shader & SHADER_SMOOTH_NORMAL) {
+      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
       if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
         object_normal_transform_auto(kg, sd, &sd->N);

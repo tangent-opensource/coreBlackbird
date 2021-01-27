@@ -135,7 +135,6 @@ class Geometry : public Node {
   bool has_true_displacement() const;
   bool has_motion_blur() const;
   bool has_voxel_attributes() const;
-  bool has_facevarying_normals() const;
 
   /* Updates */
   void tag_update(Scene *scene, bool rebuild);

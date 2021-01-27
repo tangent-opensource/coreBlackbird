@@ -825,7 +825,7 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
       face_size += mesh->subd_faces.size();
       corner_size += mesh->subd_face_corners.size();
 
-      if (mesh->attributes.find(ATTR_STD_FACEVARYING_NORMAL)) {
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
       } else {
         normals_size += mesh->verts.size();
@@ -871,9 +871,8 @@ void GeometryManager::device_update_mesh(
 
       printf("Mesh has %d triangles\n", mesh->num_triangles());
 
-      // Making more space for normals if they are facevarying
-      if (mesh->attributes.find(ATTR_STD_FACEVARYING_NORMAL)) {
-        printf("Found face-varying mesh\n");
+      /* Making more space for normals if they are per-corner */
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
       } else {
         normals_size += mesh->verts.size();
@@ -966,15 +965,12 @@ void GeometryManager::device_update_mesh(
       if (geom && geom->type == Geometry::MESH) {
         const Mesh* mesh = static_cast<const Mesh *>(geom);
 
-        /* Base of the attribute buffer */
+        /* Start of the normal buffer or the geometry */
         vnormal_offset[i] = mesh->normals_offset;
-        printf("Object %d has normals_offset %d\n", i, vnormal_offset[i]);
 
-        /*
-          Since the buffer will be accessed with a global vertex/face index
-          we account for the correction here.
-        */
-        if (mesh->attributes.find(ATTR_STD_FACEVARYING_NORMAL)) {
+        /* Since the vertex/prim indices are global, we add the offset
+         * correction here */
+        if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
           // todo: use corner_offset for subdivision surfaces?
           vnormal_offset[i] -= 3* mesh->prim_offset; /* Corner attribute */
         } else {

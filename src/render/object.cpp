@@ -730,10 +730,9 @@ void ObjectManager::device_update_flags(
       object_flag[object->index] |= SD_OBJECT_INTERSECTS_VOLUME;
     }
 
-    // The if (volume) loop already goes through all the attributes
-    if (object->geometry->attributes.find(ATTR_STD_FACEVARYING_NORMAL)) {
-      printf("setting object %d as using facevarying normals\n", (int)object->index);
-      object_flag[object->index] |= SD_OBJECT_HAS_FACEVARYING_NORMALS;
+    /* Flagging the object to use corner indices to fetch normals */
+    if (object->geometry->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+      object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
     }
   }
 

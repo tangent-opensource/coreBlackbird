@@ -77,7 +77,7 @@ ccl_device_inline void triangle_vertices(KernelGlobals *kg, int prim, float3 P[3
 
 /* Interpolate face-varying normals from corners */
 ccl_device_inline float3
-triangle_facevarying_normal2(KernelGlobals *kg, float3 Ng, int prim, int obj, float u, float v)
+triangle_corner_normal(KernelGlobals *kg, float3 Ng, int prim, int obj, float u, float v)
 {
   int prim_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
 
@@ -94,7 +94,7 @@ triangle_facevarying_normal2(KernelGlobals *kg, float3 Ng, int prim, int obj, fl
 /* Interpolate smooth vertex normal from vertices */
 
 ccl_device_inline float3
-triangle_smooth_normal2(KernelGlobals *kg, float3 Ng, int prim, int obj, float u, float v)
+triangle_smooth_normal(KernelGlobals *kg, float3 Ng, int prim, int obj, float u, float v)
 {
   /* load triangle vertices */
   const uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
@@ -104,20 +104,6 @@ triangle_smooth_normal2(KernelGlobals *kg, float3 Ng, int prim, int obj, float u
   float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.x));
   float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.y));
   float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.z));
-
-  float3 N = safe_normalize((1.0f - u - v) * n2 + u * n0 + v * n1);
-
-  return is_zero(N) ? Ng : N;
-}
-
-/* Interpolate face-varying normals from corners */
-ccl_device_inline float3
-triangle_facevarying_normal(KernelGlobals *kg, float3 Ng, int prim, float u, float v)
-{
-  /* load corner normals */
-  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim * 3 + 0));
-  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim * 3 + 1));
-  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim * 3 + 2));
 
   float3 N = safe_normalize((1.0f - u - v) * n2 + u * n0 + v * n1);
 

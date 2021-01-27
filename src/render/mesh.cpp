@@ -585,7 +585,7 @@ void Mesh::pack_shaders(Scene *scene, uint *tri_shader)
 void Mesh::pack_normals(float4 *vnormal)
 {
   Attribute *attr_vN = attributes.find(ATTR_STD_VERTEX_NORMAL);
-  Attribute *attr_fvN = attributes.find(ATTR_STD_FACEVARYING_NORMAL);
+  Attribute *attr_fvN = attributes.find(ATTR_STD_CORNER_NORMAL);
   if (attr_vN == NULL && attr_fvN == NULL) {
     /* Happens on objects with just hair. */
     return;
@@ -594,6 +594,7 @@ void Mesh::pack_normals(float4 *vnormal)
   bool do_transform = transform_applied;
   Transform ntfm = transform_normal;
 
+  printf("packing normals\n");
   // For now, facevarying normals take precedence over vertex normals
   if (attr_fvN) {
     printf("Packing face-varying normals\n");

@@ -285,8 +285,10 @@ const char *Attribute::standard_name(AttributeStandard std)
       return "N";
     case ATTR_STD_FACE_NORMAL:
       return "Ng";
-    case ATTR_STD_FACEVARYING_NORMAL:
-      return "Nfv"; // todo: this from the shading side, should be indistinguishable from "N"
+    case ATTR_STD_CORNER_NORMAL:
+      /* It's important for this to be different from "N", but in
+       * shading terms they are both N - the shading normal */
+      return "Nfv";
     case ATTR_STD_UV:
       return "uv";
     case ATTR_STD_GENERATED:
@@ -455,7 +457,7 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
       case ATTR_STD_FACE_NORMAL:
         attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_FACE);
         break;
-      case ATTR_STD_FACEVARYING_NORMAL:
+      case ATTR_STD_CORNER_NORMAL:
         attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_CORNER);
         break;
       case ATTR_STD_UV:
