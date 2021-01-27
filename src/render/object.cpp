@@ -689,7 +689,6 @@ void ObjectManager::device_update_flags(
     }
   }
 
-  printf("ObjectManager::device_update_flags\n");
   foreach (Object *object, scene->objects) {
     if (object->geometry->has_volume) {
       object_flag[object->index] |= SD_OBJECT_HAS_VOLUME;
@@ -730,7 +729,7 @@ void ObjectManager::device_update_flags(
       object_flag[object->index] |= SD_OBJECT_INTERSECTS_VOLUME;
     }
 
-    /* Flagging the object to use corner indices to fetch normals */
+    /* Flagging the object to index normals by corner */
     if (object->geometry->attributes.find(ATTR_STD_CORNER_NORMAL)) {
       object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
     }

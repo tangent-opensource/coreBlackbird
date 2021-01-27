@@ -80,9 +80,6 @@ ccl_device_noinline
   sd->prim = kernel_tex_fetch(__prim_index, isect->prim);
   sd->ray_length = isect->t;
 
-  //printf("Object %d ShaderData::prim %d Intersection::prim %d prim_index x %d\n", sd->object, sd->prim, isect->prim,
-    //kernel_tex_fetch(__prim_index, isect->prim));
-
   sd->u = isect->u;
   sd->v = isect->v;
 
@@ -103,7 +100,7 @@ ccl_device_noinline
     sd->Ng = Ng;
     sd->N = Ng;
 
-    /* smooth normal */
+    /* load vertex or corner normal */
     if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS)
       sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
     else if (sd->shader & SHADER_SMOOTH_NORMAL)
@@ -194,6 +191,7 @@ ccl_device_inline
     sd->Ng = Ng;
     sd->N = Ng;
 
+    /* load corner or smooth normal */
     if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS)
       sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
     else if (sd->shader & SHADER_SMOOTH_NORMAL)

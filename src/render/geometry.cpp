@@ -869,8 +869,6 @@ void GeometryManager::device_update_mesh(
       vert_size += mesh->verts.size();
       tri_size += mesh->num_triangles();
 
-      printf("Mesh has %d triangles\n", mesh->num_triangles());
-
       /* Making more space for normals if they are per-corner */
       if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
@@ -976,7 +974,6 @@ void GeometryManager::device_update_mesh(
         } else {
           vnormal_offset[i] -= mesh->vert_offset; /* Vertex attribute*/
         }
-        printf("Object %d has vnormal offset %d\n", (int)i, vnormal_offset[i]);
       }
     }
 
@@ -1355,7 +1352,6 @@ void GeometryManager::device_update(Device *device,
   /* Device update. */
   device_free(device, dscene);
 
-  printf("Calculate offsets & update meshes\n");
   mesh_calc_offset(scene);
   if (true_displacement_used) {
     device_update_mesh(device, dscene, scene, true, progress);
@@ -1427,7 +1423,7 @@ void GeometryManager::device_update(Device *device,
   /* Update objects. */
   vector<Object *> volume_objects;
   foreach (Object *object, scene->objects) {
-    object->compute_bounds(motion_blur);    
+    object->compute_bounds(motion_blur);
   }
 
   if (progress.get_cancel())

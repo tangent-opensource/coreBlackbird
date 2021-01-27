@@ -288,7 +288,7 @@ const char *Attribute::standard_name(AttributeStandard std)
     case ATTR_STD_CORNER_NORMAL:
       /* It's important for this to be different from "N", but in
        * shading terms they are both N - the shading normal */
-      return "Nfv";
+      return "Nc";
     case ATTR_STD_UV:
       return "uv";
     case ATTR_STD_GENERATED:

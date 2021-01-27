@@ -594,10 +594,8 @@ void Mesh::pack_normals(float4 *vnormal)
   bool do_transform = transform_applied;
   Transform ntfm = transform_normal;
 
-  printf("packing normals\n");
-  // For now, facevarying normals take precedence over vertex normals
+  /* Corner normals take priority over vertex normals */
   if (attr_fvN) {
-    printf("Packing face-varying normals\n");
     float3* fvN = attr_fvN->data_float3();
 
     for (size_t i = 0; i < num_triangles() * 3; ++i) {
@@ -609,7 +607,6 @@ void Mesh::pack_normals(float4 *vnormal)
       vnormal[i] = make_float4(fvNi.x, fvNi.y, fvNi.z, 0.0f);
     }
   } else {
-    printf("Packing vertex normals\n");
     float3 *vN = attr_vN->data_float3();
     size_t verts_size = verts.size();
 

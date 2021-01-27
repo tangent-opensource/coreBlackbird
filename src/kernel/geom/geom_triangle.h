@@ -75,10 +75,11 @@ ccl_device_inline void triangle_vertices(KernelGlobals *kg, int prim, float3 P[3
   P[2] = float4_to_float3(kernel_tex_fetch(__prim_tri_verts, tri_vindex.w + 2));
 }
 
-/* Interpolate face-varying normals from corners */
+/* Interpolate normals for each corner */
 ccl_device_inline float3
 triangle_corner_normal(KernelGlobals *kg, float3 Ng, int prim, int obj, float u, float v)
 {
+  /* base pointer for the geometry's normal buffer - base primitive offset */
   int prim_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
 
   /* load corner normals */
@@ -99,8 +100,10 @@ triangle_smooth_normal(KernelGlobals *kg, float3 Ng, int prim, int obj, float u,
   /* load triangle vertices */
   const uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
   
+  /* base pointer for the geometry's normal buffer - base primitive offset */
   int vert_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
 
+  /* load vertex normals */
   float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.x));
   float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.y));
   float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.z));
