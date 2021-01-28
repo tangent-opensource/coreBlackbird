@@ -417,6 +417,20 @@ target_link_libraries(Cycles
         cycles_kernel_osl
         )
 
+if(${WITH_OPENVDB})
+    target_link_libraries(Cycles
+            INTERFACE
+            OpenVDB::openvdb
+            )
+endif()
+
+if(${WITH_OSL})
+  target_link_libraries(Cycles
+          INTERFACE
+          OSL::oslcomp
+          )
+endif()
+
 # create target export and install actual targets
 install(TARGETS
         extern_sky
