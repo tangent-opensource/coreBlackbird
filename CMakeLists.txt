@@ -104,6 +104,7 @@ if(${BUILD_WITH_REZ})
     include(${CMAKE_CURRENT_SOURCE_DIR}/rez_deps.cmake)
 else()
     set(USE_OPENGL TRUE)
+    add_definitions(-DUSE_OPENGL)
 endif()
 
 include(external_libs)
