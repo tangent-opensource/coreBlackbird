@@ -26,7 +26,7 @@ macro(install_external_library target_ext)
 endmacro()
 
 macro(cycles_add_library target library_deps)
-  add_library(${target} ${ARGN})
+  add_library(${target} STATIC ${ARGN})
 
   install(TARGETS ${target} ARCHIVE DESTINATION lib)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DESTINATION "include" FILES_MATCHING PATTERN "*.h")
