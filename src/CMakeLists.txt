@@ -436,6 +436,7 @@ install(TARGETS
         extern_sky
         extern_cuew
         extern_clew
+        extern_numaapi
         cycles_bvh
         cycles_render
         cycles_util
@@ -443,6 +444,7 @@ install(TARGETS
         cycles_subd
         cycles_kernel
         cycles_kernel_osl
+        cycles_graph
         Cycles
         EXPORT CyclesTargets
         )
