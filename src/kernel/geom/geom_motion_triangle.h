@@ -89,13 +89,13 @@ ccl_device_inline void motion_triangle_normals_for_step(KernelGlobals *kg,
   if (step == numsteps) {
     /* This won't render correctly, but will work.
     *  First, time sampled face-varying normals need to be supported in the host app. */
-    if (object_flags & SD_OBJECT_HAS_CORNER_NORMALS) {
+    //if (object_flags & SD_OBJECT_HAS_CORNER_NORMALS) {
       int vert_offset = kernel_tex_fetch(__object_vnormal_offset, object);
 
       normals[0] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.x));
       normals[1] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.y));
       normals[2] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.z));
-    }
+    //}
 
     /* center step: regular vertex location */
     //normals[0] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, tri_vindex.x));
