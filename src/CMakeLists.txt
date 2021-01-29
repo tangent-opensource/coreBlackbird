@@ -443,7 +443,6 @@ install(TARGETS
         cycles_device
         cycles_subd
         cycles_kernel
-        cycles_kernel_osl
         cycles_graph
         Cycles
         EXPORT CyclesTargets
