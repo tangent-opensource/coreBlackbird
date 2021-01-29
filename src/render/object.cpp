@@ -730,7 +730,8 @@ void ObjectManager::device_update_flags(
     }
 
     /* Flagging the object to index normals by corner */
-    if (object->geometry->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+    if (object->geometry->attributes.find(ATTR_STD_CORNER_NORMAL) && 
+      !object->geometry->has_motion_blur() /* todo edo : remove me */) {
       object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
     }
   }

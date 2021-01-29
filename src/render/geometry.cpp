@@ -825,7 +825,8 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
       face_size += mesh->subd_faces.size();
       corner_size += mesh->subd_face_corners.size();
 
-      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL) 
+        && !mesh->has_motion_blur() /* todo edo: remove me */) {
         normals_size += mesh->num_triangles() * 3;
       } else {
         normals_size += mesh->verts.size();
@@ -870,7 +871,8 @@ void GeometryManager::device_update_mesh(
       tri_size += mesh->num_triangles();
 
       /* Making more space for normals if they are per-corner */
-      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)
+        && !mesh->has_motion_blur() /* todo edo : remove me*/) {
         normals_size += mesh->num_triangles() * 3;
       } else {
         normals_size += mesh->verts.size();
@@ -956,7 +958,7 @@ void GeometryManager::device_update_mesh(
     dscene->tri_patch.copy_to_device();
     dscene->tri_patch_uv.copy_to_device();
 
-    /* Updating the normal buffer offset as it will be indexed by object */
+    /* Updating the normal buffer offset to be indexed by object */
     int* vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
     for (size_t i = 0; i < scene->objects.size(); ++i) {
       const Geometry* geom = scene->objects[i]->geometry;
@@ -968,8 +970,8 @@ void GeometryManager::device_update_mesh(
 
         /* Since the vertex/prim indices are global, we add the offset
          * correction here */
-        if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
-          // todo: use corner_offset for subdivision surfaces?
+        if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL) 
+          && !mesh->has_motion_blur() /* todo edo: remove me */) {
           vnormal_offset[i] -= 3* mesh->prim_offset; /* Corner attribute */
         } else {
           vnormal_offset[i] -= mesh->vert_offset; /* Vertex attribute*/

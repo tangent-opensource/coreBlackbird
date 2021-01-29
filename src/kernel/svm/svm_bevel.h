@@ -159,7 +159,7 @@ ccl_device_noinline float3 svm_bevel(KernelGlobals *kg,
         }
 #  ifdef __OBJECT_MOTION__
         else if (sd->type & PRIMITIVE_MOTION_TRIANGLE) {
-          N = motion_triangle_smooth_normal(kg, N, sd->object, prim, u, v, sd->time);
+          N = motion_triangle_smooth_normal(kg, N, sd->object, sd->object_flag, prim, u, v, sd->time);
         }
 #  endif /* __OBJECT_MOTION__ */
       }
