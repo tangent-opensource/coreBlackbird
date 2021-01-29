@@ -94,9 +94,9 @@ ccl_device_noinline void motion_triangle_shader_setup(
     /* Fetch vertex coordinates. */
     float3 normals[3], next_normals[3];
     motion_triangle_normals_for_step(
-      kg, tri_vindex, sd->object, sd->object_flag, offset, numverts, numsteps, step, normals);
+      kg, tri_vindex, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step, normals);
     motion_triangle_normals_for_step(
-      kg, tri_vindex, sd->object, sd->object_flag,offset, numverts, numsteps, step + 1, next_normals);
+      kg, tri_vindex, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step + 1, next_normals);
     /* Interpolate between steps. */
     normals[0] = (1.0f - t) * normals[0] + t * next_normals[0];
     normals[1] = (1.0f - t) * normals[1] + t * next_normals[1];

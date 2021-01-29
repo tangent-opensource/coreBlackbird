@@ -78,29 +78,37 @@ ccl_device_inline void motion_triangle_verts_for_step(KernelGlobals *kg,
 
 ccl_device_inline void motion_triangle_normals_for_step(KernelGlobals *kg,
                                                         uint4 tri_vindex,
-                                                        int object,
-                                                        int object_flags,
+                                                        int obj,
+                                                        int obj_flags,
+                                                        int prim,
                                                         int offset,
                                                         int numverts,
                                                         int numsteps,
                                                         int step,
                                                         float3 normals[3])
 {
-  if (step == numsteps) {
-    /* This won't render correctly, but will work.
-    *  First, time sampled face-varying normals need to be supported in the host app. */
-    //if (object_flags & SD_OBJECT_HAS_CORNER_NORMALS) {
-      int vert_offset = kernel_tex_fetch(__object_vnormal_offset, object);
+  printf("Motion triangle normal queried\n"); 
 
-      normals[0] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.x));
-      normals[1] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.y));
-      normals[2] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.z));
-    //}
+  /* Returns a costant normal if the object has corner normals. Corner normals
+   * only work for transformation blur. */
+  if (obj_flags & SD_OBJECT_HAS_CORNER_NORMALS) {
+    /* base pointer for the geometry's normal buffer - base primitive offset */
+    int normal_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
+
+    /* load corner normals */
+    normals[0] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + prim * 3 + 0));
+    normals[1] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + prim * 3 + 1));
+    normals[2] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + prim * 3 + 2));
+    return;
+  }
+
+  if (step == numsteps) {
+    int normal_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
 
     /* center step: regular vertex location */
-    //normals[0] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, tri_vindex.x));
-    //normals[1] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, tri_vindex.y));
-    //normals[2] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, tri_vindex.z));
+    normals[0] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.x));
+    normals[1] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.y));
+    normals[2] = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.z));
   }
   else {
     /* center step is not stored in this array */
@@ -167,9 +175,9 @@ ccl_device_inline float3 motion_triangle_smooth_normal(
   uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
 
   motion_triangle_normals_for_step(
-    kg, tri_vindex, object, object_flags, offset, numverts, numsteps, step, normals);
+    kg, tri_vindex, object, object_flags, prim, offset, numverts, numsteps, step, normals);
   motion_triangle_normals_for_step(
-      kg, tri_vindex, object, object_flags, offset, numverts, numsteps, step + 1, next_normals);
+      kg, tri_vindex, object, object_flags, prim, offset, numverts, numsteps, step + 1, next_normals);
 
   /* interpolate between steps */
   normals[0] = (1.0f - t) * normals[0] + t * next_normals[0];

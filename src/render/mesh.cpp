@@ -595,7 +595,7 @@ void Mesh::pack_normals(float4 *vnormal)
   Transform ntfm = transform_normal;
 
   /* Corner normals take priority over vertex normals */
-  if (attr_fvN && !has_motion_blur() /* todo edo: remove this*/) {
+  if (attr_fvN) {
     float3* fvN = attr_fvN->data_float3();
 
     for (size_t i = 0; i < num_triangles() * 3; ++i) {

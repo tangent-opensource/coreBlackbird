@@ -825,8 +825,7 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
       face_size += mesh->subd_faces.size();
       corner_size += mesh->subd_face_corners.size();
 
-      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL) 
-        && !mesh->has_motion_blur() /* todo edo: remove me */) {
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
       } else {
         normals_size += mesh->verts.size();
@@ -871,8 +870,7 @@ void GeometryManager::device_update_mesh(
       tri_size += mesh->num_triangles();
 
       /* Making more space for normals if they are per-corner */
-      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)
-        && !mesh->has_motion_blur() /* todo edo : remove me*/) {
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
       } else {
         normals_size += mesh->verts.size();
@@ -970,8 +968,7 @@ void GeometryManager::device_update_mesh(
 
         /* Since the vertex/prim indices are global, we add the offset
          * correction here */
-        if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL) 
-          && !mesh->has_motion_blur() /* todo edo: remove me */) {
+        if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
           vnormal_offset[i] -= 3* mesh->prim_offset; /* Corner attribute */
         } else {
           vnormal_offset[i] -= mesh->vert_offset; /* Vertex attribute*/
