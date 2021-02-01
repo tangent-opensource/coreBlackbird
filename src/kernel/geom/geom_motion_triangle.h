@@ -87,8 +87,6 @@ ccl_device_inline void motion_triangle_normals_for_step(KernelGlobals *kg,
                                                         int step,
                                                         float3 normals[3])
 {
-  printf("Motion triangle normal queried\n"); 
-
   /* Returns a costant normal if the object has corner normals. Corner normals
    * only work for transformation blur. */
   if (obj_flags & SD_OBJECT_HAS_CORNER_NORMALS) {
