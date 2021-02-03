@@ -113,7 +113,6 @@ ccl_device_noinline
   }
   else {
     /* motion triangle */
-    printf("Setting up motion triangle\n");
     motion_triangle_shader_setup(kg, sd, isect, ray, false);
   }
 
