@@ -648,6 +648,20 @@ void GeometryManager::device_update_attributes(Device *device,
 
     foreach (Shader *shader, geom->used_shaders) {
       geom_attributes[i].add(shader->attributes);
+      
+      /* Add a request for volume velocity if a volume attribute is 
+      present and motion blur is on*/
+      if (scene->need_motion() == Scene::MOTION_BLUR) {
+        foreach (AttributeRequest &attr, geom_attributes[i].requests) {
+          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR
+          || attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT
+          || attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
+            geom_attributes[i].add(ATTR_STD_VOLUME_VELOCITY);
+            break;
+          }
+        }
+      }
+
     }
   }
 

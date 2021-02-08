@@ -465,7 +465,8 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.random_number = random_number;
   kobject.particle_index = particle_index;
   kobject.motion_offset = 0;
-
+  kobject.use_motion_blur = false;
+  
   if (geom->use_motion_blur) {
     state->have_motion = true;
   }
@@ -510,6 +511,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
     object_motion_pass[motion_pass_offset + 1] = tfm_post;
   }
   else if (state->need_motion == Scene::MOTION_BLUR) {
+    kobject.use_motion_blur = true;
     if (ob->use_motion()) {
       kobject.motion_offset = state->motion_offset[ob->index];
 
@@ -521,7 +523,6 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
     }
   }
 
-  kobject.use_motion_blur = ob->use_motion();
 
   /* Dupli object coords and motion info. */
   kobject.dupli_generated[0] = ob->dupli_generated[0];

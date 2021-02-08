@@ -1294,11 +1294,10 @@ ccl_device_inline void shader_eval_volume(KernelGlobals *kg,
       if (kernel_tex_fetch(__objects, sd->object).use_motion_blur &&
           kernel_data.cam.shuttertime != -1.0f &&
           kernel_tex_fetch(__objects, sd->object).velocity_scale > 0.0f) {
-      
+          
           AttributeDescriptor v_desc = find_attribute(kg, sd, ATTR_STD_VOLUME_VELOCITY);
-
+          
           if (v_desc.offset != ATTR_STD_NOT_FOUND) {
-
             const float3 P = sd->P;
 
             const float time_offset = kernel_data.cam.motion_position == MOTION_POSITION_CENTER ?
@@ -1332,8 +1331,6 @@ ccl_device_inline void shader_eval_volume(KernelGlobals *kg,
           }
 
       }
-
-
 #  endif
     }
 
