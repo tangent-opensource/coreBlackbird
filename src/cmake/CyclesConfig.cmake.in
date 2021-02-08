@@ -2,12 +2,24 @@
 
 include(CMakeFindDependencyMacro)
 
-if(@WITH_CYCLES_OSL@)
-    find_dependency(OSL)
-endif()
-
-if(@WITH_CYCLES_OPENVDB@)
-    find_dependency(OpenVDB)
-endif()
+find_dependency(OpenVDB REQUIRED)
+find_dependency(GLEW REQUIRED)
 
 include(${CMAKE_CURRENT_LIST_DIR}/CyclesTargets.cmake)
+
+target_link_libraries(Cycles::Cycles
+    INTERFACE
+    Cycles::extern_sky
+    Cycles::extern_cuew
+    Cycles::extern_clew
+    Cycles::extern_numaapi
+    Cycles::cycles_bvh
+    Cycles::cycles_render
+    Cycles::cycles_util
+    Cycles::cycles_device
+    Cycles::cycles_subd
+    Cycles::cycles_kernel
+    Cycles::cycles_graph
+    GLEW::GLEW
+    OpenVDB::openvdb
+    )

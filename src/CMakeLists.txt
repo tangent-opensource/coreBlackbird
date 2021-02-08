@@ -414,7 +414,6 @@ target_link_libraries(Cycles
         cycles_device
         cycles_subd
         cycles_kernel
-        cycles_kernel_osl
         )
 
 if(${WITH_OPENVDB})
@@ -422,13 +421,6 @@ if(${WITH_OPENVDB})
             INTERFACE
             OpenVDB::openvdb
             )
-endif()
-
-if(${WITH_OSL})
-  target_link_libraries(Cycles
-          INTERFACE
-          OSL::oslcomp
-          )
 endif()
 
 # create target export and install actual targets
