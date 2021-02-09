@@ -465,7 +465,6 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.random_number = random_number;
   kobject.particle_index = particle_index;
   kobject.motion_offset = 0;
-  kobject.use_motion_blur = false;
   
   if (geom->use_motion_blur) {
     state->have_motion = true;
@@ -476,11 +475,6 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
     Mesh *mesh = static_cast<Mesh *>(geom);
     if (mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION)) {
       flag |= SD_OBJECT_HAS_VERTEX_MOTION;
-    }
-
-    if (mesh->has_volume) {
-      kobject.velocity_scale = ob->velocity_scale;
-      kobject.up_axis = ob->up_axis;
     }
   }
 
@@ -512,7 +506,6 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
     object_motion_pass[motion_pass_offset + 1] = tfm_post;
   }
   else if (state->need_motion == Scene::MOTION_BLUR) {
-    kobject.use_motion_blur = true;
     if (ob->use_motion()) {
       kobject.motion_offset = state->motion_offset[ob->index];
 
@@ -543,7 +536,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.cryptomatte_object = util_hash_to_float(hash_name);
   kobject.cryptomatte_asset = util_hash_to_float(hash_asset);
   kobject.shadow_terminator_offset = 1.0f / (1.0f - 0.5f * ob->shadow_terminator_offset);
-
+  kobject.velocity_scale = ob->velocity_scale;
+  kobject.up_axis = ob->up_axis;
+  kobject.use_motion_blur = geom->use_motion_blur;
+  
   /* Object flag. */
   if (ob->use_holdout) {
     flag |= SD_OBJECT_HOLDOUT_MASK;
