@@ -480,6 +480,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
 
     if (mesh->has_volume) {
       kobject.velocity_scale = ob->velocity_scale;
+      kobject.up_axis = ob->up_axis;
     }
   }
 

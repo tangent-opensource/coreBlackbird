@@ -1316,15 +1316,14 @@ ccl_device_inline void shader_eval_volume(KernelGlobals *kg,
 
             /* Find velocity. */
             float3 velocity = volume_attribute_float3(kg, sd, v_desc);
-            object_dir_transform(kg, sd, &velocity);
+            velocity = volume_transform_velocity(kg, sd, velocity);
 
             /* Find advected P. */
-
             sd->P = P - (time - time_offset) * velocity_scale * velocity;
 
             /* Find advected velocity. */
             velocity = volume_attribute_float3(kg, sd, v_desc);
-            object_dir_transform(kg, sd, &velocity);
+            velocity = volume_transform_velocity(kg, sd, velocity);
 
             /* Find advected P. */
             sd->P = P - (time - time_offset) * velocity_scale * velocity;
