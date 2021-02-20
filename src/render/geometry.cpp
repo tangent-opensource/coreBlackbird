@@ -1142,6 +1142,42 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       //Hair *hair = static_cast<Hair *>(geom);
       //hair->curve_shape = scene->params.hair_shape;
     }
+
+    // Generating motion blur geometry for Meshes with not authored motion samples
+    if (geom->type == Geometry::MESH) {
+      Mesh *mesh = static_cast<Mesh *>(geom);
+      Attribute *attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+      Attribute *attr_V = mesh->attributes.find(ATTR_STD_VERTEX_VELOCITY);
+      printf("CYCLES Preprocessing geometry mP %d mV %d\n", (int)attr_mP, (int)attr_V);
+
+      // If the geometry has velocities, motion blur on and no positions 
+      // are present then the velocities are used to generate
+      if (!attr_mP && attr_V && geom->use_motion_blur) {
+        // Rounding up to odd number
+        geom->motion_steps += (geom->motion_steps % 2) ? 0 : 1;
+        attr_mP = mesh->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
+
+        float3* mP = attr_mP->data_float3();
+        const float3* V = attr_V->data_float3();
+
+        // Number of timecodes per seconds
+        const float inv_fps = 1.f / 24;
+        const float to_frame_time = scene->camera->shuttertime * inv_fps;
+        printf("CYCLES Calculating positions for shuttertime %.3f\n", scene->camera->shuttertime);
+
+        const float motion_times[2] = { -1.f, 1.f };
+        for (int timestep = 0; timestep < 2; ++timestep) {
+          const float relative_time = motion_times[timestep] * to_frame_time * 0.5f;
+          printf("CYCLES relative time %.5f speed %.3f %.3f %.3f\n", relative_time, 
+            V[0].x, V[0].y, V[0].z);
+
+          for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
+            mP[vert] = mesh->verts[vert] + V[vert] * relative_time;
+          }
+          mP += mesh->verts.size();
+        }
+      }
+    }
   }
 
   need_flags_update = false;
