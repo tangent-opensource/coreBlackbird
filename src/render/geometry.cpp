@@ -1143,40 +1143,9 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       //hair->curve_shape = scene->params.hair_shape;
     }
 
-    // Generating motion blur geometry for Meshes with not authored motion samples
+    // Generating motion blur geometry for Meshes with no authored motion samples
     if (geom->type == Geometry::MESH) {
-      Mesh *mesh = static_cast<Mesh *>(geom);
-      Attribute *attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
-      Attribute *attr_V = mesh->attributes.find(ATTR_STD_VERTEX_VELOCITY);
-      printf("CYCLES Preprocessing geometry mP %d mV %d\n", (int)attr_mP, (int)attr_V);
-
-      // If the geometry has velocities, motion blur on and no positions 
-      // are present then the velocities are used to generate
-      if (!attr_mP && attr_V && geom->use_motion_blur) {
-        // Rounding up to odd number
-        geom->motion_steps += (geom->motion_steps % 2) ? 0 : 1;
-        attr_mP = mesh->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
-
-        float3* mP = attr_mP->data_float3();
-        const float3* V = attr_V->data_float3();
-
-        // Number of timecodes per seconds
-        const float inv_fps = 1.f / 24;
-        const float to_frame_time = scene->camera->shuttertime * inv_fps;
-        printf("CYCLES Calculating positions for shuttertime %.3f\n", scene->camera->shuttertime);
-
-        const float motion_times[2] = { -1.f, 1.f };
-        for (int timestep = 0; timestep < 2; ++timestep) {
-          const float relative_time = motion_times[timestep] * to_frame_time * 0.5f;
-          printf("CYCLES relative time %.5f speed %.3f %.3f %.3f\n", relative_time, 
-            V[0].x, V[0].y, V[0].z);
-
-          for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-            mP[vert] = mesh->verts[vert] + V[vert] * relative_time;
-          }
-          mP += mesh->verts.size();
-        }
-      }
+      create_motion_blur_geometry(scene, static_cast<Mesh *>(geom), progress);
     }
   }
 
@@ -1508,6 +1477,91 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
   foreach (Geometry *geometry, scene->geometry) {
     stats->mesh.geometry.add_entry(
         NamedSizeEntry(string(geometry->name.c_str()), geometry->get_total_size_in_bytes()));
+  }
+}
+
+
+// Generates motion positions from velocity/acceleration attributes, 
+// only if no authored motion positions are available
+void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh, Progress &progress) {
+  if (!mesh->use_motion_blur) {
+    return;
+  }
+
+  Attribute *attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+  if (attr_mP) {
+    return;
+  }
+
+  Attribute *attr_V = mesh->attributes.find(ATTR_STD_VERTEX_VELOCITY);
+  if (!attr_V) {
+    return;
+  }
+
+  progress.set_status("Creating mesh motion blur geometry\n");
+
+  // Rounding up to include center step
+  mesh->motion_steps += (mesh->motion_steps % 2) ? 0 : 1;
+
+  // Making space for motion vertices
+  attr_mP = mesh->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
+  float3* mP = attr_mP->data_float3();
+  const float3* V = attr_V->data_float3();
+
+  // Number of timecodes per seconds
+  // Transformation from unit/second to unit/frame
+  const float inv_fps = 1.f / 24;
+  const float to_frame_time = scene->camera->shuttertime * inv_fps;
+
+  // Use accelerations in the integration if they are available
+  Attribute *attr_A = mesh->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
+  float3* A = NULL;
+  if (attr_A) { 
+    A = attr_A->data_float3();
+  }
+
+  // Following Houdini's spec by enabling rapid rotations to be blurred if 
+  // acceleration is present, although angular velocity could be used on 
+  // its own to compute motion blur geometry.
+  // Maybe I am misreading the docs?
+  // https://www.sidefx.com/docs/houdini/render/blur.html
+  float3* w = NULL;
+  if (attr_A) {
+    Attribute *attr_w = mesh->attributes.find(ATTR_STD_VERTEX_ANGULAR_VELOCITY);
+    if (attr_w) {
+      w = attr_w->data_float3();
+    }
+  }
+
+  // For now limited to three frames
+  const float motion_times[2] = { -1.f, 1.f };
+  for (int timestep = 0; timestep < 2; ++timestep) {
+    const float relative_time = motion_times[timestep] * to_frame_time * 0.5f;
+
+    // Can the loops be rearranged or generally optimized?
+    if (A && w) { // velocity + acceleration + angular velocity
+      Transform tfm_rot;
+      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
+        mP[vert] = mesh->verts[vert] + relative_time * (
+          V[vert] + (0.5f * relative_time * A[vert]));
+
+        // Radians per second for each major axis
+        tfm_rot = euler_to_transform(w[vert]);
+        mP[vert] = transform_direction(&tfm_rot, mP[vert]);
+      }
+    }
+    else if (A && !w) { // acceleration + angular velocity
+      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
+        mP[vert] = mesh->verts[vert] + relative_time * (
+          V[vert] + (0.5f * relative_time * A[vert]));
+      }
+    } else { // velocity
+      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
+        mP[vert] = mesh->verts[vert] + relative_time * V[vert];
+      }
+    }
+
+    mP += mesh->verts.size();
   }
 }
 
