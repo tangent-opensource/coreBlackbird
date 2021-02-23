@@ -1508,11 +1508,6 @@ void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh
   float3* mP = attr_mP->data_float3();
   const float3* V = attr_V->data_float3();
 
-  // Number of timecodes per seconds
-  // Transformation from unit/second to unit/frame
-  const float inv_fps = 1.f / 24;
-  const float to_frame_time = scene->camera->shuttertime * inv_fps;
-
   // Use accelerations in the integration if they are available
   Attribute *attr_A = mesh->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
   float3* A = NULL;
@@ -1533,12 +1528,21 @@ void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh
     }
   }
 
-  // For now limited to three frames
-  const float motion_times[2] = { -1.f, 1.f };
-  for (int timestep = 0; timestep < 2; ++timestep) {
-    const float relative_time = motion_times[timestep] * to_frame_time * 0.5f;
+  // Transformation from unit/second to frame time
+  const float to_frame_time = (scene->camera->shuttertime * 0.5f) / scene->camera->fps;
+  
+  // Sampling uniform intervals in [-1, 1] skipping the center
+  const float step_time = 2.f / (mesh->motion_steps - 1);
+  const int timestep_center = mesh->motion_steps / 2;
 
-    // Can the loops be rearranged or generally optimized?
+  for (int timestep = 0; timestep < mesh->motion_steps; ++timestep) {
+    if (timestep == timestep_center) {
+      continue;
+    }
+
+    const float relative_time = (-1.f + timestep * step_time) * to_frame_time;
+
+    // Is there a better way to arrange the loops?
     if (A && w) { // velocity + acceleration + angular velocity
       Transform tfm_rot;
       for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
@@ -1550,7 +1554,7 @@ void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh
         mP[vert] = transform_direction(&tfm_rot, mP[vert]);
       }
     }
-    else if (A && !w) { // acceleration + angular velocity
+    else if (A && !w) { // velocity + acceleration
       for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
         mP[vert] = mesh->verts[vert] + relative_time * (
           V[vert] + (0.5f * relative_time * A[vert]));
