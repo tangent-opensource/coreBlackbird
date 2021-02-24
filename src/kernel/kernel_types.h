@@ -1494,7 +1494,7 @@ typedef struct KernelObject {
 
   bool use_motion_blur;
   float velocity_scale;
-  uint up_axis;
+  /*uint up_axis;*/
   float cryptomatte_object;
   float cryptomatte_asset;
 

@@ -63,7 +63,7 @@ class Object : public Node {
 
   /* This scale is applied to volumetric motion blur. */
   float velocity_scale;
-  uint up_axis;
+  /*uint up_axis;*/
 
   float3 dupli_generated;
   float2 dupli_uv;
