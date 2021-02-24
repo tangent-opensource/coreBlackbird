@@ -77,6 +77,7 @@ class DeviceScene {
   /* mesh */
   device_vector<uint> tri_shader;
   device_vector<float4> tri_vnormal;
+  device_vector<int> object_vnormal_offset;
   device_vector<uint4> tri_vindex;
   device_vector<uint> tri_patch;
   device_vector<float2> tri_patch_uv;

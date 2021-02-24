@@ -156,6 +156,8 @@ class Mesh : public Geometry {
   size_t patch_table_offset;
   size_t face_offset;
   size_t corner_offset;
+  /* Could this be merged with corner_offset? */
+  size_t normals_offset;
 
   size_t num_subd_verts;
 

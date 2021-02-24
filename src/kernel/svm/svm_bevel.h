@@ -151,11 +151,15 @@ ccl_device_noinline float3 svm_bevel(KernelGlobals *kg,
         float v = isect.hits[hit].v;
 
         if (sd->type & PRIMITIVE_TRIANGLE) {
-          N = triangle_smooth_normal(kg, N, prim, u, v);
+          if (object_flag & SD_OBJECT_HAS_CORNER_NORMALS) {
+            N = triangle_corner_normal(kg, N, prim, object, u, v);
+          } else {
+            N = triangle_smooth_normal(kg, N, prim, object, u, v);
+          }
         }
 #  ifdef __OBJECT_MOTION__
         else if (sd->type & PRIMITIVE_MOTION_TRIANGLE) {
-          N = motion_triangle_smooth_normal(kg, N, sd->object, prim, u, v, sd->time);
+          N = motion_triangle_smooth_normal(kg, N, sd->object, sd->object_flag, prim, u, v, sd->time);
         }
 #  endif /* __OBJECT_MOTION__ */
       }

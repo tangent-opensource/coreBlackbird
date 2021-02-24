@@ -792,6 +792,7 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
   size_t patch_size = 0;
   size_t face_size = 0;
   size_t corner_size = 0;
+  size_t normals_size = 0;
 
   size_t optix_prim_size = 0;
 
@@ -805,6 +806,7 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
       mesh->patch_offset = patch_size;
       mesh->face_offset = face_size;
       mesh->corner_offset = corner_size;
+      mesh->normals_offset = normals_size;
 
       vert_size += mesh->verts.size();
       tri_size += mesh->num_triangles();
@@ -822,6 +824,12 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
 
       face_size += mesh->subd_faces.size();
       corner_size += mesh->subd_face_corners.size();
+
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+        normals_size += mesh->num_triangles() * 3;
+      } else {
+        normals_size += mesh->verts.size();
+      }
 
       mesh->optix_prim_offset = optix_prim_size;
       optix_prim_size += mesh->num_triangles();
@@ -847,6 +855,7 @@ void GeometryManager::device_update_mesh(
   /* Count. */
   size_t vert_size = 0;
   size_t tri_size = 0;
+  size_t normals_size = 0;
 
   size_t curve_key_size = 0;
   size_t curve_size = 0;
@@ -859,6 +868,13 @@ void GeometryManager::device_update_mesh(
 
       vert_size += mesh->verts.size();
       tri_size += mesh->num_triangles();
+
+      /* Making more space for normals if they are per-corner */
+      if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+        normals_size += mesh->num_triangles() * 3;
+      } else {
+        normals_size += mesh->verts.size();
+      }
 
       if (mesh->subd_faces.size()) {
         Mesh::SubdFace &last = mesh->subd_faces[mesh->subd_faces.size() - 1];
@@ -910,7 +926,7 @@ void GeometryManager::device_update_mesh(
     progress.set_status("Updating Mesh", "Computing normals");
 
     uint *tri_shader = dscene->tri_shader.alloc(tri_size);
-    float4 *vnormal = dscene->tri_vnormal.alloc(vert_size);
+    float4 *vnormal = dscene->tri_vnormal.alloc(normals_size);
     uint4 *tri_vindex = dscene->tri_vindex.alloc(tri_size);
     uint *tri_patch = dscene->tri_patch.alloc(tri_size);
     float2 *tri_patch_uv = dscene->tri_patch_uv.alloc(vert_size);
@@ -919,7 +935,7 @@ void GeometryManager::device_update_mesh(
       if (geom->type == Geometry::MESH) {
         Mesh *mesh = static_cast<Mesh *>(geom);
         mesh->pack_shaders(scene, &tri_shader[mesh->prim_offset]);
-        mesh->pack_normals(&vnormal[mesh->vert_offset]);
+        mesh->pack_normals(&vnormal[mesh->normals_offset]);
         mesh->pack_verts(tri_prim_index,
                          &tri_vindex[mesh->prim_offset],
                          &tri_patch[mesh->prim_offset],
@@ -939,6 +955,28 @@ void GeometryManager::device_update_mesh(
     dscene->tri_vindex.copy_to_device();
     dscene->tri_patch.copy_to_device();
     dscene->tri_patch_uv.copy_to_device();
+
+    /* Updating the normal buffer offset to be indexed by object */
+    int* vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
+    for (size_t i = 0; i < scene->objects.size(); ++i) {
+      const Geometry* geom = scene->objects[i]->geometry;
+      if (geom && geom->type == Geometry::MESH) {
+        const Mesh* mesh = static_cast<const Mesh *>(geom);
+
+        /* Start of the normal buffer or the geometry */
+        vnormal_offset[i] = mesh->normals_offset;
+
+        /* Since the vertex/prim indices are global, we add the offset
+         * correction here */
+        if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+          vnormal_offset[i] -= 3* mesh->prim_offset; /* Corner attribute */
+        } else {
+          vnormal_offset[i] -= mesh->vert_offset; /* Vertex attribute*/
+        }
+      }
+    }
+
+    dscene->object_vnormal_offset.copy_to_device();
   }
 
   if (curve_size != 0) {
@@ -1433,6 +1471,7 @@ void GeometryManager::device_free(Device *device, DeviceScene *dscene)
   dscene->prim_time.free();
   dscene->tri_shader.free();
   dscene->tri_vnormal.free();
+  dscene->object_vnormal_offset.free();
   dscene->tri_vindex.free();
   dscene->tri_patch.free();
   dscene->tri_patch_uv.free();
