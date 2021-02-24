@@ -1139,8 +1139,8 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
     // TANGENT PATCH: Removed to allow geometry overrides
     if (geom->type == Geometry::HAIR) {
       /* Set curve shape, still a global scene setting for now. */
-      //Hair *hair = static_cast<Hair *>(geom);
-      //hair->curve_shape = scene->params.hair_shape;
+      // Hair *hair = static_cast<Hair *>(geom);
+      // hair->curve_shape = scene->params.hair_shape;
     }
 
     // Generating motion blur geometry for Meshes with no authored motion samples
@@ -1517,18 +1517,6 @@ void GeometryManager::create_motion_blur_geometry(const Scene *scene,
     A = attr_A->data_float3();
   }
 
-  /* Following Houdini's spec by enabling rapid rotations to be blurred if
-   * acceleration is present, although angular velocity could be used on
-   * its own to compute motion blur geometry.
-   * https://www.sidefx.com/docs/houdini/render/blur.html */
-  float3 *w = NULL;
-  if (attr_A) {
-    Attribute *attr_w = mesh->attributes.find(ATTR_STD_VERTEX_ANGULAR_VELOCITY);
-    if (attr_w) {
-      w = attr_w->data_float3();
-    }
-  }
-
   /* Transformation from unit/second to frame time */
   const float to_frame_time = (scene->camera->shuttertime * 0.5f) / scene->camera->fps;
 
@@ -1543,19 +1531,7 @@ void GeometryManager::create_motion_blur_geometry(const Scene *scene,
 
     const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
 
-    /* Is there a better way to arrange the loops? */
-    if (A && w) { /* velocity + acceleration + angular velocity */
-      Transform tfm_rot;
-      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-        mP[vert] = mesh->verts[vert] +
-                   relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
-
-        /* Radians per second for each major axis */
-        tfm_rot = euler_to_transform(w[vert]);
-        mP[vert] = transform_direction(&tfm_rot, mP[vert]);
-      }
-    }
-    else if (A && !w) { /* velocity + acceleration */
+    if (A) { /* velocity + acceleration */
       for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
         mP[vert] = mesh->verts[vert] +
                    relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
