@@ -1480,10 +1480,12 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
   }
 }
 
-
-// Generates motion positions from velocity/acceleration attributes, 
-// only if no authored motion positions are available
-void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh, Progress &progress) {
+/* Generates motion positions from velocity/acceleration attributes
+ * only if no authored motion positions are available */
+void GeometryManager::create_motion_blur_geometry(const Scene *scene,
+                                                  Mesh *mesh,
+                                                  Progress &progress)
+{
   if (!mesh->use_motion_blur) {
     return;
   }
@@ -1500,27 +1502,26 @@ void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh
 
   progress.set_status("Creating mesh motion blur geometry\n");
 
-  // Rounding up to include center step
+  /* Rounding up to include center step */
   mesh->motion_steps += (mesh->motion_steps % 2) ? 0 : 1;
 
-  // Making space for motion vertices
+  /* Making space for motion vertices */
   attr_mP = mesh->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
-  float3* mP = attr_mP->data_float3();
-  const float3* V = attr_V->data_float3();
+  float3 *mP = attr_mP->data_float3();
+  const float3 *V = attr_V->data_float3();
 
-  // Use accelerations in the integration if they are available
+  /* Use accelerations in the integration if they are available */
   Attribute *attr_A = mesh->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
-  float3* A = NULL;
-  if (attr_A) { 
+  float3 *A = NULL;
+  if (attr_A) {
     A = attr_A->data_float3();
   }
 
-  // Following Houdini's spec by enabling rapid rotations to be blurred if 
-  // acceleration is present, although angular velocity could be used on 
-  // its own to compute motion blur geometry.
-  // Maybe I am misreading the docs?
-  // https://www.sidefx.com/docs/houdini/render/blur.html
-  float3* w = NULL;
+  /* Following Houdini's spec by enabling rapid rotations to be blurred if
+   * acceleration is present, although angular velocity could be used on
+   * its own to compute motion blur geometry.
+   * https://www.sidefx.com/docs/houdini/render/blur.html */
+  float3 *w = NULL;
   if (attr_A) {
     Attribute *attr_w = mesh->attributes.find(ATTR_STD_VERTEX_ANGULAR_VELOCITY);
     if (attr_w) {
@@ -1528,11 +1529,11 @@ void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh
     }
   }
 
-  // Transformation from unit/second to frame time
+  /* Transformation from unit/second to frame time */
   const float to_frame_time = (scene->camera->shuttertime * 0.5f) / scene->camera->fps;
-  
-  // Sampling uniform intervals in [-1, 1] skipping the center
-  const float step_time = 2.f / (mesh->motion_steps - 1);
+
+  /* Sampling uniform intervals in [-1, 1] skipping the center */
+  const float step_time = 2.0f / (mesh->motion_steps - 1);
   const int timestep_center = mesh->motion_steps / 2;
 
   for (int timestep = 0; timestep < mesh->motion_steps; ++timestep) {
@@ -1540,26 +1541,27 @@ void GeometryManager::create_motion_blur_geometry(const Scene* scene, Mesh *mesh
       continue;
     }
 
-    const float relative_time = (-1.f + timestep * step_time) * to_frame_time;
+    const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
 
-    // Is there a better way to arrange the loops?
-    if (A && w) { // velocity + acceleration + angular velocity
+    /* Is there a better way to arrange the loops? */
+    if (A && w) { /* velocity + acceleration + angular velocity */
       Transform tfm_rot;
       for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-        mP[vert] = mesh->verts[vert] + relative_time * (
-          V[vert] + (0.5f * relative_time * A[vert]));
+        mP[vert] = mesh->verts[vert] +
+                   relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
 
-        // Radians per second for each major axis
+        /* Radians per second for each major axis */
         tfm_rot = euler_to_transform(w[vert]);
         mP[vert] = transform_direction(&tfm_rot, mP[vert]);
       }
     }
-    else if (A && !w) { // velocity + acceleration
+    else if (A && !w) { /* velocity + acceleration */
       for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-        mP[vert] = mesh->verts[vert] + relative_time * (
-          V[vert] + (0.5f * relative_time * A[vert]));
+        mP[vert] = mesh->verts[vert] +
+                   relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
       }
-    } else { // velocity
+    }
+    else { /* velocity */
       for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
         mP[vert] = mesh->verts[vert] + relative_time * V[vert];
       }
