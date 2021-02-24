@@ -99,7 +99,13 @@ option(WITH_CUDA_DYNLOAD           "Dynamically load CUDA libraries at runtime" 
 mark_as_advanced(WITH_CUDA_DYNLOAD)
 
 # ====== Tangent Rez Deps
-include(${CMAKE_CURRENT_SOURCE_DIR}/rez_deps.cmake)
+option(BUILD_WITH_REZ "Build with rez" ON)
+if(${BUILD_WITH_REZ})
+    include(${CMAKE_CURRENT_SOURCE_DIR}/rez_deps.cmake)
+else()
+    set(USE_OPENGL TRUE)
+    add_definitions(-DUSE_OPENGL)
+endif()
 
 include(external_libs)
 
@@ -120,5 +126,5 @@ include_directories(
 ###########################################################################
 # Sources.
 
-add_subdirectory(src)
 add_subdirectory(third_party)
+add_subdirectory(src)

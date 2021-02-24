@@ -41,9 +41,12 @@ set(SRC
   util_windows.cpp
 )
 
-set(LIB
-  ${TBB_LIBRARIES}
-)
+if(CYCLES_STANDALONE_REPOSITORY)
+  message(STATUS "utils linking with numaapi")
+  set(LIB ${TBB_LIBRARIES} extern_numaapi)
+else()
+  set(LIB ${TBB_LIBRARIES})
+endif()
 
 if(WITH_CYCLES_STANDALONE)
   if(WITH_CYCLES_STANDALONE_GUI)
