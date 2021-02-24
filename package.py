@@ -18,6 +18,7 @@ requires = [
     'tbb-2019.U9',
     'openexr-2.4.0',
     'embree-3.8.0',
+    'nanovdb-29.3.0',
 
     # Only needed for logging
     'glog-0.4.0',
