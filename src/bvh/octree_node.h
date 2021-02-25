@@ -26,19 +26,13 @@ CCL_NAMESPACE_BEGIN
 
 /* Octree structure for volumes */
 
-struct ccl_align(16) OCTNode {
-  OCTNode() {};
-
-  bool isLeaf()
-  {
-    return has_children;
-  };
-
+struct ccl_align(16) OCTNode
+{
   int num_volumes = 0;
   int vol_indices[1024];
 
   float max_extinction = 0.0f;
-  float min_extinction = 1e10f;  // or any large number
+  float min_extinction = FLT_MAX;
 
   int depth = -1;
   bool has_children = false;
@@ -46,7 +40,7 @@ struct ccl_align(16) OCTNode {
   OCTNode *children[8];
   OCTNode *parent;
   BoundBox bbox;
-}
+};
 
 CCL_NAMESPACE_END
 

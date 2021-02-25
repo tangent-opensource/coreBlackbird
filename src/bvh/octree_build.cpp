@@ -33,19 +33,72 @@
 CCL_NAMESPACE_BEGIN
 
 /* Constructor / Destructor */
-OCTBuild::OCTBuild()
+OCTBuild::OCTBuild() : depth(3)
 {
 }
+
 OCTBuild::~OCTBuild()
 {
 }
 
-OCTNode *OCTBuild::build_root(vector<Object *> &objects)
+void OCTBuild::init_octree()
 {
-    OCTNode * root = new OCTNode;
-    
+  octree_root = new OCTNode;
+  build_root_rec(octree_root, depth);
 }
 
-void OCTBuild::progress_update(){}
+void OCTBuild::update_octree(vector<Image *> images)
+{
+  update_root_rec(octree_root, images);
+}
+
+void OCTBuild::reset_octree()
+{
+  clear_root_rec(octree_root);
+}
+
+void OCTBuild::build_root_rec(OCTNode *root, int depth)
+{
+  if (depth > 0) {
+    for (int i = 0; i < 8; i++) {
+      root->children[i] = new OCTNode;
+      root->children[i]->parent = root;
+      root->children[i]->depth = depth;
+
+      build_root_rec(root->children[i], depth - 1);
+    }
+
+    root->has_children = true;
+  }
+}
+
+void OCTBuild::update_root_rec(OCTNode *node, vector<Image *> images)
+{
+  if (node->has_children) {
+    for (int i = 0; i < 8; i++) {
+      node->children[i]->bbox = divide_bbox(node->bbox, i);
+    }
+  }
+}
+
+void OCTBuild::clear_root_rec(OCTNode *node)
+{
+  if (!node) {
+    return;
+  }
+
+  if (node->has_children) {
+    for (int i = 0; i < 8; i++) {
+      clear_root_rec(node->children[i]);
+    }
+  }
+
+  node->max_extinction = 0.0f;
+  node->min_extinction = 1e10f;
+  node->has_children = false;
+  node->depth = -1;
+  node->num_volumes = 0;
+  node->bbox = BoundBox();
+}
 
 CCL_NAMESPACE_END

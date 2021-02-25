@@ -40,6 +40,7 @@ class RenderStats;
 class Scene;
 class ColorSpaceProcessor;
 class VDBImageLoader;
+class OCTBuild;
 
 /* Image Parameters */
 class ImageParams {
@@ -217,6 +218,8 @@ class ImageManager {
 
   vector<Image *> images;
   void *osl_texture_system;
+
+  OCTBuild *octree_builder;
 
   int add_image_slot(ImageLoader *loader, const ImageParams &params, const bool builtin);
   void add_image_user(int slot);

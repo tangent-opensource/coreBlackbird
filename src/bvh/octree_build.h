@@ -21,15 +21,12 @@
 
 #include "bvh/octree_node.h"
 
-#include "util/util_progress.h"
-#include "util/util_task.h"
 #include "util/util_vector.h"
 
 CCL_NAMESPACE_BEGIN
 
-class Mesh;
 class Progress;
-class Object;
+class Image;
 
 /* Octree Builder */
 
@@ -39,20 +36,25 @@ class OCTBuild {
   OCTBuild();
   ~OCTBuild();
 
-  OCTNode *build_root(vector<Object *> &objects);
+  void init_octree();
+  void update_octree(vector<Image *> images);
+  void reset_octree();
+
+  OCTNode *get_root();
+  int get_depth();
 
  protected:
-  /* Progress. */
-  void progress_update();
+  /* Internal recursive functions to initialize, update 
+  *  and clear the octree structure */
+  void build_root_rec(OCTNode *root, int depth);
+  void update_root_rec(OCTNode *root, vector<Image *> images);
+  void clear_root_rec(OCTNode *root);
 
-  /* Progress reporting. */
-  Progress &progress;
-  double progress_start_time;
-  size_t progress_count;
-  size_t progress_total;
-  size_t progress_original_total;
+  OCTNode *octree_root;
 
-}
+  /* Octree structure params*/
+  int depth;
+};
 
 CCL_NAMESPACE_END
 

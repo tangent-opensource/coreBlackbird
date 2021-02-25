@@ -199,6 +199,54 @@ __forceinline BoundBox intersect(const BoundBox &a, const BoundBox &b, const Bou
   return intersect(a, intersect(b, c));
 }
 
+/* Divides a bounding box to 8 equal boxes and calculates children bounding boxes 
+ * based on an index. Index should be between [0-8)
+ */
+__forceinline BoundBox divide_bbox(const BoundBox &a, int index)
+{
+  float3 min = a.min;
+  float3 max = a.max;
+  float3 center = a.center();
+
+  /* TODO(Sergen) This is super ugly, should find a branchless way to do this */
+  switch (index) {
+    case 0:
+      max = center;
+      break;
+    case 1:
+      min = make_float3(center.x, min.y, min.z);
+      max = make_float3(max.x, center.y, center.z);
+      break;
+    case 2:
+      min = make_float3(min.x, min.y, center.z);
+      max = make_float3(center.x, center.y, max.z);
+      break;
+    case 3:
+      min = make_float3(center.x, min.y, center.z);
+      max = make_float3(max.x, center.y, max.z);
+      break;
+    case 4:
+      min = make_float3(min.x, center.y, min.z);
+      max = make_float3(center.x, max.y, center.z);
+      break;
+    case 5:
+      min = make_float3(center.x, center.y, min.z);
+      max = make_float3(max.x, max.y, center.z);
+      break;
+    case 6:
+      min = make_float3(min.x, center.y, center.z);
+      max = make_float3(center.x, max.y, max.z);
+      break;
+    case 7:
+      min = center;
+      break;
+    default:
+      break;
+  }
+
+  return BoundBox(min, max);
+}
+
 /* 2D BoundBox */
 
 class BoundBox2D {

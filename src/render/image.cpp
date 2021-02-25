@@ -32,6 +32,8 @@
 #include "util/util_texture.h"
 #include "util/util_unique_ptr.h"
 
+#include "bvh/octree_build.h"
+
 #ifdef WITH_OSL
 #  include <OSL/oslexec.h>
 #endif
@@ -301,6 +303,7 @@ ImageManager::ImageManager(const DeviceInfo &info)
   need_update = true;
   osl_texture_system = NULL;
   animation_frame = 0;
+  octree_builder = new OCTBuild;
 
   /* Set image limits */
   has_half_images = info.has_half_images;

@@ -30,6 +30,7 @@ set(SRC
   bvh_sort.cpp
   bvh_split.cpp
   bvh_unaligned.cpp
+  octree_build.cpp
 )
 
 set(SRC_HEADERS
@@ -44,6 +45,8 @@ set(SRC_HEADERS
   bvh_sort.h
   bvh_split.h
   bvh_unaligned.h
+  octree_node.h
+  octree_build.h
 )
 
 set(LIB
