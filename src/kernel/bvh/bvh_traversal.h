@@ -183,6 +183,22 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals *kg,
               break;
             }
 #endif /* BVH_FEATURE(BVH_HAIR) */
+#ifdef __POINTCLOUD__
+            case PRIMITIVE_POINT:
+            case PRIMITIVE_MOTION_POINT: {
+              for (; prim_addr < prim_addr2; prim_addr++) {
+                BVH_DEBUG_NEXT_INTERSECTION();
+                const bool hit = point_intersect(
+                    kg, isect, P, dir, visibility, object, prim_addr, ray->time, type);
+                if (hit) {
+                  /* shadow ray early termination */
+                  if (visibility & PATH_RAY_SHADOW_OPAQUE)
+                    return true;
+                }
+              }
+              break;
+            }
+#endif /* __POINTCLOUD__ */
           }
         }
         else {

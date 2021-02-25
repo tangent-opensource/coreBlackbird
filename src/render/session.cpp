@@ -804,6 +804,9 @@ DeviceRequestedFeatures Session::get_requested_device_features()
     else if (geom->type == Geometry::HAIR) {
       requested_features.use_hair = true;
     }
+    else if (geom->is_pointcloud()) {
+      requested_features.use_pointcloud = true;
+    }
   }
 
   requested_features.use_background_light = scene->light_manager->has_background_light(scene);
