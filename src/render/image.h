@@ -26,6 +26,7 @@
 #include "util/util_transform.h"
 #include "util/util_unique_ptr.h"
 #include "util/util_vector.h"
+#include "util/util_boundbox.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -88,6 +89,13 @@ class ImageMetaData {
   /* Optional transform for 3D images. */
   bool use_transform_3d;
   Transform transform_3d;
+
+  /* For delta tracking */
+  float3 min;
+  float3 max;
+
+  /* World bounding box for volumes */
+  BoundBox world_bound;
 
   /* Automatically set. */
   bool compress_as_srgb;
@@ -163,6 +171,23 @@ class ImageHandle {
   friend class ImageManager;
 };
 
+struct Image {
+  ImageParams params;
+  ImageMetaData metadata;
+  ImageLoader *loader;
+
+  float frame;
+  bool need_metadata;
+  bool need_load;
+  bool builtin;
+
+  string mem_name;
+  device_texture *mem;
+
+  int users;
+  thread_mutex mutex;
+};
+
 /* Image Manager
  *
  * Handles loading and storage of all images in the scene. This includes 2D
@@ -191,23 +216,6 @@ class ImageManager {
   void collect_statistics(RenderStats *stats);
 
   bool need_update;
-
-  struct Image {
-    ImageParams params;
-    ImageMetaData metadata;
-    ImageLoader *loader;
-
-    float frame;
-    bool need_metadata;
-    bool need_load;
-    bool builtin;
-
-    string mem_name;
-    device_texture *mem;
-
-    int users;
-    thread_mutex mutex;
-  };
 
  private:
   bool has_half_images;

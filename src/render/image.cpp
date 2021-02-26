@@ -148,7 +148,7 @@ ImageMetaData ImageHandle::metadata()
     return ImageMetaData();
   }
 
-  ImageManager::Image *img = manager->images[tile_slots.front()];
+  Image *img = manager->images[tile_slots.front()];
   manager->load_image_metadata(img);
   return img->metadata;
 }
@@ -160,7 +160,7 @@ int ImageHandle::svm_slot(const int tile_index) const
   }
 
   if (manager->osl_texture_system) {
-    ImageManager::Image *img = manager->images[tile_slots[tile_index]];
+    Image *img = manager->images[tile_slots[tile_index]];
     if (!img->loader->osl_filepath().empty()) {
       return -1;
     }
@@ -175,7 +175,7 @@ device_texture *ImageHandle::image_memory(const int tile_index) const
     return NULL;
   }
 
-  ImageManager::Image *img = manager->images[tile_slots[tile_index]];
+  Image *img = manager->images[tile_slots[tile_index]];
   return img ? img->mem : NULL;
 }
 
@@ -185,7 +185,7 @@ VDBImageLoader *ImageHandle::vdb_loader(const int tile_index) const
     return NULL;
   }
 
-  ImageManager::Image *img = manager->images[tile_slots[tile_index]];
+  Image *img = manager->images[tile_slots[tile_index]];
 
   if (img == NULL) {
     return NULL;
@@ -217,6 +217,8 @@ ImageMetaData::ImageMetaData()
       height(0),
       depth(0),
       byte_size(0),
+      min(make_float3(0.0f)),
+      max(make_float3(0.0f)),
       type(IMAGE_DATA_NUM_TYPES),
       colorspace(u_colorspace_raw),
       colorspace_file_format(""),
@@ -304,6 +306,7 @@ ImageManager::ImageManager(const DeviceInfo &info)
   osl_texture_system = NULL;
   animation_frame = 0;
   octree_builder = new OCTBuild;
+  octree_builder->init_octree();
 
   /* Set image limits */
   has_half_images = info.has_half_images;
@@ -484,7 +487,7 @@ void ImageManager::remove_image_user(int slot)
     need_update = true;
 }
 
-static bool image_associate_alpha(ImageManager::Image *img)
+static bool image_associate_alpha(Image *img)
 {
   /* For typical RGBA images we let OIIO convert to associated alpha,
    * but some types we want to leave the RGB channels untouched. */
@@ -830,6 +833,10 @@ void ImageManager::device_update(Device *device, Scene *scene, Progress &progres
   }
 
   pool.wait_work();
+
+  /* All images are loaded. Update octree structure */
+  octree_builder->reset_octree();
+  octree_builder->update_octree(images);
 
   need_update = false;
 }
