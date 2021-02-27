@@ -39,6 +39,7 @@ class Scene;
 struct Transform;
 struct UpdateObjectTransformState;
 class ObjectManager;
+class OCTBuild;
 
 /* Object */
 
@@ -133,6 +134,8 @@ class ObjectManager {
                            bool bounds_valid = true);
   void device_update_mesh_offsets(Device *device, DeviceScene *dscene, Scene *scene);
 
+  void device_update_octree(DeviceScene *dscene, Scene *scene, Progress &progress);
+
   void device_free(Device *device, DeviceScene *dscene);
 
   void tag_update(Scene *scene);
@@ -148,6 +151,9 @@ class ObjectManager {
   bool device_update_object_transform_pop_work(UpdateObjectTransformState *state,
                                                int *start_index,
                                                int *num_objects);
+
+ private:
+  OCTBuild *octree_builder;
 };
 
 CCL_NAMESPACE_END

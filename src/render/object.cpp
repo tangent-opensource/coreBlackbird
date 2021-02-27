@@ -34,6 +34,8 @@
 #include "util/util_task.h"
 #include "util/util_vector.h"
 
+#include "bvh/octree_build.h"
+
 #include "subd/subd_patch_table.h"
 
 CCL_NAMESPACE_BEGIN
@@ -310,15 +312,15 @@ float Object::compute_volume_step_size() const
       /* User specified step size. */
       float voxel_step_size = mesh->volume_step_size;
 
-        if (voxel_step_size == 0.0f) {
-          /* Auto detect step size. */
-          float3 size = make_float3(1.0f, 1.0f, 1.0f);
+      if (voxel_step_size == 0.0f) {
+        /* Auto detect step size. */
+        float3 size = make_float3(1.0f, 1.0f, 1.0f);
 #ifdef WITH_NANOVDB
-          /* Dimensions were not applied to image transform with NanOVDB (see image_vdb.cpp) */
-          if (metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT &&
-              metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT3)
+        /* Dimensions were not applied to image transform with NanOVDB (see image_vdb.cpp) */
+        if (metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT &&
+            metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT3)
 #endif
-            size /= make_float3(metadata.width, metadata.height, metadata.depth);
+          size /= make_float3(metadata.width, metadata.height, metadata.depth);
 
         /* Step size is transformed from voxel to world space. */
         Transform voxel_tfm = tfm;
@@ -360,6 +362,9 @@ ObjectManager::ObjectManager()
 {
   need_update = true;
   need_flags_update = true;
+
+  octree_builder = new OCTBuild;
+  octree_builder->init_octree();
 }
 
 ObjectManager::~ObjectManager()
@@ -614,6 +619,25 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
                  }
                });
 
+  /* Parallel update volume object world bounding boxes */
+  parallel_for(blocked_range<size_t>(0, scene->objects.size(), OBJECTS_PER_TASK),
+               [&](const blocked_range<size_t> &r) {
+                 for (size_t i = r.begin(); i != r.end(); i++) {
+                   Object *ob = state.scene->objects[i];
+                   Transform tfm = ob->tfm;
+                   foreach (Attribute &attr, ob->geometry->attributes.attributes) {
+                     if (attr.element == ATTR_ELEMENT_VOXEL) {
+                       ImageHandle &handle = attr.data_voxel();
+                       ImageMetaData &metadata = handle.metadata();
+
+                       BoundBox ob_bbox_transformed = metadata.object_bounds;
+                       ob_bbox_transformed = ob_bbox_transformed.transformed(&tfm);
+                       metadata.world_bounds = ob_bbox_transformed;
+                     }
+                   }
+                 }
+               });
+
   if (progress.get_cancel()) {
     return;
   }
@@ -785,6 +809,29 @@ void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Sc
   if (update) {
     dscene->objects.copy_to_device();
   }
+}
+
+void ObjectManager::device_update_octree(DeviceScene *dscene, Scene *scene, Progress &progress)
+{
+  if (!need_update || scene->objects.size() == 0)
+    return;
+
+  octree_builder->reset_octree();
+
+  vector<ImageHandle *> image_handles;
+
+  foreach (Object *object, scene->objects) {
+    if (object->geometry->has_volume) {
+      foreach (Attribute &attr, object->geometry->attributes.attributes) {
+        if (attr.element == ATTR_ELEMENT_VOXEL) {
+          ImageHandle &handle = attr.data_voxel();
+          image_handles.push_back(&handle);
+        }
+      }
+    }
+  }
+    
+  octree_builder->update_octree(image_handles);
 }
 
 void ObjectManager::device_free(Device *, DeviceScene *dscene)

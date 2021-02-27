@@ -21,12 +21,12 @@
 
 #include "render/colorspace.h"
 
+#include "util/util_boundbox.h"
 #include "util/util_string.h"
 #include "util/util_thread.h"
 #include "util/util_transform.h"
 #include "util/util_unique_ptr.h"
 #include "util/util_vector.h"
-#include "util/util_boundbox.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -41,7 +41,6 @@ class RenderStats;
 class Scene;
 class ColorSpaceProcessor;
 class VDBImageLoader;
-class OCTBuild;
 
 /* Image Parameters */
 class ImageParams {
@@ -94,8 +93,10 @@ class ImageMetaData {
   float3 min;
   float3 max;
 
-  /* World bounding box for volumes */
-  BoundBox world_bound;
+  /* Bounding boxes for volumes. Object bound is set from nanovdb grid
+   *  and static, world_bounds is dynamic and updated with object transform */
+  BoundBox object_bounds;
+  BoundBox world_bounds;
 
   /* Automatically set. */
   bool compress_as_srgb;
@@ -171,23 +172,6 @@ class ImageHandle {
   friend class ImageManager;
 };
 
-struct Image {
-  ImageParams params;
-  ImageMetaData metadata;
-  ImageLoader *loader;
-
-  float frame;
-  bool need_metadata;
-  bool need_load;
-  bool builtin;
-
-  string mem_name;
-  device_texture *mem;
-
-  int users;
-  thread_mutex mutex;
-};
-
 /* Image Manager
  *
  * Handles loading and storage of all images in the scene. This includes 2D
@@ -217,6 +201,23 @@ class ImageManager {
 
   bool need_update;
 
+  struct Image {
+    ImageParams params;
+    ImageMetaData metadata;
+    ImageLoader *loader;
+
+    float frame;
+    bool need_metadata;
+    bool need_load;
+    bool builtin;
+
+    string mem_name;
+    device_texture *mem;
+
+    int users;
+    thread_mutex mutex;
+  };
+
  private:
   bool has_half_images;
 
@@ -226,8 +227,6 @@ class ImageManager {
 
   vector<Image *> images;
   void *osl_texture_system;
-
-  OCTBuild *octree_builder;
 
   int add_image_slot(ImageLoader *loader, const ImageParams &params, const bool builtin);
   void add_image_user(int slot);

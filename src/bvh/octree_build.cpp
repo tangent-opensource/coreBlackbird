@@ -19,11 +19,12 @@
 #include "bvh/octree_build.h"
 
 #include "render/image.h"
+#include "render/object.h"
 
 CCL_NAMESPACE_BEGIN
 
 /* Constructor / Destructor */
-OCTBuild::OCTBuild() : depth(3)
+OCTBuild::OCTBuild() : depth(3), octree_root(nullptr)
 {
 }
 
@@ -37,23 +38,27 @@ void OCTBuild::init_octree()
   build_root_rec(octree_root, depth);
 }
 
-void OCTBuild::update_octree(const vector<Image *> &images)
+void OCTBuild::update_octree(const vector<ImageHandle *> &handles)
 {
-  for (int slot = 0; slot < images.size(); slot++) {
+  for (int i = 0; i < handles.size(); i++) {
 
-    Image *image = images[slot];
+    ImageHandle *handle = handles[i];
+    const ImageMetaData &metadata = handle->metadata();
 
-    if (image->metadata.depth > 1) {
-      octree_root->bbox.grow(image->metadata.world_bound);
+    if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
+      continue;
+    }
+    if (metadata.depth > 1) {
+      octree_root->bbox.grow(metadata.world_bounds);
 
       octree_root->num_volumes++;
-      octree_root->vol_indices[slot] = slot;
-      octree_root->min_extinction = ccl::min(octree_root->min_extinction, image->metadata.min);
-      octree_root->max_extinction = ccl::max(octree_root->max_extinction, image->metadata.max);
+      octree_root->vol_indices[i] = handle->svm_slot();
+      octree_root->min_extinction = ccl::min(octree_root->min_extinction, metadata.min);
+      octree_root->max_extinction = ccl::max(octree_root->max_extinction, metadata.max);
     }
   }
 
-  update_root_rec(octree_root, images);
+  update_root_rec(octree_root, handles);
 }
 
 void OCTBuild::reset_octree()
@@ -81,31 +86,36 @@ void OCTBuild::build_root_rec(OCTNode *root, int depth)
   }
 }
 
-void OCTBuild::update_root_rec(OCTNode *node, const vector<Image *> &images)
+void OCTBuild::update_root_rec(OCTNode *node, const vector<ImageHandle *> &handles)
 {
   if (node->has_children) {
     for (int i = 0; i < 8; i++) {
       node->children[i]->bbox = divide_bbox(node->bbox, i);
       int vol_idx = 0;
-      for (int slot = 0; slot < images.size(); slot++) {
+      for (int i = 0; i < handles.size(); i++) {
 
-        Image *image = images[slot];
+        ImageHandle *handle = handles[i];
+        const ImageMetaData &metadata = handle->metadata();
 
-        if (image->metadata.depth > 1) {
-          if (image->metadata.world_bound.intersects(node->children[i]->bbox)) {
+        if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
+          continue;
+        }
+
+        if (metadata.depth > 1) {
+          if (metadata.world_bounds.intersects(node->children[i]->bbox)) {
 
             node->children[i]->num_volumes++;
-            node->children[i]->vol_indices[vol_idx] = slot;
+            node->children[i]->vol_indices[vol_idx] = handle->svm_slot();
             node->children[i]->min_extinction = ccl::min(node->children[i]->min_extinction,
-                                                         image->metadata.min);
+                                                         metadata.min);
             node->children[i]->max_extinction = ccl::max(node->children[i]->max_extinction,
-                                                         image->metadata.max);
+                                                         metadata.max);
             vol_idx++;
           }
         }
       }
 
-      update_root_rec(node->children[i], images);
+      update_root_rec(node->children[i], handles);
     }
   }
 }

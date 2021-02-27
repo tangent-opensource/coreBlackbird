@@ -25,7 +25,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-struct Image;
+class ImageHandle;
 
 /* Octree Builder */
 
@@ -36,7 +36,7 @@ class OCTBuild {
   ~OCTBuild();
 
   void init_octree();
-  void update_octree(const vector<Image *> &images);
+  void update_octree(const vector<ImageHandle *> &handles);
   void reset_octree();
 
   OCTNode *get_root();
@@ -46,7 +46,7 @@ class OCTBuild {
   /* Internal recursive functions to initialize, update 
   *  and clear the octree structure */
   void build_root_rec(OCTNode *root, int depth);
-  void update_root_rec(OCTNode *root, const vector<Image *> &images);
+  void update_root_rec(OCTNode *root, const vector<ImageHandle *> &handles);
   void clear_root_rec(OCTNode *root);
 
   /* This is the root of octree that is passed to device */

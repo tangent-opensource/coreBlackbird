@@ -163,7 +163,7 @@ class BoundBox {
     return result;
   }
 
-  __forceinline bool intersects(const BoundBox &other)
+  __forceinline bool intersects(const BoundBox &other) const
   {
     float3 center_diff = center() - other.center(), total_size = (size() + other.size()) * 0.5f;
     return fabsf(center_diff.x) <= total_size.x && fabsf(center_diff.y) <= total_size.y &&

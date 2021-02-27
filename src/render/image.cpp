@@ -32,8 +32,6 @@
 #include "util/util_texture.h"
 #include "util/util_unique_ptr.h"
 
-#include "bvh/octree_build.h"
-
 #ifdef WITH_OSL
 #  include <OSL/oslexec.h>
 #endif
@@ -148,7 +146,7 @@ ImageMetaData ImageHandle::metadata()
     return ImageMetaData();
   }
 
-  Image *img = manager->images[tile_slots.front()];
+  ImageManager::Image *img = manager->images[tile_slots.front()];
   manager->load_image_metadata(img);
   return img->metadata;
 }
@@ -160,7 +158,7 @@ int ImageHandle::svm_slot(const int tile_index) const
   }
 
   if (manager->osl_texture_system) {
-    Image *img = manager->images[tile_slots[tile_index]];
+    ImageManager::Image *img = manager->images[tile_slots[tile_index]];
     if (!img->loader->osl_filepath().empty()) {
       return -1;
     }
@@ -175,7 +173,7 @@ device_texture *ImageHandle::image_memory(const int tile_index) const
     return NULL;
   }
 
-  Image *img = manager->images[tile_slots[tile_index]];
+  ImageManager::Image *img = manager->images[tile_slots[tile_index]];
   return img ? img->mem : NULL;
 }
 
@@ -185,7 +183,7 @@ VDBImageLoader *ImageHandle::vdb_loader(const int tile_index) const
     return NULL;
   }
 
-  Image *img = manager->images[tile_slots[tile_index]];
+  ImageManager::Image *img = manager->images[tile_slots[tile_index]];
 
   if (img == NULL) {
     return NULL;
@@ -305,8 +303,6 @@ ImageManager::ImageManager(const DeviceInfo &info)
   need_update = true;
   osl_texture_system = NULL;
   animation_frame = 0;
-  octree_builder = new OCTBuild;
-  octree_builder->init_octree();
 
   /* Set image limits */
   has_half_images = info.has_half_images;
@@ -338,7 +334,7 @@ bool ImageManager::set_animation_frame_update(int frame)
   return false;
 }
 
-void ImageManager::load_image_metadata(Image *img)
+void ImageManager::load_image_metadata(ImageManager::Image *img)
 {
   if (!img->need_metadata) {
     return;
@@ -487,7 +483,7 @@ void ImageManager::remove_image_user(int slot)
     need_update = true;
 }
 
-static bool image_associate_alpha(Image *img)
+static bool image_associate_alpha(ImageManager::Image *img)
 {
   /* For typical RGBA images we let OIIO convert to associated alpha,
    * but some types we want to leave the RGB channels untouched. */
@@ -833,10 +829,6 @@ void ImageManager::device_update(Device *device, Scene *scene, Progress &progres
   }
 
   pool.wait_work();
-
-  /* All images are loaded. Update octree structure */
-  octree_builder->reset_octree();
-  octree_builder->update_octree(images);
 
   need_update = false;
 }

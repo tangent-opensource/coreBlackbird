@@ -209,7 +209,7 @@ bool VDBImageLoader::load_metadata(ImageMetaData &metadata)
 
   /* Set image metadata world bounding box */
   nanovdb::BBox world_bbox = nanogrid.gridMetaData()->worldBBox();
-  metadata.world_bound = BoundBox(
+  metadata.object_bounds = BoundBox(
       make_float3(world_bbox.min()[0], world_bbox.min()[1], world_bbox.min()[2]),
       make_float3(world_bbox.max()[0], world_bbox.max()[1], world_bbox.max()[2]));
 
