@@ -50,6 +50,7 @@ class Object;
 class ObjectManager;
 class ParticleSystemManager;
 class ParticleSystem;
+class PointCloud;
 class CurveSystemManager;
 class Shader;
 class ShaderManager;
@@ -82,10 +83,15 @@ class DeviceScene {
   device_vector<uint> tri_patch;
   device_vector<float2> tri_patch_uv;
 
+  device_vector<uint> patches;
+
+  /* hair */
   device_vector<float4> curves;
   device_vector<float4> curve_keys;
 
-  device_vector<uint> patches;
+  /* pointcloud */
+  device_vector<float4> points;
+  device_vector<uint> points_shader;
 
   /* objects */
   device_vector<KernelObject> objects;
@@ -277,6 +283,33 @@ class Scene {
 
   void collect_statistics(RenderStats *stats);
 
+#if 0
+  /* This function is used to create a node of a specified type instead of
+   * calling 'new', and sets the scene as the owner of the node.
+   * The function has overloads that will also add the created node to the right
+   * node array (e.g. Scene::geometry for Geometry nodes) and tag the appropriate
+   * manager for an update.
+   */
+  template<typename T, typename... Args> T *create_node(Args &&... args)
+  {
+    T *node = new T(args...);
+    node->set_owner(this);
+    return node;
+  }
+
+  /* This function is used to delete a node from the scene instead of calling 'delete'
+   * and manually removing the node from the data array. It also tags the
+   * appropriate manager for an update, if any, and checks that the scene is indeed
+   * the owner of the node. Calling this function on a node not owned by the scene
+   * will likely cause a crash which we want in order to detect such cases.
+   */
+  template<typename T> void delete_node(T *node)
+  {
+    assert(node->get_owner() == this);
+    delete_node_impl(node);
+  }
+#endif
+
  protected:
   /* Check if some heavy data worth logging was updated.
    * Mainly used to suppress extra annoying logging.
@@ -284,7 +317,18 @@ class Scene {
   bool need_data_update();
 
   void free_memory(bool final);
+
+  template<typename T> void delete_node_impl(T *node)
+  {
+    delete node;
+  }
 };
+
+#if 0
+template<> PointCloud *Scene::create_node<PointCloud>();
+
+template<> void Scene::delete_node_impl(PointCloud *node);
+#endif
 
 CCL_NAMESPACE_END
 

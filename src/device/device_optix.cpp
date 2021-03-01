@@ -25,6 +25,7 @@
 #  include "render/hair.h"
 #  include "render/mesh.h"
 #  include "render/object.h"
+#  include "render/pointcloud.h"
 #  include "render/scene.h"
 #  include "util/util_debug.h"
 #  include "util/util_logging.h"
@@ -140,6 +141,8 @@ class OptiXDevice : public CUDADevice {
 #  ifdef WITH_CYCLES_DEBUG
     PG_EXCP,
 #  endif
+    PG_HITD_POINTCLOUD,
+    PG_HITS_POINTCLOUD,
     PG_BAKE,  // kernel_bake_evaluate
     PG_DISP,  // kernel_displace_evaluate
     PG_BACK,  // kernel_background_evaluate
@@ -498,6 +501,15 @@ class OptiXDevice : public CUDADevice {
 #  endif
     }
 
+    if (requested_features.use_pointcloud) {
+      group_descs[PG_HITD_POINTCLOUD] = group_descs[PG_HITD];
+      group_descs[PG_HITD_POINTCLOUD].hitgroup.moduleIS = optix_module;
+      group_descs[PG_HITD_POINTCLOUD].hitgroup.entryFunctionNameIS = "__intersection__point";
+      group_descs[PG_HITS_POINTCLOUD] = group_descs[PG_HITS];
+      group_descs[PG_HITS_POINTCLOUD].hitgroup.moduleIS = optix_module;
+      group_descs[PG_HITS_POINTCLOUD].hitgroup.entryFunctionNameIS = "__intersection__point";
+    }
+
     if (requested_features.use_subsurface || requested_features.use_shader_raytrace) {
       // Add hit group for local intersections
       group_descs[PG_HITL].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
@@ -555,6 +567,12 @@ class OptiXDevice : public CUDADevice {
     trace_css = std::max(trace_css,
                          stack_size[PG_HITS_MOTION].cssIS + stack_size[PG_HITS_MOTION].cssAH);
 #  endif
+    if (requested_features.use_pointcloud) {
+      trace_css = std::max(
+          trace_css, stack_size[PG_HITD_POINTCLOUD].cssIS + stack_size[PG_HITD_POINTCLOUD].cssAH);
+      trace_css = std::max(
+          trace_css, stack_size[PG_HITS_POINTCLOUD].cssIS + stack_size[PG_HITS_POINTCLOUD].cssAH);
+    }
 
     OptixPipelineLinkOptions link_options;
     link_options.maxTraceDepth = 1;
@@ -568,20 +586,27 @@ class OptiXDevice : public CUDADevice {
 #  endif
 
     {  // Create path tracing pipeline
-      OptixProgramGroup pipeline_groups[] = {
-        groups[PG_RGEN],
-        groups[PG_MISS],
-        groups[PG_HITD],
-        groups[PG_HITS],
-        groups[PG_HITL],
+      vector<OptixProgramGroup> pipeline_groups;
+      pipeline_groups.reserve(NUM_PROGRAM_GROUPS);
+      pipeline_groups.push_back(groups[PG_RGEN]);
+      pipeline_groups.push_back(groups[PG_MISS]);
+      pipeline_groups.push_back(groups[PG_HITD]);
+      pipeline_groups.push_back(groups[PG_HITS]);
+      pipeline_groups.push_back(groups[PG_HITL]);
 #  if OPTIX_ABI_VERSION >= 36
-        groups[PG_HITD_MOTION],
-        groups[PG_HITS_MOTION],
+      if (motion_blur) {
+        pipeline_groups.push_back(groups[PG_HITD_MOTION]);
+        pipeline_groups.push_back(groups[PG_HITS_MOTION]);
+      }
 #  endif
 #  ifdef WITH_CYCLES_DEBUG
-        groups[PG_EXCP],
+      pipeline_groups.push_back(groups[PG_EXCP]);
 #  endif
-      };
+      if (requested_features.use_pointcloud) {
+        pipeline_groups.push_back(groups[PG_HITD_POINTCLOUD]);
+        pipeline_groups.push_back(groups[PG_HITS_POINTCLOUD]);
+      }
+
       check_result_optix_ret(
           optixPipelineCreate(context,
                               &pipeline_options,
@@ -606,22 +631,29 @@ class OptiXDevice : public CUDADevice {
                                           requested_features.use_true_displacement;
 
     if (use_shader_eval_pipeline) {  // Create shader evaluation pipeline
-      OptixProgramGroup pipeline_groups[] = {
-        groups[PG_BAKE],
-        groups[PG_DISP],
-        groups[PG_BACK],
-        groups[PG_MISS],
-        groups[PG_HITD],
-        groups[PG_HITS],
-        groups[PG_HITL],
+      vector<OptixProgramGroup> pipeline_groups;
+      pipeline_groups.reserve(NUM_PROGRAM_GROUPS);
+      pipeline_groups.push_back(groups[PG_BAKE]);
+      pipeline_groups.push_back(groups[PG_DISP]);
+      pipeline_groups.push_back(groups[PG_BACK]);
+      pipeline_groups.push_back(groups[PG_MISS]);
+      pipeline_groups.push_back(groups[PG_HITD]);
+      pipeline_groups.push_back(groups[PG_HITS]);
+      pipeline_groups.push_back(groups[PG_HITL]);
 #  if OPTIX_ABI_VERSION >= 36
-        groups[PG_HITD_MOTION],
-        groups[PG_HITS_MOTION],
+      if (motion_blur) {
+        pipeline_groups.push_back(groups[PG_HITD_MOTION]);
+        pipeline_groups.push_back(groups[PG_HITS_MOTION]);
+      }
 #  endif
 #  ifdef WITH_CYCLES_DEBUG
-        groups[PG_EXCP],
+      pipeline_groups.push_back(groups[PG_EXCP]);
 #  endif
-      };
+      if (requested_features.use_pointcloud) {
+        pipeline_groups.push_back(groups[PG_HITD_POINTCLOUD]);
+        pipeline_groups.push_back(groups[PG_HITS_POINTCLOUD]);
+      }
+
       check_result_optix_ret(
           optixPipelineCreate(context,
                               &pipeline_options,
@@ -1389,6 +1421,86 @@ class OptiXDevice : public CUDADevice {
           return false;
         }
       }
+      else if (geom->geometry_type == Geometry::POINTCLOUD) {
+        // Build BLAS for points primitives
+        PointCloud *const pointcloud = static_cast<PointCloud *const>(geom);
+        const size_t num_points = pointcloud->num_points();
+        if (num_points == 0) {
+          return;
+        }
+
+        size_t num_motion_steps = 1;
+        Attribute *motion_points = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+        if (motion_blur && pointcloud->get_use_motion_blur() && motion_points) {
+          num_motion_steps = pointcloud->get_motion_steps();
+        }
+
+        device_vector<OptixAabb> aabb_data(this, "optix temp aabb data", MEM_READ_ONLY);
+        aabb_data.alloc(num_points * num_motion_steps);
+
+        // Get AABBs for each motion step
+        for (size_t step = 0; step < num_motion_steps; ++step) {
+          // The center step for motion vertices is not stored in the attribute
+          const float3 *points = pointcloud->get_points().data();
+          const float *radius = pointcloud->get_radius().data();
+          size_t center_step = (num_motion_steps - 1) / 2;
+          if (step != center_step) {
+            size_t attr_offset = (step > center_step) ? step - 1 : step;
+            // Technically this is a float4 array, but sizeof(float3) == sizeof(float4)
+            points = motion_points->data_float3() + attr_offset * num_points;
+          }
+
+          for (size_t i = 0; i < num_points; ++i) {
+            const PointCloud::Point point = pointcloud->get_point(i);
+            BoundBox bounds = BoundBox::empty;
+            point.bounds_grow(points, radius, bounds);
+
+            const size_t index = step * num_points + i;
+            aabb_data[index].minX = bounds.min.x;
+            aabb_data[index].minY = bounds.min.y;
+            aabb_data[index].minZ = bounds.min.z;
+            aabb_data[index].maxX = bounds.max.x;
+            aabb_data[index].maxY = bounds.max.y;
+            aabb_data[index].maxZ = bounds.max.z;
+          }
+        }
+
+        // Upload AABB data to GPU
+        aabb_data.copy_to_device();
+
+        vector<device_ptr> aabb_ptrs;
+        aabb_ptrs.reserve(num_motion_steps);
+        for (size_t step = 0; step < num_motion_steps; ++step) {
+          aabb_ptrs.push_back(aabb_data.device_pointer + step * num_points * sizeof(OptixAabb));
+        }
+
+        // Disable visibility test any-hit program, since it is already checked during
+        // intersection. Those trace calls that require anyhit can force it with a ray flag.
+        // For those, force a single any-hit call, so shadow record-all behavior works correctly.
+        unsigned int build_flags = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT |
+                                   OPTIX_GEOMETRY_FLAG_REQUIRE_SINGLE_ANYHIT_CALL;
+        OptixBuildInput build_input = {};
+        build_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
+#  if OPTIX_ABI_VERSION < 23
+        build_input.aabbArray.aabbBuffers = (CUdeviceptr *)aabb_ptrs.data();
+        build_input.aabbArray.numPrimitives = num_points;
+        build_input.aabbArray.strideInBytes = sizeof(OptixAabb);
+        build_input.aabbArray.flags = &build_flags;
+        build_input.aabbArray.numSbtRecords = 1;
+        build_input.aabbArray.primitiveIndexOffset = pointcloud->optix_prim_offset;
+#  else
+        build_input.customPrimitiveArray.aabbBuffers = (CUdeviceptr *)aabb_ptrs.data();
+        build_input.customPrimitiveArray.numPrimitives = num_points;
+        build_input.customPrimitiveArray.strideInBytes = sizeof(OptixAabb);
+        build_input.customPrimitiveArray.flags = &build_flags;
+        build_input.customPrimitiveArray.numSbtRecords = 1;
+        build_input.customPrimitiveArray.primitiveIndexOffset = pointcloud->optix_prim_offset;
+#  endif
+
+        if (!build_optix_bvh(bvh_optix, operation, build_input, num_motion_steps)) {
+          progress.set_error("Failed to build OptiX acceleration structure");
+        }
+      }
       else if (geom->type == Geometry::MESH) {
         // Build BLAS for triangle primitives
         Mesh *const mesh = static_cast<Mesh *const>(ob->geometry);
@@ -1519,6 +1631,13 @@ class OptiXDevice : public CUDADevice {
           instance.sbtOffset = PG_HITD_MOTION - PG_HITD;
         }
 #  endif
+      }
+      else if (ob->get_geometry()->geometry_type == Geometry::POINTCLOUD) {
+        // Use the hit group that has an intersection program for point clouds
+        instance.sbtOffset = PG_HITD_POINTCLOUD - PG_HITD;
+
+        // Also skip point clouds in local trace calls
+        instance.visibilityMask |= 4;
       }
 
       // Insert motion traversable if object has motion
