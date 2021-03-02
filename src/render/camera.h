@@ -74,6 +74,7 @@ class Camera : public Node {
 
   /* motion blur */
   float shuttertime;
+  float fps;
   MotionPosition motion_position;
   array<float> shutter_curve;
   size_t shutter_table_offset;

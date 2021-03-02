@@ -305,6 +305,10 @@ const char *Attribute::standard_name(AttributeStandard std)
       return "undeformed";
     case ATTR_STD_POSITION_UNDISPLACED:
       return "undisplaced";
+    case ATTR_STD_VERTEX_VELOCITY:
+      return "velocity";
+    case ATTR_STD_VERTEX_ACCELERATION:
+      return "acceleration";
     case ATTR_STD_MOTION_VERTEX_POSITION:
       return "motion_P";
     case ATTR_STD_MOTION_VERTEX_NORMAL:
@@ -476,6 +480,9 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
       case ATTR_STD_POSITION_UNDEFORMED:
       case ATTR_STD_POSITION_UNDISPLACED:
         attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX);
+        break;
+      case ATTR_STD_VERTEX_VELOCITY:
+        attr = add(name, TypeDesc::TypeVector, ATTR_ELEMENT_VERTEX);
         break;
       case ATTR_STD_MOTION_VERTEX_POSITION:
         attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX_MOTION);
