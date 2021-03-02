@@ -58,6 +58,8 @@ void OCTBuild::update_octree(const vector<ImageHandle *> &handles)
     }
   }
 
+  octree_root->has_children = handles.size() > 0;
+
   update_root_rec(octree_root, handles);
 }
 
@@ -68,12 +70,11 @@ void OCTBuild::reset_octree()
 
 void OCTBuild::build_root_rec(OCTNode *root, int depth)
 {
+  root->bbox = BoundBox(BoundBox::empty);
+  memset(root->vol_indices, 0, sizeof(int) * 1024);
+  root->depth = depth;
+
   if (depth > 0) {
-
-    root->bbox = BoundBox(BoundBox::empty);
-    memset(root->vol_indices, 0, sizeof(int) * 1024);
-    root->depth = depth;
-
     for (int i = 0; i < 8; i++) {
       root->children[i] = new OCTNode;
       root->children[i]->parent = root;
@@ -90,7 +91,9 @@ void OCTBuild::update_root_rec(OCTNode *node, const vector<ImageHandle *> &handl
 {
   if (node->has_children) {
     for (int i = 0; i < 8; i++) {
+
       node->children[i]->bbox = divide_bbox(node->bbox, i);
+      
       int vol_idx = 0;
       for (int i = 0; i < handles.size(); i++) {
 
@@ -134,7 +137,6 @@ void OCTBuild::clear_root_rec(OCTNode *node)
 
   node->max_extinction = make_float3(0.0f);
   node->min_extinction = make_float3(FLT_MAX);
-  node->has_children = false;
   node->num_volumes = 0;
   node->bbox = BoundBox(BoundBox::empty);
 }
