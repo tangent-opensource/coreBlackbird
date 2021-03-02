@@ -19,6 +19,7 @@
 #include "render/colorspace.h"
 #include "render/image_oiio.h"
 #include "render/image_vdb.h"
+#include "render/object.h"
 #include "render/scene.h"
 #include "render/stats.h"
 
@@ -149,6 +150,16 @@ ImageMetaData ImageHandle::metadata()
   ImageManager::Image *img = manager->images[tile_slots.front()];
   manager->load_image_metadata(img);
   return img->metadata;
+}
+
+void ImageHandle::update_world_bbox(const Transform &transform)
+{
+  if (tile_slots.empty()) {
+    return;
+  }
+
+  ImageManager::Image *img = manager->images[tile_slots.front()];
+  img->metadata.world_bounds = img->metadata.object_bounds.transformed(&transform);
 }
 
 int ImageHandle::svm_slot(const int tile_index) const
@@ -829,6 +840,8 @@ void ImageManager::device_update(Device *device, Scene *scene, Progress &progres
   }
 
   pool.wait_work();
+
+  scene->object_manager->need_update = true;
 
   need_update = false;
 }

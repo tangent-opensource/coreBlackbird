@@ -619,25 +619,6 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
                  }
                });
 
-  /* Parallel update volume object world bounding boxes */
-  parallel_for(blocked_range<size_t>(0, scene->objects.size(), OBJECTS_PER_TASK),
-               [&](const blocked_range<size_t> &r) {
-                 for (size_t i = r.begin(); i != r.end(); i++) {
-                   Object *ob = state.scene->objects[i];
-                   Transform tfm = ob->tfm;
-                   foreach (Attribute &attr, ob->geometry->attributes.attributes) {
-                     if (attr.element == ATTR_ELEMENT_VOXEL) {
-                       ImageHandle &handle = attr.data_voxel();
-                       ImageMetaData &metadata = handle.metadata();
-
-                       BoundBox ob_bbox_transformed = metadata.object_bounds;
-                       ob_bbox_transformed = ob_bbox_transformed.transformed(&tfm);
-                       metadata.world_bounds = ob_bbox_transformed;
-                     }
-                   }
-                 }
-               });
-
   if (progress.get_cancel()) {
     return;
   }
@@ -818,6 +799,22 @@ void ObjectManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
 
   octree_builder->reset_octree();
 
+  /* Parallel update volume object world bounding boxes */
+  static const int OBJECTS_PER_TASK = 32;
+  parallel_for(blocked_range<size_t>(0, scene->objects.size(), OBJECTS_PER_TASK),
+               [&](const blocked_range<size_t> &r) {
+                 for (size_t i = r.begin(); i != r.end(); i++) {
+                   Object *ob = scene->objects[i];
+                   Transform tfm = ob->tfm;
+                   foreach (Attribute &attr, ob->geometry->attributes.attributes) {
+                     if (attr.element == ATTR_ELEMENT_VOXEL) {
+                       ImageHandle &handle = attr.data_voxel();
+                       handle.update_world_bbox(tfm);
+                     }
+                   }
+                 }
+               });
+
   vector<ImageHandle *> image_handles;
 
   foreach (Object *object, scene->objects) {
@@ -832,6 +829,8 @@ void ObjectManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
   }
     
   octree_builder->update_octree(image_handles);
+
+  need_update = false;
 }
 
 void ObjectManager::device_free(Device *, DeviceScene *dscene)

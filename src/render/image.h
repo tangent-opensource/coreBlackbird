@@ -160,6 +160,7 @@ class ImageHandle {
   int num_tiles();
 
   ImageMetaData metadata();
+  void update_world_bbox(const Transform& transform);
   int svm_slot(const int tile_index = 0) const;
   device_texture *image_memory(const int tile_index = 0) const;
 
