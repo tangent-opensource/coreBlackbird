@@ -28,6 +28,7 @@
 #include "render/mesh.h"
 #include "render/nodes.h"
 #include "render/object.h"
+#include "render/pointcloud.h"
 #include "render/scene.h"
 #include "render/shader.h"
 #include "render/stats.h"
@@ -210,6 +211,7 @@ void Geometry::compute_bvh(
                                     params->use_bvh_unaligned_nodes;
       bparams.num_motion_triangle_steps = params->num_bvh_time_steps;
       bparams.num_motion_curve_steps = params->num_bvh_time_steps;
+      bparams.num_motion_point_steps = params->num_bvh_time_steps;
       bparams.bvh_type = params->bvh_type;
       bparams.curve_subdivisions = params->curve_subdivisions();
 
@@ -621,6 +623,12 @@ static void update_attribute_element_offset(Geometry *geom,
       else if (element == ATTR_ELEMENT_CURVE_KEY_MOTION)
         offset -= hair->curvekey_offset;
     }
+    else if (geom->is_pointcloud()) {
+      if (element == ATTR_ELEMENT_VERTEX)
+        offset -= geom->prim_offset;
+      else if (element == ATTR_ELEMENT_VERTEX_MOTION)
+        offset -= geom->prim_offset;
+    }
   }
   else {
     /* attribute not found */
@@ -789,6 +797,8 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
   size_t curve_key_size = 0;
   size_t curve_size = 0;
 
+  size_t point_size = 0;
+
   size_t patch_size = 0;
   size_t face_size = 0;
   size_t corner_size = 0;
@@ -846,6 +856,16 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
       hair->optix_prim_offset = optix_prim_size;
       optix_prim_size += hair->num_segments();
     }
+    else if (geom->is_pointcloud()) {
+      PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+
+      pointcloud->prim_offset = point_size;
+
+      point_size += pointcloud->num_points();
+
+      pointcloud->optix_prim_offset = optix_prim_size;
+      optix_prim_size += pointcloud->num_points();
+    }
   }
 }
 
@@ -859,6 +879,8 @@ void GeometryManager::device_update_mesh(
 
   size_t curve_key_size = 0;
   size_t curve_size = 0;
+
+  size_t point_size = 0;
 
   size_t patch_size = 0;
 
@@ -892,6 +914,10 @@ void GeometryManager::device_update_mesh(
 
       curve_key_size += hair->curve_keys.size();
       curve_size += hair->num_curves();
+    }
+    else if (geom->is_pointcloud()) {
+      PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+      point_size += pointcloud->num_points();
     }
   }
 
@@ -980,7 +1006,7 @@ void GeometryManager::device_update_mesh(
   }
 
   if (curve_size != 0) {
-    progress.set_status("Updating Mesh", "Copying Strands to device");
+    progress.set_status("Updating Mesh", "Copying Hair to device");
 
     float4 *curve_keys = dscene->curve_keys.alloc(curve_key_size);
     float4 *curves = dscene->curves.alloc(curve_size);
@@ -999,6 +1025,26 @@ void GeometryManager::device_update_mesh(
 
     dscene->curve_keys.copy_to_device();
     dscene->curves.copy_to_device();
+  }
+
+  if (point_size != 0) {
+    progress.set_status("Updating Mesh", "Copying Point clouds to device");
+
+    float4 *points = dscene->points.alloc(point_size);
+    uint *points_shader = dscene->points_shader.alloc(point_size);
+
+    foreach (Geometry *geom, scene->geometry) {
+      if (geom->is_pointcloud()) {
+        PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+        pointcloud->pack(
+            scene, &points[pointcloud->prim_offset], &points_shader[pointcloud->prim_offset]);
+        if (progress.get_cancel())
+          return;
+      }
+    }
+
+    dscene->points.copy_to_device();
+    dscene->points_shader.copy_to_device();
   }
 
   if (patch_size != 0) {
@@ -1062,6 +1108,7 @@ void GeometryManager::device_update_bvh(Device *device,
                                 scene->params.use_bvh_unaligned_nodes;
   bparams.num_motion_triangle_steps = scene->params.num_bvh_time_steps;
   bparams.num_motion_curve_steps = scene->params.num_bvh_time_steps;
+  bparams.num_motion_point_steps = scene->params.num_bvh_time_steps;
   bparams.bvh_type = scene->params.bvh_type;
   bparams.curve_subdivisions = scene->params.curve_subdivisions();
 
@@ -1480,9 +1527,11 @@ void GeometryManager::device_free(Device *device, DeviceScene *dscene)
   dscene->tri_vindex.free();
   dscene->tri_patch.free();
   dscene->tri_patch_uv.free();
+  dscene->patches.free();
   dscene->curves.free();
   dscene->curve_keys.free();
-  dscene->patches.free();
+  dscene->points.free();
+  dscene->points_shader.free();
   dscene->attributes_map.free();
   dscene->attributes_float.free();
   dscene->attributes_float2.free();

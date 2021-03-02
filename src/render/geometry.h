@@ -52,6 +52,7 @@ class Geometry : public Node {
   enum Type {
     MESH,
     HAIR,
+    POINTCLOUD
   };
 
   Type type;
@@ -135,6 +136,11 @@ class Geometry : public Node {
   bool has_true_displacement() const;
   bool has_motion_blur() const;
   bool has_voxel_attributes() const;
+
+  bool is_pointcloud() const
+  {
+    return type == POINTCLOUD;
+  }
 
   /* Updates */
   void tag_update(Scene *scene, bool rebuild);

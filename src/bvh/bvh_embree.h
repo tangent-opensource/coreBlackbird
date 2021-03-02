@@ -34,6 +34,7 @@ CCL_NAMESPACE_BEGIN
 class Geometry;
 class Hair;
 class Mesh;
+class PointCloud;
 
 class BVHEmbree : public BVH {
  public:
@@ -58,6 +59,7 @@ class BVHEmbree : public BVH {
   void add_object(Object *ob, int i);
   void add_instance(Object *ob, int i);
   void add_curves(const Object *ob, const Hair *hair, int i);
+  void add_points(const Object *ob, const PointCloud *pointcloud, int i);
   void add_triangles(const Object *ob, const Mesh *mesh, int i);
 
   ssize_t mem_used;
@@ -72,6 +74,9 @@ class BVHEmbree : public BVH {
   void delete_rtcScene();
   void set_tri_vertex_buffer(RTCGeometry geom_id, const Mesh *mesh, const bool update);
   void set_curve_vertex_buffer(RTCGeometry geom_id, const Hair *hair, const bool update);
+  void set_point_vertex_buffer(RTCGeometry geom_id,
+                               const PointCloud *pointcloud,
+                               const bool update);
 
   static RTCDevice rtc_shared_device;
   static int rtc_shared_users;
