@@ -32,6 +32,7 @@
 #include "render/shader.h"
 #include "render/svm.h"
 #include "render/tables.h"
+#include "render/volume.h"
 
 #include "util/util_foreach.h"
 #include "util/util_guarded_allocator.h"
@@ -110,6 +111,7 @@ Scene::Scene(const SceneParams &params_, Device *device)
   image_manager = new ImageManager(device->info);
   particle_system_manager = new ParticleSystemManager();
   bake_manager = new BakeManager();
+  volume_manager = new VolumeManager();
 
   /* OSL only works on the CPU */
   if (device->info.has_osl)
@@ -154,6 +156,7 @@ void Scene::free_memory(bool final)
     geometry_manager->device_free(device, &dscene);
     shader_manager->device_free(device, &dscene, this);
     light_manager->device_free(device, &dscene);
+    volume_manager->device_free(device, &dscene);
 
     particle_system_manager->device_free(device, &dscene);
 
@@ -181,6 +184,7 @@ void Scene::free_memory(bool final)
     delete particle_system_manager;
     delete image_manager;
     delete bake_manager;
+    delete volume_manager;
   }
 }
 
@@ -255,14 +259,20 @@ void Scene::device_update(Device *device_, Progress &progress)
   if (progress.get_cancel() || device->have_error())
     return;
 
-  progress.set_status("Updating Volume Octree");
-  object_manager->device_update_octree(&dscene, this, progress);
+  progress.set_status("Updating Volume Objects");
+  volume_manager->device_update(device, this, progress);
 
   if (progress.get_cancel() || device->have_error())
     return;
 
   progress.set_status("Updating Camera Volume");
   camera->device_update_volume(device, &dscene, this);
+
+  if (progress.get_cancel() || device->have_error())
+    return;
+
+  progress.set_status("Updating Volume Octree");
+  volume_manager->device_update_octree(&dscene, this, progress);
 
   if (progress.get_cancel() || device->have_error())
     return;

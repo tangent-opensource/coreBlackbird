@@ -19,6 +19,7 @@
 #include "render/colorspace.h"
 #include "render/image_oiio.h"
 #include "render/image_vdb.h"
+#include "render/volume.h"
 #include "render/object.h"
 #include "render/scene.h"
 #include "render/stats.h"
@@ -841,7 +842,7 @@ void ImageManager::device_update(Device *device, Scene *scene, Progress &progres
 
   pool.wait_work();
 
-  scene->object_manager->need_update = true;
+  scene->volume_manager->need_update = true;
 
   need_update = false;
 }

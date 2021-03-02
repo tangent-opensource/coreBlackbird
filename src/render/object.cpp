@@ -24,6 +24,7 @@
 #include "render/mesh.h"
 #include "render/particles.h"
 #include "render/scene.h"
+#include "render/volume.h"
 
 #include "util/util_foreach.h"
 #include "util/util_logging.h"
@@ -33,8 +34,6 @@
 #include "util/util_set.h"
 #include "util/util_task.h"
 #include "util/util_vector.h"
-
-#include "bvh/octree_build.h"
 
 #include "subd/subd_patch_table.h"
 
@@ -362,9 +361,6 @@ ObjectManager::ObjectManager()
 {
   need_update = true;
   need_flags_update = true;
-
-  octree_builder = new OCTBuild;
-  octree_builder->init_octree();
 }
 
 ObjectManager::~ObjectManager()
@@ -792,47 +788,6 @@ void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Sc
   }
 }
 
-void ObjectManager::device_update_octree(DeviceScene *dscene, Scene *scene, Progress &progress)
-{
-  if (!need_update || scene->objects.size() == 0)
-    return;
-
-  octree_builder->reset_octree();
-
-  /* Parallel update volume object world bounding boxes */
-  static const int OBJECTS_PER_TASK = 32;
-  parallel_for(blocked_range<size_t>(0, scene->objects.size(), OBJECTS_PER_TASK),
-               [&](const blocked_range<size_t> &r) {
-                 for (size_t i = r.begin(); i != r.end(); i++) {
-                   Object *ob = scene->objects[i];
-                   Transform tfm = ob->tfm;
-                   foreach (Attribute &attr, ob->geometry->attributes.attributes) {
-                     if (attr.element == ATTR_ELEMENT_VOXEL) {
-                       ImageHandle &handle = attr.data_voxel();
-                       handle.update_world_bbox(tfm);
-                     }
-                   }
-                 }
-               });
-
-  vector<ImageHandle *> image_handles;
-
-  foreach (Object *object, scene->objects) {
-    if (object->geometry->has_volume) {
-      foreach (Attribute &attr, object->geometry->attributes.attributes) {
-        if (attr.element == ATTR_ELEMENT_VOXEL) {
-          ImageHandle &handle = attr.data_voxel();
-          image_handles.push_back(&handle);
-        }
-      }
-    }
-  }
-    
-  octree_builder->update_octree(image_handles);
-
-  need_update = false;
-}
-
 void ObjectManager::device_free(Device *, DeviceScene *dscene)
 {
   dscene->objects.free();
@@ -915,6 +870,7 @@ void ObjectManager::tag_update(Scene *scene)
   need_update = true;
   scene->geometry_manager->need_update = true;
   scene->light_manager->need_update = true;
+  scene->volume_manager->need_update = true;
 }
 
 string ObjectManager::get_cryptomatte_objects(Scene *scene)

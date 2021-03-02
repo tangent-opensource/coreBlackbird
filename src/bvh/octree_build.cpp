@@ -35,6 +35,7 @@ OCTBuild::~OCTBuild()
 void OCTBuild::init_octree()
 {
   octree_root = new OCTNode;
+  octree_root->parent = nullptr;
   build_root_rec(octree_root, depth);
 }
 
@@ -95,9 +96,9 @@ void OCTBuild::update_root_rec(OCTNode *node, const vector<ImageHandle *> &handl
       node->children[i]->bbox = divide_bbox(node->bbox, i);
       
       int vol_idx = 0;
-      for (int i = 0; i < handles.size(); i++) {
+      for (int slot = 0; slot < handles.size(); slot++) {
 
-        ImageHandle *handle = handles[i];
+        ImageHandle *handle = handles[slot];
         const ImageMetaData &metadata = handle->metadata();
 
         if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
