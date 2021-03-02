@@ -66,9 +66,8 @@ class PointCloud : public Geometry {
   ~PointCloud();
 
   /* Geometry */
-#if 0
-  void clear(const bool preserver_shaders = false) override;
-#endif
+  void clear(const bool preserver_shaders = false);
+  //override; port: not virtual 
 
   void resize(int numpoints);
   void reserve(int numpoints);

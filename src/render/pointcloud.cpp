@@ -134,21 +134,21 @@ void PointCloud::reserve(int numpoints)
   attributes.resize(true);
 }
 
-#if 0
 void PointCloud::clear(const bool preserve_shaders)
 {
-  Geometry::clear(preserve_shaders);
+  Geometry::clear();
+  // port: no preserve_shader
+  //Geometry::clear(preserve_shaders);
 
   points.clear();
   radius.clear();
   shader.clear();
   attributes.clear();
 
-  tag_points_modified();
-  tag_radius_modified();
-  tag_shader_modified();
+  //tag_points_modified();
+  //tag_radius_modified();
+  //tag_shader_modified();
 }
-#endif
 
 void PointCloud::add_point(float3 co, float r, int shader_index)
 {
