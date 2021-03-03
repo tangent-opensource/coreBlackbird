@@ -837,7 +837,8 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
 
       if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
-      } else {
+      }
+      else {
         normals_size += mesh->verts.size();
       }
 
@@ -894,7 +895,8 @@ void GeometryManager::device_update_mesh(
       /* Making more space for normals if they are per-corner */
       if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
-      } else {
+      }
+      else {
         normals_size += mesh->verts.size();
       }
 
@@ -983,11 +985,11 @@ void GeometryManager::device_update_mesh(
     dscene->tri_patch_uv.copy_to_device();
 
     /* Updating the normal buffer offset to be indexed by object */
-    int* vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
+    int *vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
     for (size_t i = 0; i < scene->objects.size(); ++i) {
-      const Geometry* geom = scene->objects[i]->geometry;
+      const Geometry *geom = scene->objects[i]->geometry;
       if (geom && geom->type == Geometry::MESH) {
-        const Mesh* mesh = static_cast<const Mesh *>(geom);
+        const Mesh *mesh = static_cast<const Mesh *>(geom);
 
         /* Start of the normal buffer or the geometry */
         vnormal_offset[i] = mesh->normals_offset;
@@ -995,8 +997,9 @@ void GeometryManager::device_update_mesh(
         /* Since the vertex/prim indices are global, we add the offset
          * correction here */
         if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
-          vnormal_offset[i] -= 3* mesh->prim_offset; /* Corner attribute */
-        } else {
+          vnormal_offset[i] -= 3 * mesh->prim_offset; /* Corner attribute */
+        }
+        else {
           vnormal_offset[i] -= mesh->vert_offset; /* Vertex attribute*/
         }
       }
@@ -1228,9 +1231,11 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       // hair->curve_shape = scene->params.hair_shape;
     }
 
-    // Generating motion blur geometry for Meshes with no authored motion samples
-    if (geom->type == Geometry::MESH) {
-      create_motion_blur_geometry(scene, static_cast<Mesh *>(geom), progress);
+    // Generating motion blur geometry if possible
+    printf("Geometry %d has motion blur %d type %d steps %d attributes %d\n", 
+      (int)geom, geom->use_motion_blur, (int)geom->type, geom->motion_steps, geom->attributes.attributes.size());
+    if (geom->use_motion_blur) {
+      create_motion_blur_geometry(scene, geom, progress);
     }
   }
 
@@ -1568,51 +1573,46 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
   }
 }
 
-/* Generates motion positions from velocity/acceleration attributes
- * only if no authored motion positions are available */
-void GeometryManager::create_motion_blur_geometry(const Scene *scene,
-                                                  Mesh *mesh,
-                                                  Progress &progress)
+void GeometryManager::create_motion_blur_geometry(
+    const Scene *scene, Geometry *geom, const float3* P, int num_points)
 {
-  if (!mesh->use_motion_blur) {
-    return;
-  }
-
-  Attribute *attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+  /* Skipping if motion positions already exit */
+  Attribute *attr_mP = geom->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+  printf("attr_mP %d\n", (int)attr_mP);
   if (attr_mP) {
     return;
   }
 
-  Attribute *attr_V = mesh->attributes.find(ATTR_STD_VERTEX_VELOCITY);
+  /* Velocities are required */
+  Attribute *attr_V = geom->attributes.find(ATTR_STD_VERTEX_VELOCITY);
+  printf("attr_V %d\n", (int)attr_V);
   if (!attr_V) {
     return;
   }
-
-  progress.set_status("Creating mesh motion blur geometry\n");
-
-  /* Rounding up to include center step */
-  mesh->motion_steps += (mesh->motion_steps % 2) ? 0 : 1;
-
-  /* Making space for motion vertices */
-  attr_mP = mesh->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
-  float3 *mP = attr_mP->data_float3();
   const float3 *V = attr_V->data_float3();
 
   /* Use accelerations in the integration if they are available */
-  Attribute *attr_A = mesh->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
-  float3 *A = NULL;
+  Attribute *attr_A = geom->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
+  const float3 *A = NULL;
   if (attr_A) {
     A = attr_A->data_float3();
   }
+
+  /* Rounding up to include center step */
+  geom->motion_steps += (geom->motion_steps % 2) ? 0 : 1;
+
+  /* Making space for motion vertices */
+  attr_mP = geom->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
+  float3 *mP = attr_mP->data_float3();
 
   /* Transformation from unit/second to frame time */
   const float to_frame_time = (scene->camera->shuttertime * 0.5f) / scene->camera->fps;
 
   /* Sampling uniform intervals in [-1, 1] skipping the center */
-  const float step_time = 2.0f / (mesh->motion_steps - 1);
-  const int timestep_center = mesh->motion_steps / 2;
+  const float step_time = 2.0f / (geom->motion_steps - 1);
+  const int timestep_center = geom->motion_steps / 2;
 
-  for (int timestep = 0; timestep < mesh->motion_steps; ++timestep) {
+  for (int timestep = 0; timestep < geom->motion_steps; ++timestep) {
     if (timestep == timestep_center) {
       continue;
     }
@@ -1620,19 +1620,55 @@ void GeometryManager::create_motion_blur_geometry(const Scene *scene,
     const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
 
     if (A) { /* velocity + acceleration */
-      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-        mP[vert] = mesh->verts[vert] +
-                   relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        //mP[vert] = P[vert] + relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
+        mP[vert] = P[vert];
       }
     }
     else { /* velocity */
-      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-        mP[vert] = mesh->verts[vert] + relative_time * V[vert];
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        mP[vert] = P[vert] + relative_time * V[vert];
+        //mP[vert] = P[vert];
       }
+      printf("relative time %.3f\n", relative_time);
     }
 
-    mP += mesh->verts.size();
+    mP += num_points;
+    printf("Created motion blur geometry for step %d\n", timestep);
   }
+}
+
+/* Generates motion positions from velocity/acceleration attributes
+ * only if no authored motion positions are available */
+void GeometryManager::create_motion_blur_geometry(const Scene *scene,
+                                                  Geometry *geom,
+                                                  Progress &progress)
+{
+  const float3* P = nullptr;
+  int num_points = 0;
+
+  printf("CYCLES create motion blur geometry\n");
+
+  if (geom->type == Geometry::MESH) {
+    Mesh *mesh = static_cast<Mesh *>(geom);
+    P = mesh->verts.data();
+    num_points = mesh->verts.size();
+  } else if (geom->type == Geometry::POINTCLOUD) {
+    PointCloud *pc = static_cast<PointCloud *>(geom);
+    P = pc->points.data();
+    num_points = pc->points.size();
+
+    auto it = pc->attributes.attributes.begin();
+    while (it != pc->attributes.attributes.end()) {
+      printf("Attribute %d\n", it->name.c_str());
+      ++it;
+    }
+  } else {
+    return;
+  }
+
+  progress.set_status("Creating mesh motion blur geometry\n");
+  create_motion_blur_geometry(scene, geom, P, num_points);
 }
 
 CCL_NAMESPACE_END
