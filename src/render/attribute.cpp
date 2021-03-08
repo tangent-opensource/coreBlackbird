@@ -581,6 +581,9 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
       case ATTR_STD_VERTEX_ACCELERATION:
         attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX);
         break;
+      case ATTR_STD_VERTEX_COLOR:
+        attr = add(name, TypeDesc::TypeColor, ATTR_ELEMENT_VERTEX);
+        break;
       case ATTR_STD_POINT_RANDOM:
         attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_VERTEX);
         break;
