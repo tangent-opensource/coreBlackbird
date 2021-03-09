@@ -470,7 +470,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.random_number = random_number;
   kobject.particle_index = particle_index;
   kobject.motion_offset = 0;
-
+  
   if (geom->use_motion_blur) {
     state->have_motion = true;
   }
@@ -522,6 +522,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
     }
   }
 
+
   /* Dupli object coords and motion info. */
   kobject.dupli_generated[0] = ob->dupli_generated[0];
   kobject.dupli_generated[1] = ob->dupli_generated[1];
@@ -540,7 +541,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.cryptomatte_object = util_hash_to_float(hash_name);
   kobject.cryptomatte_asset = util_hash_to_float(hash_asset);
   kobject.shadow_terminator_offset = 1.0f / (1.0f - 0.5f * ob->shadow_terminator_offset);
-
+  kobject.velocity_scale = ob->velocity_scale;
+  /*kobject.up_axis = ob->up_axis;*/
+  kobject.use_motion_blur = geom->use_motion_blur;
+  
   /* Object flag. */
   if (ob->use_holdout) {
     flag |= SD_OBJECT_HOLDOUT_MASK;
