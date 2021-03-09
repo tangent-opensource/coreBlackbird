@@ -751,6 +751,7 @@ typedef enum AttributeStandard {
   ATTR_STD_NONE = 0,
   ATTR_STD_VERTEX_NORMAL,
   ATTR_STD_FACE_NORMAL,
+  ATTR_STD_CORNER_NORMAL,
   ATTR_STD_UV,
   ATTR_STD_UV_TANGENT,
   ATTR_STD_UV_TANGENT_SIGN,
@@ -926,11 +927,13 @@ enum ShaderDataObjectFlag {
   SD_OBJECT_SHADOW_CATCHER = (1 << 7),
   /* object has volume attributes */
   SD_OBJECT_HAS_VOLUME_ATTRIBUTES = (1 << 8),
+  /* object has per-corner normals */
+  SD_OBJECT_HAS_CORNER_NORMALS = (1 << 9),
 
   SD_OBJECT_FLAGS = (SD_OBJECT_HOLDOUT_MASK | SD_OBJECT_MOTION | SD_OBJECT_TRANSFORM_APPLIED |
                      SD_OBJECT_NEGATIVE_SCALE_APPLIED | SD_OBJECT_HAS_VOLUME |
                      SD_OBJECT_INTERSECTS_VOLUME | SD_OBJECT_SHADOW_CATCHER |
-                     SD_OBJECT_HAS_VOLUME_ATTRIBUTES)
+                     SD_OBJECT_HAS_VOLUME_ATTRIBUTES | SD_OBJECT_HAS_CORNER_NORMALS)
 };
 
 typedef ccl_addr_space struct ccl_align(16) ShaderData

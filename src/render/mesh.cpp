@@ -585,7 +585,8 @@ void Mesh::pack_shaders(Scene *scene, uint *tri_shader)
 void Mesh::pack_normals(float4 *vnormal)
 {
   Attribute *attr_vN = attributes.find(ATTR_STD_VERTEX_NORMAL);
-  if (attr_vN == NULL) {
+  Attribute *attr_fvN = attributes.find(ATTR_STD_CORNER_NORMAL);
+  if (attr_vN == NULL && attr_fvN == NULL) {
     /* Happens on objects with just hair. */
     return;
   }
@@ -593,16 +594,30 @@ void Mesh::pack_normals(float4 *vnormal)
   bool do_transform = transform_applied;
   Transform ntfm = transform_normal;
 
-  float3 *vN = attr_vN->data_float3();
-  size_t verts_size = verts.size();
+  /* Corner normals take priority over vertex normals */
+  if (attr_fvN) {
+    float3* fvN = attr_fvN->data_float3();
 
-  for (size_t i = 0; i < verts_size; i++) {
-    float3 vNi = vN[i];
+    for (size_t i = 0; i < num_triangles() * 3; ++i) {
+      float3 fvNi = fvN[i];
 
-    if (do_transform)
-      vNi = safe_normalize(transform_direction(&ntfm, vNi));
+      if (do_transform)
+        fvNi = safe_normalize(transform_direction(&ntfm, fvNi));
 
-    vnormal[i] = make_float4(vNi.x, vNi.y, vNi.z, 0.0f);
+      vnormal[i] = make_float4(fvNi.x, fvNi.y, fvNi.z, 0.0f);
+    }
+  } else {
+    float3 *vN = attr_vN->data_float3();
+    size_t verts_size = verts.size();
+
+    for (size_t i = 0; i < verts_size; i++) {
+      float3 vNi = vN[i];
+
+      if (do_transform)
+        vNi = safe_normalize(transform_direction(&ntfm, vNi));
+
+      vnormal[i] = make_float4(vNi.x, vNi.y, vNi.z, 0.0f);
+    }
   }
 }
 
