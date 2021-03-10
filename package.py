@@ -30,9 +30,9 @@ requires = [
 def private_build_requires():
     import sys
     if 'win' in str(sys.platform):
-        return ['visual_studio']
+        return ['visual_studio', 'cmake-3.13+']
     else:
-        return ['gcc-6']
+        return ['gcc-6', 'cmake-3.13+']
 
 variants = [
     # Windows
