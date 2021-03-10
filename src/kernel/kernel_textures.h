@@ -30,6 +30,9 @@ KERNEL_TEX(uint, __prim_object)
 KERNEL_TEX(uint, __object_node)
 KERNEL_TEX(float2, __prim_time)
 
+/* OCTree Nodes */
+KERNEL_TEX(KernelOCTree, __octree_nodes)
+
 /* objects */
 KERNEL_TEX(KernelObject, __objects)
 KERNEL_TEX(Transform, __object_motion_pass)

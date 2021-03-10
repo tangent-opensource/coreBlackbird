@@ -1449,6 +1449,20 @@ typedef struct KernelBVH {
 } KernelBVH;
 static_assert_align(KernelBVH, 16);
 
+typedef struct KernelOCTree {
+  int num_volumes;
+  int vol_indices[1024];
+  float3 max_extinction;
+  float3 min_extinction;
+  int depth;
+  bool has_children;
+
+  int child_idx[8];
+  int parent_idx;
+  //BoundBox bbox;
+}KernelOCTree;
+static_assert_align(KernelOCTree, 16);
+
 typedef struct KernelTables {
   int beckmann_offset;
   int pad1, pad2, pad3;

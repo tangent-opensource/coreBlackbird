@@ -32,11 +32,17 @@ OCTBuild::~OCTBuild()
 {
 }
 
+int OCTBuild::get_num_nodes()
+{
+  return (pow(8, depth + 1) - 1) / 7;
+}
+
 void OCTBuild::init_octree()
 {
   octree_root = new OCTNode;
   octree_root->parent = nullptr;
-  build_root_rec(octree_root, depth);
+  octree_root->idx = 0;
+  build_root_rec(octree_root, depth, 0);
 }
 
 void OCTBuild::update_octree(const vector<ImageHandle *> &handles)
@@ -59,8 +65,6 @@ void OCTBuild::update_octree(const vector<ImageHandle *> &handles)
     }
   }
 
-  octree_root->has_children = handles.size() > 0;
-
   update_root_rec(octree_root, handles);
 }
 
@@ -69,7 +73,7 @@ void OCTBuild::reset_octree()
   clear_root_rec(octree_root);
 }
 
-void OCTBuild::build_root_rec(OCTNode *root, int depth)
+void OCTBuild::build_root_rec(OCTNode *root, int depth, int parent_idx)
 {
   root->bbox = BoundBox(BoundBox::empty);
   memset(root->vol_indices, 0, sizeof(int) * 1024);
@@ -79,14 +83,36 @@ void OCTBuild::build_root_rec(OCTNode *root, int depth)
     for (int i = 0; i < 8; i++) {
       root->children[i] = new OCTNode;
       root->children[i]->parent = root;
-      root->children[i]->depth = depth;
+      root->children[i]->idx = (parent_idx * 8) + (i+1);
+      root->children[i]->parent_idx = parent_idx;
 
-      build_root_rec(root->children[i], depth - 1);
+      build_root_rec(root->children[i], depth - 1, root->children[i]->idx);
+
+      root->child_idx[i] = root->children[i]->idx;
     }
 
     root->has_children = true;
   }
 }
+
+vector<OCTNode *> OCTBuild::flatten_octree()
+{
+  vector<OCTNode *> ret;
+
+  ret.reserve(get_num_nodes());
+  for (int i = 0; i < get_num_nodes(); i++) {
+    ret.push_back(nullptr);
+  }
+
+  if (octree_root) {
+    ret[0] = octree_root;
+    flatten_root_rec(ret, octree_root);
+  }
+
+  return ret;
+}
+
+/* Recursive Functions*/
 
 void OCTBuild::update_root_rec(OCTNode *node, const vector<ImageHandle *> &handles)
 {
@@ -94,7 +120,7 @@ void OCTBuild::update_root_rec(OCTNode *node, const vector<ImageHandle *> &handl
     for (int i = 0; i < 8; i++) {
 
       node->children[i]->bbox = divide_bbox(node->bbox, i);
-      
+
       int vol_idx = 0;
       for (int slot = 0; slot < handles.size(); slot++) {
 
@@ -140,6 +166,16 @@ void OCTBuild::clear_root_rec(OCTNode *node)
   node->min_extinction = make_float3(FLT_MAX);
   node->num_volumes = 0;
   node->bbox = BoundBox(BoundBox::empty);
+}
+
+void OCTBuild::flatten_root_rec(vector<OCTNode *> &vec, OCTNode *root)
+{
+  if (root->has_children) {
+    for (int i = 0; i < 8; i++) {
+      vec[root->children[i]->idx] = root->children[i];
+      flatten_root_rec(vec, root->children[i]);
+    }
+  }
 }
 
 CCL_NAMESPACE_END

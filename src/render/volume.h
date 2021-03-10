@@ -29,6 +29,7 @@ class Scene;
 class Progress;
 class Object;
 class OCTBuild;
+
 /* Volume Manager */
 
 class VolumeManager {
@@ -38,7 +39,7 @@ class VolumeManager {
   VolumeManager();
   ~VolumeManager();
 
-  void device_update(Device *device, Scene *scene, Progress &progress);
+  void device_update(DeviceScene *dscene, Scene *scene, Progress &progress);
 
   void device_update_octree(DeviceScene *dscene, Scene *scene, Progress &progress);
 

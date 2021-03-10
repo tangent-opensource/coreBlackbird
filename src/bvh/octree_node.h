@@ -40,6 +40,11 @@ struct ccl_align(16) OCTNode
   OCTNode *children[8];
   OCTNode *parent;
   BoundBox bbox;
+
+  /* For flattening the tree */
+  int idx = 0;
+  int parent_idx = 0;
+  int child_idx[8];
 };
 
 CCL_NAMESPACE_END

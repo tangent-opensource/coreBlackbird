@@ -37,17 +37,21 @@ class OCTBuild {
 
   void init_octree();
   void update_octree(const vector<ImageHandle *> &handles);
+  vector<OCTNode*> flatten_octree();
   void reset_octree();
 
   OCTNode *get_root();
   int get_depth();
 
+  int get_num_nodes();
+
  private:
-  /* Internal recursive functions to initialize, update 
-  *  and clear the octree structure */
-  void build_root_rec(OCTNode *root, int depth);
+  /* Internal recursive functions to initialize, update, 
+  *  flatten and clear the octree structure */
+  void build_root_rec(OCTNode *root, int depth, int parent_idx);
   void update_root_rec(OCTNode *root, const vector<ImageHandle *> &handles);
   void clear_root_rec(OCTNode *root);
+  void flatten_root_rec(vector<OCTNode *> &vec, OCTNode *root);
 
   /* This is the root of octree that is passed to device */
   OCTNode *octree_root;
