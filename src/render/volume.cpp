@@ -108,6 +108,8 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
     k_oct.depth = node->depth;
     k_oct.parent_idx = node->parent_idx;
     k_oct.num_volumes = node->num_volumes;
+    k_oct.bmin = node->bbox.min;
+    k_oct.bmax = node->bbox.max;
 
     for (int i = 0; i < 1024; i++) {
       k_oct.vol_indices[i] = node->vol_indices[i];

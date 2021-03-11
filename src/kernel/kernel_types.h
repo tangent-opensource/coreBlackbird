@@ -1459,7 +1459,10 @@ typedef struct KernelOCTree {
 
   int child_idx[8];
   int parent_idx;
-  //BoundBox bbox;
+  
+  /* Bounding Box */
+  float3 bmin;
+  float3 bmax;
 }KernelOCTree;
 static_assert_align(KernelOCTree, 16);
 
