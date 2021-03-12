@@ -29,6 +29,7 @@
 #  include "util/util_types.h"
 #  include "util/util_vector.h"
 
+RTC_NAMESPACE_OPEN
 CCL_NAMESPACE_BEGIN
 
 class Geometry;

@@ -25,6 +25,7 @@
 
 #include "util/util_vector.h"
 
+RTC_NAMESPACE_OPEN
 CCL_NAMESPACE_BEGIN
 
 struct CCLIntersectContext {
