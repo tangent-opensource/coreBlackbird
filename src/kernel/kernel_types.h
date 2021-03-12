@@ -1438,7 +1438,7 @@ typedef struct KernelBVH {
   OptixTraversableHandle scene;
 #else
 #  ifdef __EMBREE__
-  RTCScene scene;
+  RTC_NAMESPACE::RTCScene scene;
 #    ifndef __KERNEL_64_BIT__
   int pad2;
 #    endif
