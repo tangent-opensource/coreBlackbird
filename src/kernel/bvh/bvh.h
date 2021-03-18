@@ -82,6 +82,9 @@ CCL_NAMESPACE_BEGIN
 #    define BVH_FUNCTION_FEATURES BVH_HAIR
 #    include "kernel/bvh/bvh_volume.h"
 
+#    define BVH_FUNCTION_NAME bvh_intersect_octree
+#    include "kernel/bvh/bvh_octree.h"
+
 #    if defined(__OBJECT_MOTION__)
 #      define BVH_FUNCTION_NAME bvh_intersect_volume_motion
 #      define BVH_FUNCTION_FEATURES BVH_MOTION | BVH_HAIR
@@ -196,6 +199,8 @@ ccl_device_intersect bool scene_intersect(KernelGlobals *kg,
   if (!scene_intersect_valid(ray)) {
     return false;
   }
+    
+  bvh_intersect_octree(kg, ray, isect, visibility);
 
 #  ifdef __EMBREE__
   if (kernel_data.bvh.scene) {

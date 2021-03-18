@@ -96,6 +96,7 @@ set(SRC_BVH_HEADERS
   bvh/bvh_volume.h
   bvh/bvh_volume_all.h
   bvh/bvh_embree.h
+  bvh/bvh_octree.h
 )
 
 set(SRC_HEADERS

@@ -690,6 +690,9 @@ typedef struct Intersection {
   int object;
   int type;
 
+  bool has_volume; /* Ray intersects an octree node */
+  bool in_volume;  /* is ray position inside a volume */
+
 #ifdef __KERNEL_DEBUG__
   int num_traversed_nodes;
   int num_traversed_instances;

@@ -169,6 +169,12 @@ class BoundBox {
     return fabsf(center_diff.x) <= total_size.x && fabsf(center_diff.y) <= total_size.y &&
            fabsf(center_diff.z) <= total_size.z;
   }
+
+  __forceinline bool contains(const float3 &P) const
+  {
+    return P.x >= min.x && P.x <= max.x && P.y >= min.y && P.y <= max.y && P.z >= min.z &&
+           P.z <= max.z;
+  }
 };
 
 __forceinline BoundBox merge(const BoundBox &bbox, const float3 &pt)
