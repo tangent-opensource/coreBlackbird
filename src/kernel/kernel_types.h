@@ -21,7 +21,6 @@
 #  include <embree3/rtcore.h>
 #  include <embree3/rtcore_scene.h>
 #  define __EMBREE__
-RTC_NAMESPACE_OPEN
 #endif
 
 #include "kernel/kernel_math.h"
