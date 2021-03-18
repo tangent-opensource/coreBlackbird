@@ -243,6 +243,9 @@ if(CYCLES_STANDALONE_REPOSITORY)
     set(OPENJPEG_LIBRARY ${_cycles_lib_dir}/openjpeg/lib/openjp2${CMAKE_STATIC_LIBRARY_SUFFIX})
   endif()
 
+endif()
+
+if(NOT CYCLES_STANDALONE_REPOSITORY)
   find_package(JPEG REQUIRED)
   find_package(OpenJPEG REQUIRED)
   find_package(TIFF REQUIRED)

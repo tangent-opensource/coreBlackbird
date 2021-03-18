@@ -12,7 +12,6 @@ authors = [
 requires = [
     'glew', # Specified in opensubdiv... (Revist this later)
     'oiio',
-    'libjpeg_turbo-2.0.5',
     'opensubdiv',
     'ocio-1.1.1',
     'tbb-2019.U9',
