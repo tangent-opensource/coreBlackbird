@@ -55,6 +55,9 @@ build_system = "cmake"
 
 def commands():
 
+    if building:
+        env.CMAKE_PREFIX_PATH.prepend('{root}/lib/cmake')
+
      # Split and store version and package version
     split_versions = str(version).split('-')
     env.CYCLES_VERSION.set(split_versions[0])

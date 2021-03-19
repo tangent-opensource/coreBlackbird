@@ -2,9 +2,6 @@
 
 include(CMakeFindDependencyMacro)
 
-find_dependency(OpenVDB REQUIRED)
-find_dependency(GLEW REQUIRED)
-
 include(${CMAKE_CURRENT_LIST_DIR}/CyclesTargets.cmake)
 
 target_link_libraries(Cycles::Cycles
@@ -20,6 +17,6 @@ target_link_libraries(Cycles::Cycles
     Cycles::cycles_subd
     Cycles::cycles_kernel
     Cycles::cycles_graph
-    GLEW::GLEW
-    OpenVDB::openvdb
     )
+
+include(${CMAKE_CURRENT_LIST_DIR}/CyclesDependencies.cmake)

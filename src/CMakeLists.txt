@@ -424,13 +424,6 @@ target_link_libraries(Cycles
         cycles_kernel
         )
 
-if(${WITH_OPENVDB})
-    target_link_libraries(Cycles
-            INTERFACE
-            OpenVDB::openvdb
-            )
-endif()
-
 # create target export and install actual targets
 install(TARGETS
         extern_sky
@@ -453,6 +446,9 @@ install(EXPORT CyclesTargets
         NAMESPACE Cycles::
         DESTINATION lib/cmake
         )
+
+configure_file(cmake/CyclesDependencies.cmake.in CyclesDependencies.cmake INSTALL_DESTINATION lib/cmake)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CyclesDependencies.cmake DESTINATION lib/cmake)
 
 include(CMakePackageConfigHelpers)
 configure_package_config_file(cmake/CyclesConfig.cmake.in CyclesConfig.cmake INSTALL_DESTINATION lib/cmake)

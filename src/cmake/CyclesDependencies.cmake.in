@@ -1,0 +1,65 @@
+# export libraries with full paths from cycles build
+
+if(@CYCLES_STANDALONE_REPOSITORY@)
+
+target_include_directories(Cycles::Cycles SYSTEM
+    INTERFACE
+    @OPENGL_INCLUDE_DIR@
+    @OPENCOLORIO_INCLUDE_DIR@
+    @OPENEXR_INCLUDE_DIR@
+    @OSL_INCLUDE_DIR@
+    @OPENCOLORIO_INCLUDE_DIR@
+    @Boost_INCLUDE_DIRS@
+    @EMBREE_INCLUDE_DIR@
+    @GLOG_INCLUDE_DIRS@
+    @GFLAGS_INCLUDE_DIRS@
+    @OPENSUBDIV_INCLUDE_DIRS@
+    @OPENVDB_INCLUDE_DIRS@
+    @NANOVDB_INCLUDE_DIR@
+    @OPENIMAGEDENOISE_INCLUDE_DIR@
+    @TBB_INCLUDE_DIRS@
+    @GLEW_INCLUDE_DIR@
+    )
+
+list(APPEND __cycles_dependencies    @OPENGL_LIBRARIES@)
+list(APPEND __cycles_dependencies    @OPENCOLORIO_LIBRARY@)
+list(APPEND __cycles_dependencies    @OPENEXR_LIBRARIES@)
+list(APPEND __cycles_dependencies    @OSL_LIBRARIES@)
+list(APPEND __cycles_dependencies    @OPENCOLORIO_LIBRARY@)
+list(APPEND __cycles_dependencies    @Boost_LIBRARIES@)
+list(APPEND __cycles_dependencies    @EMBREE_LIBRARIES@)
+list(APPEND __cycles_dependencies    @GLOG_LIBRARIES@)
+list(APPEND __cycles_dependencies    @GFLAGS_LIBRARY@)
+list(APPEND __cycles_dependencies    @OPENSUBDIV_LIBRARIES@)
+list(APPEND __cycles_dependencies    @OPENVDB_LIBRARIES@)
+list(APPEND __cycles_dependencies    @OPENIMAGEDENOISE_LIBRARIES@)
+list(APPEND __cycles_dependencies    @TBB_LIBRARIES@)
+list(APPEND __cycles_dependencies    @GLEW_LIBRARY@)
+
+#foreach(__dep IN ${__cycles_dependencies})
+#    target_link_libraries(Cycles::Cycles
+#        INTERFACE
+#        ${__dep}
+#    )
+#endforech()
+
+target_link_libraries(Cycles::Cycles
+    INTERFACE
+    @OPENGL_LIBRARIES@
+    @OPENCOLORIO_LIBRARY@
+    @OPENEXR_LIBRARIES@
+    @OSL_LIBRARIES@
+    @OPENCOLORIO_LIBRARY@
+    @Boost_LIBRARIES@
+    @EMBREE_LIBRARIES@
+    @GLOG_LIBRARIES@
+    @GFLAGS_LIBRARY@
+    @OPENSUBDIV_LIBRARIES@
+    @OPENVDB_LIBRARIES@
+    @OPENIMAGEDENOISE_LIBRARIES@
+    @TBB_LIBRARIES@
+    @GLEW_LIBRARY@ 
+    )
+
+endif()
+
