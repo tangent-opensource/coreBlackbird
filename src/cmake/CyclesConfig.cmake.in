@@ -1,11 +1,30 @@
 @PACKAGE_INIT@
 
 # Cycles standalone requirements
-find_package(JPEG REQUIRED)
-find_package(TIFF REQUIRED)
-find_package(PNG REQUIRED)
-find_package(glog REQUIRED)
-find_package(gflags REQUIRED)
+if(@JPEG_FOUND@)
+    find_package(JPEG REQUIRED)
+    target_link_libraries(Cycles::Cycles INTERFACE JPEG::JPEG)
+endif()
+
+if(@TIFF_FOUND@)
+    find_package(TIFF REQUIRED)
+    target_link_libraries(Cycles::Cycles INTERFACE TIFF::TIFF)
+endif()
+
+if(@PNG_FOUND@)
+    find_package(PNG REQUIRED)
+    target_link_libraries(Cycles::Cycles INTERFACE PNG::PNG)
+endif()
+
+if(@gflags_FOUND@)
+    find_package(gflags REQUIRED)
+    target_link_libraries(Cycles::Cycles INTERFACE gflags)
+endif()
+
+if(@glog_FOUND@)
+    find_package(glog REQUIRED)
+    target_link_libraries(Cycles::Cycles INTERFACE glog::glog)
+endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/CyclesTargets.cmake)
 
@@ -22,14 +41,6 @@ target_link_libraries(Cycles::Cycles
     Cycles::cycles_subd
     Cycles::cycles_kernel
     Cycles::cycles_graph
-    )
-
-target_link_libraries(Cycles::Cycles
-    INTERFACE
-    JPEG::JPEG
-    TIFF::TIFF
-    PNG::PNG
-    glog::glog
     )
 
 # This is a temporary solution, when all of the dependnecies get their configurations exported
