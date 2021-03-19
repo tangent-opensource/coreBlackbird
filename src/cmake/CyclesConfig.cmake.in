@@ -1,6 +1,11 @@
 @PACKAGE_INIT@
 
-include(CMakeFindDependencyMacro)
+# Cycles standalone requirements
+find_package(JPEG REQUIRED)
+find_package(TIFF REQUIRED)
+find_package(PNG REQUIRED)
+find_package(glog REQUIRED)
+find_package(gflags REQUIRED)
 
 include(${CMAKE_CURRENT_LIST_DIR}/CyclesTargets.cmake)
 
@@ -19,4 +24,48 @@ target_link_libraries(Cycles::Cycles
     Cycles::cycles_graph
     )
 
-include(${CMAKE_CURRENT_LIST_DIR}/CyclesDependencies.cmake)
+target_link_libraries(Cycles::Cycles
+    INTERFACE
+    JPEG::JPEG
+    TIFF::TIFF
+    PNG::PNG
+    glog::glog
+    )
+
+# This is a temporary solution, when all of the dependnecies get their configurations exported
+# then, we can link with their exported targets
+
+target_include_directories(Cycles::Cycles SYSTEM 
+    INTERFACE
+    @OPENGL_INCLUDE_DIR@ # OpenGL
+    @OPENIMAGEIO_INCLUDE_DIR@ # OpenImageIO
+    @OPENIMAGEDENOISE_INCLUDE_DIR@ # OpenImageIO Denoise
+    @OPENEXR_INCLUDE_DIR@ #OpenEXR
+    @OSL_INCLUDE_DIR@ # Osl
+    @OPENCOLORIO_INCLUDE_DIR@ # OpenColorIO 
+    @Boost_INCLUDE_DIRS@ # Boost
+    @EMBREE_INCLUDE_DIR@ # Embree
+    @OPENSUBDIV_INCLUDE_DIRS@ # Osd
+    @OPENVDB_INCLUDE_DIRS@ # Vdb
+    @NANOVDB_INCLUDE_DIR@ # NanoVdb
+    @TBB_INCLUDE_DIRS@ # Tbb
+    @GLEW_INCLUDE_DIR@ # GLEW
+    @OPENJPEG_INCLUDE_DIR@ # OpenJPEG
+    )
+
+target_link_libraries(Cycles::Cycles 
+    INTERFACE
+    @OPENGL_LIBRARIES@ # OpenGL
+    @OPENIMAGEIO_LIBRARY@ # OpenImageIO
+    @OPENIMAGEDENOISE_LIBRARIES@ # OpenImageIO Denoise
+    @OPENEXR_LIBRARIES@ # OpenEXR
+    @OSL_LIBRARIES@ # Osl
+    @OPENCOLORIO_LIBRARY@ # OpenColorIO
+    @Boost_LIBRARIES@ # Boost
+    @EMBREE_LIBRARIES@ # Embree
+    @OPENSUBDIV_LIBRARIES@ # Osd
+    @OPENVDB_LIBRARIES@ # Vdb
+    @TBB_LIBRARIES@ # Tbb
+    @GLEW_LIBRARY@ # GLEW
+    @OPENJPEG_LIBRARY@ # OpenJPEG
+    )

@@ -25,6 +25,9 @@ requires = [
     'gflags-2.2.2',
 ]
 
+build_requires = [
+    'cmake-3.18',
+]
 
 @early()
 def private_build_requires():
@@ -56,6 +59,8 @@ build_system = "cmake"
 def commands():
 
     if building:
+        env.CMAKE_PREFIX_PATH.prepend('{}/lib/cmake'.format(env.REZ_GLOG_ROOT))
+        env.CMAKE_PREFIX_PATH.prepend('{}/lib/cmake'.format(env.REZ_GFLAGS_ROOT))
         env.CMAKE_PREFIX_PATH.prepend('{root}/lib/cmake')
 
      # Split and store version and package version
