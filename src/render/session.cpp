@@ -382,6 +382,14 @@ bool Session::draw_cpu(BufferParams &buffer_params, DeviceDrawParams &draw_param
   return false;
 }
 
+void Session::acquire_display() {
+  display_mutex.lock();
+}
+
+void Session::release_display() {
+  display_mutex.unlock();
+}
+
 bool Session::acquire_tile(RenderTile &rtile, Device *tile_device, uint tile_types)
 {
   if (progress.get_cancel()) {

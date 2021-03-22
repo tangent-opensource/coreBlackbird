@@ -167,6 +167,9 @@ class Session {
 
   void collect_statistics(RenderStats *stats);
 
+  void acquire_display();
+  void release_display();
+
  protected:
   struct DelayedReset {
     thread_mutex mutex;
