@@ -346,8 +346,8 @@ void Session::run_gpu()
 
 void Session::reset_cpu(BufferParams &buffer_params, int samples)
 {
-  thread_scoped_lock reset_lock(delayed_reset.mutex);
   thread_scoped_lock pause_lock(pause_mutex);
+  thread_scoped_lock reset_lock(delayed_reset.mutex);
 
   display_outdated = true;
   reset_time = time_dt();
