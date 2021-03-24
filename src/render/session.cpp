@@ -382,14 +382,6 @@ bool Session::draw_cpu(BufferParams &buffer_params, DeviceDrawParams &draw_param
   return false;
 }
 
-void Session::acquire_display() {
-  display_mutex.lock();
-}
-
-void Session::release_display() {
-  display_mutex.unlock();
-}
-
 bool Session::acquire_tile(RenderTile &rtile, Device *tile_device, uint tile_types)
 {
   if (progress.get_cancel()) {
@@ -1340,6 +1332,10 @@ void Session::collect_statistics(RenderStats *render_stats)
   if (params.use_profiling && (params.device.type == DEVICE_CPU)) {
     render_stats->collect_profiling(scene, profiler);
   }
+}
+
+thread_scoped_lock Session::acquire_display_lock() {
+  return thread_scoped_lock(display_mutex);
 }
 
 int Session::get_max_closure_count()
