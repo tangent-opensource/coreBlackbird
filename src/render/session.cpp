@@ -1334,6 +1334,10 @@ void Session::collect_statistics(RenderStats *render_stats)
   }
 }
 
+thread_scoped_lock Session::acquire_display_lock() {
+  return thread_scoped_lock(display_mutex);
+}
+
 int Session::get_max_closure_count()
 {
   if (scene->shader_manager->use_osl()) {
