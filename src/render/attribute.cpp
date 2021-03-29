@@ -345,7 +345,7 @@ const char *Attribute::standard_name(AttributeStandard std)
     case ATTR_STD_VOLUME_TEMPERATURE:
       return "temperature";
     case ATTR_STD_VOLUME_VELOCITY:
-      return "velocity";
+      return "vel";
     case ATTR_STD_POINTINESS:
       return "pointiness";
     case ATTR_STD_RANDOM_PER_ISLAND:

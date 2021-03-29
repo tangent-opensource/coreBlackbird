@@ -389,6 +389,8 @@ void Camera::update(Scene *scene)
 
   /* motion blur */
   kcam->shuttertime = (need_motion == Scene::MOTION_BLUR) ? shuttertime : -1.0f;
+  kcam->motion_position = motion_position;
+  kcam->inv_fps = 1.0f / (fps > 0.0f ? fps : 24.0f);
 
   /* type */
   kcam->type = type;

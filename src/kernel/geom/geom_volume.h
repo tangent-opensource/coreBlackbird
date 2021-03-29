@@ -27,6 +27,25 @@ CCL_NAMESPACE_BEGIN
 
 #ifdef __VOLUME__
 
+/* Return velocity vector transformed by up_axis and object transform */
+/*
+ccl_device_inline float3 volume_transform_velocity(KernelGlobals *kg,
+                                                    const ShaderData *sd,
+                                                    float3 P)
+{
+  uint up_axis = kernel_tex_fetch(__objects, sd->object).up_axis;
+
+  if(up_axis == 0){ 
+    float z = P.z;
+    P.z = P.y;
+    P.y = z;
+  }
+
+  object_dir_transform(kg, sd, &P);
+  return P;
+}
+*/
+
 /* Return position normalized to 0..1 in mesh bounds */
 
 ccl_device_inline float3 volume_normalized_position(KernelGlobals *kg,
