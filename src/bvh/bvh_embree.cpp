@@ -1023,16 +1023,20 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
 
   const size_t num_points = pointcloud->num_points();
 
+  const Attribute *attr_N = pointcloud->attributes.find(ATTR_STD_VERTEX_NORMAL);
+  const Attribute *attr_mN = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_NORMAL);
+
   /* Copy the point data to Embree */
   const int t_mid = (num_motion_steps - 1) / 2;
   const float *radius = pointcloud->radius.data();
   for (int t = 0; t < num_motion_steps; ++t) {
     const float3 *verts;
+    int t_;
     if (t == t_mid || attr_mP == NULL) {
       verts = pointcloud->points.data();
     }
     else {
-      int t_ = (t > t_mid) ? (t - 1) : t;
+      t_ = (t > t_mid) ? (t - 1) : t;
       verts = &attr_mP->data_float3()[t_ * num_points];
     }
 
@@ -1056,6 +1060,35 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
     if (update) {
       rtcUpdateGeometryBuffer(geom_id, RTC_BUFFER_TYPE_VERTEX, t);
     }
+
+    if (pointcloud->point_style == POINT_CLOUD_POINT_DISC_ORIENTED && attr_N) {
+      const float3 *normals;
+      if (t == t_mid || attr_mN == NULL) {
+        normals = attr_N->data_float3();
+      }
+      else {
+        normals = &attr_mN->data_float3()[t_ * num_points];
+      }
+
+      float4 *rtc_normals = (update) ? (float4 *)rtcGetGeometryBufferData(
+                                           geom_id, RTC_BUFFER_TYPE_NORMAL, t) :
+                                       (float4 *)rtcSetNewGeometryBuffer(geom_id,
+                                                                         RTC_BUFFER_TYPE_NORMAL,
+                                                                         t,
+                                                                         RTC_FORMAT_FLOAT4,
+                                                                         sizeof(float) * 4,
+                                                                         num_points);
+      assert(rtc_normals);
+      if (rtc_normals) {
+        for (size_t j = 0; j < num_points; ++j) {
+          rtc_normals[j] = float3_to_float4(normals[j]);
+        }
+      }
+
+      if (update) {
+        rtcUpdateGeometryBuffer(geom_id, RTC_BUFFER_TYPE_NORMAL, t);
+      }
+    }
   }
 }
 
@@ -1072,7 +1105,20 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
     }
   }
 
-  enum RTCGeometryType type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
+  enum RTCGeometryType type;
+  switch (pointcloud->point_style) {
+    case POINT_CLOUD_POINT_SPHERE:
+      type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
+      break;
+    case POINT_CLOUD_POINT_DISC:
+      type = RTC_GEOMETRY_TYPE_DISC_POINT;
+      break;
+    case POINT_CLOUD_POINT_DISC_ORIENTED:
+      type = RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT;
+      break;
+    default:
+      return;
+  }
 
   RTCGeometry geom_id = rtcNewGeometry(rtc_shared_device, type);
 

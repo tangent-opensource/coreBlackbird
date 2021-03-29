@@ -105,7 +105,8 @@ NODE_DEFINE(PointCloud)
   return type;
 }
 
-PointCloud::PointCloud() : Geometry(node_type, Geometry::POINTCLOUD)
+PointCloud::PointCloud()
+    : Geometry(node_type, Geometry::POINTCLOUD), point_style(POINT_CLOUD_POINT_SPHERE)
 {
 }
 
@@ -121,9 +122,9 @@ void PointCloud::resize(int numpoints)
   attributes.resize();
 
   // todo: what about this?
-  //tag_points_modified();
-  //tag_radius_modified();
-  //tag_shader_modified();
+  // tag_points_modified();
+  // tag_radius_modified();
+  // tag_shader_modified();
 }
 
 void PointCloud::reserve(int numpoints)
@@ -138,16 +139,16 @@ void PointCloud::clear(const bool preserve_shaders)
 {
   Geometry::clear();
   // port: no preserve_shader
-  //Geometry::clear(preserve_shaders);
+  // Geometry::clear(preserve_shaders);
 
   points.clear();
   radius.clear();
   shader.clear();
   attributes.clear();
 
-  //tag_points_modified();
-  //tag_radius_modified();
-  //tag_shader_modified();
+  // tag_points_modified();
+  // tag_radius_modified();
+  // tag_shader_modified();
 }
 
 void PointCloud::add_point(float3 co, float r, int shader_index)
@@ -157,9 +158,9 @@ void PointCloud::add_point(float3 co, float r, int shader_index)
   shader.push_back_reserved(shader_index);
 
   // todo: ?
-  //tag_points_modified();
-  //tag_radius_modified();
-  //tag_shader_modified();
+  // tag_points_modified();
+  // tag_radius_modified();
+  // tag_shader_modified();
 }
 
 void PointCloud::copy_center_to_motion_step(const int motion_step)
