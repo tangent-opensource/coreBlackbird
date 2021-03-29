@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.9.0'
+version = '1.13.0-ta.1.9.1'
 
 authors = [
     'benjamin.skinner',
@@ -25,14 +25,17 @@ requires = [
     'gflags-2.2.2',
 ]
 
+build_requires = [
+    'cmake-3.18',
+]
 
 @early()
 def private_build_requires():
     import sys
     if 'win' in str(sys.platform):
-        return ['visual_studio', 'cmake-3.13+']
+        return ['visual_studio', 'cmake-3.18+']
     else:
-        return ['gcc-6', 'cmake-3.13+']
+        return ['gcc-6', 'cmake-3.18+']
 
 windows_variants = [
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3', 'boost-1.69.0', 'openvdb-7.0.0'],
@@ -63,6 +66,11 @@ hashed_variants = True
 build_system = "cmake"
 
 def commands():
+
+    if building:
+        env.CMAKE_PREFIX_PATH.prepend('{}/lib/cmake'.format(env.REZ_GLOG_ROOT))
+        env.CMAKE_PREFIX_PATH.prepend('{}/lib/cmake'.format(env.REZ_GFLAGS_ROOT))
+        env.CMAKE_PREFIX_PATH.prepend('{root}/lib/cmake')
 
      # Split and store version and package version
     split_versions = str(version).split('-')
