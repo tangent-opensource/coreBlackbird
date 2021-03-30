@@ -167,7 +167,9 @@ ccl_device_inline
                     kg, isect_array, P, dir, visibility, object, prim_addr, ray->time, curve_type);
                 break;
               }
-              case PRIMITIVE_POINT:
+              case PRIMITIVE_POINT_SPHERE:
+              case PRIMITIVE_POINT_DISC:
+              case PRIMITIVE_POINT_DISC_ORIENTED:
               case PRIMITIVE_MOTION_POINT:
                 hit = point_intersect(
                     kg, isect_array, P, dir, visibility, object, prim_addr, ray->time, p_type);

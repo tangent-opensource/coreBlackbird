@@ -20,7 +20,7 @@ CCL_NAMESPACE_BEGIN
 
 #ifdef __POINTCLOUD__
 
-ccl_device_forceinline bool point_intersect_test(const float4 point,
+ccl_device_forceinline bool point_intersect_test_sphere(const float4 point,
                                                  const float3 P,
                                                  const float3 dir,
                                                  float *t)
@@ -54,6 +54,21 @@ ccl_device_forceinline bool point_intersect_test(const float4 point,
 
   *t = (valid_front) ? t_front : t_back;
   return true;
+}
+
+ccl_device_forceinline bool point_intersect_test_disc(const float4 point,
+  const float3 P,
+  const float3 dir,
+  float *t) {
+  return false;
+}
+
+ccl_device_forceinline bool point_intersect_test_disc_oriented(const float4 point,
+  const float3 P,
+  const float3 N,
+  const float3 dir,
+  float *t){
+  return false;
 }
 
 ccl_device_forceinline bool point_intersect(KernelGlobals *kg,
@@ -91,7 +106,18 @@ ccl_device_forceinline bool point_intersect(KernelGlobals *kg,
   }
 
   float t = isect->t;
-  if (!point_intersect_test(point, P, dir, &t)) {
+
+  bool ret_test;
+  if (type & PRIMITIVE_POINT_SPHERE) {
+    ret_test = point_intersect_test_sphere(point, P, dir, &t);
+  } else if (type & PRIMITIVE_POINT_DISC) {
+    ret_test = point_intersect_test_disc(point, P, dir, &t);
+  } else if (type & PRIMITIVE_POINT_DISC_ORIENTED) {
+    /* todo: fetch normal */
+    float3 N;
+    ret_test = point_intersect_test_disc_oriented(point, P, N, dir, &t);
+  }
+  if (!ret_test) {
     return false;
   }
 

@@ -184,7 +184,9 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals *kg,
             }
 #endif /* BVH_FEATURE(BVH_HAIR) */
 #ifdef __POINTCLOUD__
-            case PRIMITIVE_POINT:
+            case PRIMITIVE_POINT_SPHERE:
+            case PRIMITIVE_POINT_DISC:
+            case PRIMITIVE_POINT_DISC_ORIENTED:
             case PRIMITIVE_MOTION_POINT: {
               for (; prim_addr < prim_addr2; prim_addr++) {
                 BVH_DEBUG_NEXT_INTERSECTION();

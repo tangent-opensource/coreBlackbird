@@ -1141,7 +1141,19 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   const size_t prim_tri_index_size = pack.prim_tri_index.size();
   pack.prim_tri_index.resize(prim_tri_index_size + num_prims);
 
-  const uint prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT : PRIMITIVE_POINT;
+  /* todo: bits or different types? */
+  uint prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT : 0x0;
+  switch(pointcloud->point_style) {
+  case POINT_CLOUD_POINT_SPHERE:
+    prim_type |= PRIMITIVE_POINT_SPHERE;
+    break;
+  case POINT_CLOUD_POINT_DISC:
+    prim_type |= PRIMITIVE_POINT_DISC;
+    break;
+  case POINT_CLOUD_POINT_DISC_ORIENTED:
+    prim_type |= PRIMITIVE_POINT_DISC_ORIENTED;
+    break;
+  }
 
   for (size_t j = 0; j < num_prims; ++j) {
     pack.prim_object[prim_object_size + j] = i;
