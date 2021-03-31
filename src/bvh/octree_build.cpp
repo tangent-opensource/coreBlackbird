@@ -18,8 +18,12 @@
 
 #include "bvh/octree_build.h"
 
+#include "util/util_foreach.h"
+
 #include "render/image.h"
 #include "render/object.h"
+#include "render/geometry.h"
+#include "render/attribute.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -45,27 +49,39 @@ void OCTBuild::init_octree()
   build_root_rec(octree_root, depth, 0);
 }
 
-void OCTBuild::update_octree(const vector<ImageHandle *> &handles)
+void OCTBuild::update_octree(const vector<Object *> &objects)
 {
-  for (int i = 0; i < handles.size(); i++) {
+  for (int i = 0; i < objects.size(); i++) {
 
-    ImageHandle *handle = handles[i];
-    const ImageMetaData &metadata = handle->metadata();
+    Object *ob = objects[i];
 
-    if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
-      continue;
+    int vol_idx = 0;
+    foreach (Attribute &attr, ob->geometry->attributes.attributes) {
+      if (attr.element == ATTR_ELEMENT_VOXEL) {
+        ImageHandle &handle = attr.data_voxel();
+
+        const ImageMetaData &metadata = handle.metadata();
+
+        if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
+          continue;
+        }
+        if (metadata.depth > 1) {
+          octree_root->bbox.grow(metadata.world_bounds);
+
+          octree_root->num_volumes++;
+          octree_root->vol_indices[i + vol_idx] = handle.svm_slot();
+          octree_root->min_extinction = ccl::min(octree_root->min_extinction, metadata.min);
+          octree_root->max_extinction = ccl::max(octree_root->max_extinction, metadata.max);
+
+          vol_idx++;
+        }
+      }
     }
-    if (metadata.depth > 1) {
-      octree_root->bbox.grow(metadata.world_bounds);
 
-      octree_root->num_volumes++;
-      octree_root->vol_indices[i] = handle->svm_slot();
-      octree_root->min_extinction = ccl::min(octree_root->min_extinction, metadata.min);
-      octree_root->max_extinction = ccl::max(octree_root->max_extinction, metadata.max);
-    }
+    octree_root->obj_indices[i] = ob->random_id;
   }
 
-  update_root_rec(octree_root, handles);
+  update_root_rec(octree_root, objects);
 }
 
 void OCTBuild::reset_octree()
@@ -77,6 +93,7 @@ void OCTBuild::build_root_rec(OCTNode *root, int depth, int parent_idx)
 {
   root->bbox = BoundBox(BoundBox::empty);
   memset(root->vol_indices, 0, sizeof(int) * 1024);
+  memset(root->obj_indices, 0, sizeof(int) * 1024);
   root->depth = depth;
 
   if (depth > 0) {
@@ -114,38 +131,52 @@ vector<OCTNode *> OCTBuild::flatten_octree()
 
 /* Recursive Functions*/
 
-void OCTBuild::update_root_rec(OCTNode *node, const vector<ImageHandle *> &handles)
+void OCTBuild::update_root_rec(OCTNode *node, const vector<Object *> &objects)
 {
   if (node->has_children) {
     for (int i = 0; i < 8; i++) {
 
       node->children[i]->bbox = divide_bbox(node->bbox, i);
 
-      int vol_idx = 0;
-      for (int slot = 0; slot < handles.size(); slot++) {
+      int obj_idx = 0;
+      for (int y = 0; y < objects.size(); y++) {
 
-        ImageHandle *handle = handles[slot];
-        const ImageMetaData &metadata = handle->metadata();
+        Object *ob = objects[y];
 
-        if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
-          continue;
+        int vol_idx = 0;
+        bool add_object = false;
+        foreach (Attribute &attr, ob->geometry->attributes.attributes) {
+          if (attr.element == ATTR_ELEMENT_VOXEL) {
+            ImageHandle &handle = attr.data_voxel();
+
+            const ImageMetaData &metadata = handle.metadata();
+
+            if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
+              continue;
+            }
+            if (metadata.depth > 1) {
+              if (metadata.world_bounds.intersects(node->children[i]->bbox)) {
+
+                node->children[i]->num_volumes++;
+                node->children[i]->vol_indices[vol_idx] = handle.svm_slot();
+                node->children[i]->min_extinction = ccl::min(node->children[i]->min_extinction,
+                                                             metadata.min);
+                node->children[i]->max_extinction = ccl::max(node->children[i]->max_extinction,
+                                                             metadata.max);
+                vol_idx++;
+                add_object = true;
+              }
+            }
+          }
         }
 
-        if (metadata.depth > 1) {
-          if (metadata.world_bounds.intersects(node->children[i]->bbox)) {
-
-            node->children[i]->num_volumes++;
-            node->children[i]->vol_indices[vol_idx] = handle->svm_slot();
-            node->children[i]->min_extinction = ccl::min(node->children[i]->min_extinction,
-                                                         metadata.min);
-            node->children[i]->max_extinction = ccl::max(node->children[i]->max_extinction,
-                                                         metadata.max);
-            vol_idx++;
-          }
+        if (add_object) {
+            node->children[i]->obj_indices[obj_idx] = ob->random_id;
+            obj_idx++;
         }
       }
 
-      update_root_rec(node->children[i], handles);
+      update_root_rec(node->children[i], objects);
     }
   }
 }

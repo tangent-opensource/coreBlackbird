@@ -75,8 +75,10 @@ class DeviceScene {
   device_vector<int> prim_object;
   device_vector<float2> prim_time;
 
+#ifdef __VOLUME_OCTREE__
   /* Octree */
   device_vector<KernelOCTree> octree_nodes;
+#endif
 
   /* mesh */
   device_vector<uint> tri_shader;

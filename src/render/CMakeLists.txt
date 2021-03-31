@@ -153,6 +153,10 @@ if(WITH_NANOVDB)
   )
 endif()
 
+if(WITH_CYCLES_OCTREE)
+  add_definitions(-DWITH_OCTREE)
+endif()
+
 include_directories(${INC})
 include_directories(SYSTEM ${INC_SYS})
 

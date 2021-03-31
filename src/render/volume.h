@@ -46,7 +46,9 @@ class VolumeManager {
   void device_free(Device *device, DeviceScene *dscene);
 
  private:
+#ifdef WITH_OCTREE
   OCTBuild *octree_builder;
+#endif
   vector<Object *> volume_objects;
 };
 

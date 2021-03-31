@@ -30,6 +30,7 @@ struct ccl_align(16) OCTNode
 {
   int num_volumes = 0;
   int vol_indices[1024];
+  int obj_indices[1024];
 
   float3 max_extinction = make_float3(0.0f);
   float3 min_extinction = make_float3(FLT_MAX);

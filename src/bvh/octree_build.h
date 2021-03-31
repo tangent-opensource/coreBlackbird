@@ -25,7 +25,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-class ImageHandle;
+class Object;
 
 /* Octree Builder */
 
@@ -36,7 +36,7 @@ class OCTBuild {
   ~OCTBuild();
 
   void init_octree();
-  void update_octree(const vector<ImageHandle *> &handles);
+  void update_octree(const vector<Object *> &objects);
   vector<OCTNode*> flatten_octree();
   void reset_octree();
 
@@ -49,7 +49,7 @@ class OCTBuild {
   /* Internal recursive functions to initialize, update, 
   *  flatten and clear the octree structure */
   void build_root_rec(OCTNode *root, int depth, int parent_idx);
-  void update_root_rec(OCTNode *root, const vector<ImageHandle *> &handles);
+  void update_root_rec(OCTNode *root, const vector<Object *> &objects);
   void clear_root_rec(OCTNode *root);
   void flatten_root_rec(vector<OCTNode *> &vec, OCTNode *root);
 

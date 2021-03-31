@@ -23,6 +23,11 @@
 #  define __EMBREE__
 #endif
 
+#ifdef WITH_OCTREE
+#define __VOLUME_OCTREE__
+#endif  // WITH_OCTREE
+
+
 #include "kernel/kernel_math.h"
 #include "kernel/svm/svm_types.h"
 #include "util/util_static_assert.h"
@@ -1452,9 +1457,11 @@ typedef struct KernelBVH {
 } KernelBVH;
 static_assert_align(KernelBVH, 16);
 
+#ifdef __VOLUME_OCTREE__
 typedef struct KernelOCTree {
   int num_volumes;
   int vol_indices[1024];
+  int obj_indices[1024];
   float3 max_extinction;
   float3 min_extinction;
   int depth;
@@ -1468,6 +1475,7 @@ typedef struct KernelOCTree {
   float3 bmax;
 }KernelOCTree;
 static_assert_align(KernelOCTree, 16);
+#endif
 
 typedef struct KernelTables {
   int beckmann_offset;

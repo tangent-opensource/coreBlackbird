@@ -52,7 +52,9 @@ DeviceScene::DeviceScene(Device *device)
       prim_index(device, "__prim_index", MEM_GLOBAL),
       prim_object(device, "__prim_object", MEM_GLOBAL),
       prim_time(device, "__prim_time", MEM_GLOBAL),
+      #ifdef WITH_OCTREE
       octree_nodes(device, "__octree_nodes", MEM_GLOBAL),
+      #endif
       tri_shader(device, "__tri_shader", MEM_GLOBAL),
       tri_vnormal(device, "__tri_vnormal", MEM_GLOBAL),
       object_vnormal_offset(device, "__object_vnormal_offset", MEM_GLOBAL),

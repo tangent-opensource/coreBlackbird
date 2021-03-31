@@ -22,6 +22,7 @@ find_package(HBoost)
 set(WITH_CPU_SSE ON)
 set(WITH_CYCLES_STANDALONE_GUI OFF)
 set(WITH_BLENDER OFF)
+set(WITH_CYCLES_OCTREE ON)
 
 option(WITH_CYCLES_STANDALONE_GUI   "Build Cycles standalone with GUI" OFF)
 

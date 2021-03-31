@@ -96,7 +96,6 @@ set(SRC_BVH_HEADERS
   bvh/bvh_volume.h
   bvh/bvh_volume_all.h
   bvh/bvh_embree.h
-  bvh/bvh_octree.h
 )
 
 set(SRC_HEADERS
@@ -366,6 +365,11 @@ set(SRC_SPLIT_HEADERS
 set(LIB
 
 )
+
+if(WITH_CYCLES_OCTREE)
+    list(APPEND SRC_BVH_HEADERS bvh/bvh_octree.h)
+    add_definitions(-DWITH_OCTREE)
+endif()
 
 # CUDA module
 

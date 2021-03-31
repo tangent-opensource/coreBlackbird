@@ -30,8 +30,10 @@ KERNEL_TEX(uint, __prim_object)
 KERNEL_TEX(uint, __object_node)
 KERNEL_TEX(float2, __prim_time)
 
+#ifdef __VOLUME_OCTREE__
 /* OCTree Nodes */
 KERNEL_TEX(KernelOCTree, __octree_nodes)
+#endif
 
 /* objects */
 KERNEL_TEX(KernelObject, __objects)

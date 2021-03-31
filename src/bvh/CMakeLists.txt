@@ -30,7 +30,6 @@ set(SRC
   bvh_sort.cpp
   bvh_split.cpp
   bvh_unaligned.cpp
-  octree_build.cpp
 )
 
 set(SRC_HEADERS
@@ -45,8 +44,6 @@ set(SRC_HEADERS
   bvh_sort.h
   bvh_split.h
   bvh_unaligned.h
-  octree_node.h
-  octree_build.h
 )
 
 set(LIB
@@ -61,6 +58,13 @@ if(WITH_CYCLES_EMBREE)
   list(APPEND LIB
     ${EMBREE_LIBRARIES}
   )
+endif()
+
+if(WITH_CYCLES_OCTREE)
+list(APPEND SRC octree_build.cpp)
+list(APPEND SRC_HEADERS 
+    octree_node.h
+    octree_build.h)
 endif()
 
 cycles_add_library(cycles_bvh "${LIB}" ${SRC} ${SRC_HEADERS})

@@ -33,14 +33,17 @@ CCL_NAMESPACE_BEGIN
 VolumeManager::VolumeManager()
 {
   need_update = true;
-
+#ifdef WITH_OCTREE
   octree_builder = new OCTBuild;
   octree_builder->init_octree();
+#endif
 }
 
 VolumeManager::~VolumeManager()
 {
+#ifdef WITH_OCTREE
   octree_builder->reset_octree();
+#endif
 }
 
 void VolumeManager::device_update(DeviceScene *dscene, Scene *scene, Progress &progress)
@@ -61,7 +64,7 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
 {
   if (!need_update || volume_objects.size() == 0)
     return;
-
+#ifdef WITH_OCTREE
   octree_builder->reset_octree();
 
   /* Parallel update volume object world bounding boxes */
@@ -83,18 +86,7 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
   if (progress.get_cancel())
     return;
 
-  vector<ImageHandle *> image_handles;
-
-  foreach (Object *object, volume_objects) {
-    foreach (Attribute &attr, object->geometry->attributes.attributes) {
-      if (attr.element == ATTR_ELEMENT_VOXEL) {
-        ImageHandle &handle = attr.data_voxel();
-        image_handles.push_back(&handle);
-      }
-    }
-  }
-
-  octree_builder->update_octree(image_handles);
+  octree_builder->update_octree(volume_objects);
 
   vector<OCTNode *> host_vector = octree_builder->flatten_octree();
   KernelOCTree *k_tree_root = dscene->octree_nodes.alloc(octree_builder->get_num_nodes());
@@ -113,6 +105,7 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
 
     for (int i = 0; i < 1024; i++) {
       k_oct.vol_indices[i] = node->vol_indices[i];
+      k_oct.obj_indices[i] = node->obj_indices[i];
     }
 
     if (node->has_children) {
@@ -125,13 +118,15 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
   }
 
   dscene->octree_nodes.copy_to_device();
-
+#endif
   need_update = false;
 }
 
 void VolumeManager::device_free(Device *device, DeviceScene *dscene)
 {
+#ifdef WITH_OCTREE
   dscene->octree_nodes.free();
+#endif
 }
 
 CCL_NAMESPACE_END
