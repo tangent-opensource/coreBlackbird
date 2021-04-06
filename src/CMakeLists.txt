@@ -445,11 +445,11 @@ if(WITH_CYCLES_STANDALONE)
   install(EXPORT CyclesTargets
           FILE CyclesTargets.cmake
           NAMESPACE Cycles::
-          DESTINATION lib/cmake
+          DESTINATION lib/cmake/Cycles
           )
 
   include(CMakePackageConfigHelpers)
-  configure_package_config_file(cmake/CyclesConfig.cmake.in CyclesConfig.cmake INSTALL_DESTINATION lib/cmake)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CyclesConfig.cmake DESTINATION lib/cmake)
+  configure_package_config_file(cmake/CyclesConfig.cmake.in CyclesConfig.cmake INSTALL_DESTINATION lib/cmake/Cycles)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CyclesConfig.cmake DESTINATION lib/cmake/Cycles)
 
 endif()
