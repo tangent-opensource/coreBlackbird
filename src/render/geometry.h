@@ -136,6 +136,8 @@ class Geometry : public Node {
   bool has_motion_blur() const;
   bool has_voxel_attributes() const;
 
+  size_t element_size(AttributeElement element, AttributePrimitive prim) const;
+
   /* Updates */
   void tag_update(Scene *scene, bool rebuild);
 };
