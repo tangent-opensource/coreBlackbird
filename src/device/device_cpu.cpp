@@ -24,6 +24,10 @@
 #  include <OSL/oslexec.h>
 #endif
 
+#ifdef WITH_EMBREE
+#  include <embree3/rtcore.h>
+#endif
+
 #include "device/device.h"
 #include "device/device_denoising.h"
 #include "device/device_intern.h"
@@ -42,6 +46,8 @@
 #include "kernel/osl/osl_shader.h"
 #include "kernel/osl/osl_globals.h"
 // clang-format on
+
+#include "bvh/bvh_embree.h"
 
 #include "render/buffers.h"
 #include "render/coverage.h"
@@ -183,6 +189,10 @@ class CPUDevice : public Device {
   oidn::FilterRef oidn_filter;
 #endif
   thread_spin_lock oidn_task_lock;
+#ifdef WITH_EMBREE
+  RTCScene embree_scene = NULL;
+  RTCDevice embree_device;
+#endif
 
   bool use_split_kernel;
 
@@ -302,6 +312,9 @@ class CPUDevice : public Device {
 #ifdef WITH_OSL
     kernel_globals.osl = &osl_globals;
 #endif
+#ifdef WITH_EMBREE
+    embree_device = rtcNewDevice("verbose=0");
+#endif
     use_split_kernel = DebugFlags().cpu.split_kernel;
     if (use_split_kernel) {
       VLOG(1) << "Will be using split kernel.";
@@ -339,16 +352,19 @@ class CPUDevice : public Device {
 
   ~CPUDevice()
   {
+#ifdef WITH_EMBREE
+    rtcReleaseDevice(embree_device);
+#endif
     task_pool.cancel();
     texture_info.free();
   }
 
-  virtual bool show_samples() const
+  virtual bool show_samples() const override
   {
     return (info.cpu_threads == 1);
   }
 
-  virtual BVHLayoutMask get_bvh_layout_mask() const
+  virtual BVHLayoutMask get_bvh_layout_mask() const override
   {
     BVHLayoutMask bvh_layout_mask = BVH_LAYOUT_BVH2;
 #ifdef WITH_EMBREE
@@ -365,7 +381,7 @@ class CPUDevice : public Device {
     }
   }
 
-  void mem_alloc(device_memory &mem)
+  virtual void mem_alloc(device_memory &mem) override
   {
     if (mem.type == MEM_TEXTURE) {
       assert(!"mem_alloc not supported for textures.");
@@ -395,7 +411,7 @@ class CPUDevice : public Device {
     }
   }
 
-  void mem_copy_to(device_memory &mem)
+  virtual void mem_copy_to(device_memory &mem) override
   {
     if (mem.type == MEM_GLOBAL) {
       global_free(mem);
@@ -417,12 +433,13 @@ class CPUDevice : public Device {
     }
   }
 
-  void mem_copy_from(device_memory & /*mem*/, int /*y*/, int /*w*/, int /*h*/, int /*elem*/)
+  virtual void mem_copy_from(
+      device_memory & /*mem*/, int /*y*/, int /*w*/, int /*h*/, int /*elem*/) override
   {
     /* no-op */
   }
 
-  void mem_zero(device_memory &mem)
+  virtual void mem_zero(device_memory &mem) override
   {
     if (!mem.device_pointer) {
       mem_alloc(mem);
@@ -433,7 +450,7 @@ class CPUDevice : public Device {
     }
   }
 
-  void mem_free(device_memory &mem)
+  virtual void mem_free(device_memory &mem) override
   {
     if (mem.type == MEM_GLOBAL) {
       global_free(mem);
@@ -451,13 +468,22 @@ class CPUDevice : public Device {
     }
   }
 
-  virtual device_ptr mem_alloc_sub_ptr(device_memory &mem, int offset, int /*size*/)
+  virtual device_ptr mem_alloc_sub_ptr(device_memory &mem, int offset, int /*size*/) override
   {
     return (device_ptr)(((char *)mem.device_pointer) + mem.memory_elements_size(offset));
   }
 
-  void const_copy_to(const char *name, void *host, size_t size)
+  virtual void const_copy_to(const char *name, void *host, size_t size) override
   {
+#if WITH_EMBREE
+    if (strcmp(name, "__data") == 0) {
+      assert(size <= sizeof(KernelData));
+
+      // Update scene handle (since it is different for each device on multi devices)
+      KernelData *const data = (KernelData *)host;
+      data->bvh.scene = embree_scene;
+    }
+#endif
     kernel_const_copy(&kernel_globals, name, host, size);
   }
 
@@ -514,13 +540,35 @@ class CPUDevice : public Device {
     }
   }
 
-  void *osl_memory()
+  virtual void *osl_memory() override
   {
 #ifdef WITH_OSL
     return &osl_globals;
 #else
     return NULL;
 #endif
+  }
+
+  void build_bvh(BVH *bvh, Progress &progress, bool refit) override
+  {
+#ifdef WITH_EMBREE
+    if (bvh->params.bvh_layout == BVH_LAYOUT_EMBREE ||
+        bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE) {
+      BVHEmbree *const bvh_embree = static_cast<BVHEmbree *>(bvh);
+      if (refit) {
+        bvh_embree->refit(progress);
+      }
+      else {
+        bvh_embree->build(progress, &stats, embree_device);
+      }
+
+      if (bvh->params.top_level) {
+        embree_scene = bvh_embree->scene;
+      }
+    }
+    else
+#endif
+      Device::build_bvh(bvh, progress, refit);
   }
 
   void thread_run(DeviceTask &task)
@@ -872,8 +920,7 @@ class CPUDevice : public Device {
         ccl_global float *buffer = render_buffer + index * kernel_data.film.pass_stride;
         if (buffer[kernel_data.film.pass_sample_count] < 0.0f) {
           buffer[kernel_data.film.pass_sample_count] = -buffer[kernel_data.film.pass_sample_count];
-          float sample_multiplier = tile.sample / max((float)tile.start_sample + 1.0f,
-                                                      buffer[kernel_data.film.pass_sample_count]);
+          float sample_multiplier = tile.sample / buffer[kernel_data.film.pass_sample_count];
           if (sample_multiplier != 1.0f) {
             kernel_adaptive_post_adjust(kg, buffer, sample_multiplier);
           }
@@ -904,9 +951,14 @@ class CPUDevice : public Device {
     SIMD_SET_FLUSH_TO_ZERO;
 
     for (int sample = start_sample; sample < end_sample; sample++) {
-      if (task.get_cancel() || task_pool.canceled()) {
+      if (task.get_cancel() || TaskPool::canceled()) {
         if (task.need_finish_queue == false)
           break;
+      }
+
+      if (tile.stealing_state == RenderTile::CAN_BE_STOLEN && task.get_tile_stolen()) {
+        tile.stealing_state = RenderTile::WAS_STOLEN;
+        break;
       }
 
       if (tile.task == RenderTile::PATH_TRACE) {
@@ -944,7 +996,7 @@ class CPUDevice : public Device {
       coverage.finalize();
     }
 
-    if (task.adaptive_sampling.use) {
+    if (task.adaptive_sampling.use && (tile.stealing_state != RenderTile::WAS_STOLEN)) {
       adaptive_sampling_post(tile, kg);
     }
   }
@@ -1197,7 +1249,7 @@ class CPUDevice : public Device {
 
   void thread_render(DeviceTask &task)
   {
-    if (task_pool.canceled()) {
+    if (TaskPool::canceled()) {
       if (task.need_finish_queue == false)
         return;
     }
@@ -1267,7 +1319,7 @@ class CPUDevice : public Device {
 
       task.release_tile(tile);
 
-      if (task_pool.canceled()) {
+      if (TaskPool::canceled()) {
         if (task.need_finish_queue == false)
           break;
       }
@@ -1364,7 +1416,7 @@ class CPUDevice : public Device {
                         task.offset,
                         sample);
 
-      if (task.get_cancel() || task_pool.canceled())
+      if (task.get_cancel() || TaskPool::canceled())
         break;
 
       task.update_progress(NULL);
@@ -1374,7 +1426,7 @@ class CPUDevice : public Device {
     delete kg;
   }
 
-  int get_split_task_count(DeviceTask &task)
+  virtual int get_split_task_count(DeviceTask &task) override
   {
     if (task.type == DeviceTask::SHADER)
       return task.get_subtask_count(info.cpu_threads, 256);
@@ -1382,7 +1434,7 @@ class CPUDevice : public Device {
       return task.get_subtask_count(info.cpu_threads);
   }
 
-  void task_add(DeviceTask &task)
+  virtual void task_add(DeviceTask &task) override
   {
     /* Load texture info. */
     load_texture_info();
@@ -1410,12 +1462,12 @@ class CPUDevice : public Device {
     }
   }
 
-  void task_wait()
+  virtual void task_wait() override
   {
     task_pool.wait_work();
   }
 
-  void task_cancel()
+  virtual void task_cancel() override
   {
     task_pool.cancel();
   }
@@ -1459,7 +1511,7 @@ class CPUDevice : public Device {
 #endif
   }
 
-  virtual bool load_kernels(const DeviceRequestedFeatures &requested_features_)
+  virtual bool load_kernels(const DeviceRequestedFeatures &requested_features_) override
   {
     requested_features = requested_features_;
 

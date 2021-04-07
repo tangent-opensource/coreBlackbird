@@ -381,7 +381,7 @@ ImageHandle ImageManager::add_image(const string &filename, const ImageParams &p
 
 ImageHandle ImageManager::add_image(const string &filename,
                                     const ImageParams &params,
-                                    const vector<int> &tiles)
+                                    const array<int> &tiles)
 {
   ImageHandle handle;
   handle.manager = this;
@@ -493,8 +493,8 @@ static bool image_associate_alpha(ImageManager::Image *img)
 template<TypeDesc::BASETYPE FileFormat, typename StorageType>
 bool ImageManager::file_load_image(Image *img, int texture_limit)
 {
-  /* we only handle certain number of components */
-  if (!(img->metadata.channels >= 1 && img->metadata.channels <= 4)) {
+  /* Ignore empty images. */
+  if (!(img->metadata.channels > 0)) {
     return false;
   }
 
@@ -813,6 +813,12 @@ void ImageManager::device_update(Device *device, Scene *scene, Progress &progres
   if (!need_update) {
     return;
   }
+
+  scoped_callback_timer timer([scene](double time) {
+    if (scene->update_stats) {
+      scene->update_stats->image.times.add_entry({"device_update", time});
+    }
+  });
 
   TaskPool pool;
   for (size_t slot = 0; slot < images.size(); slot++) {

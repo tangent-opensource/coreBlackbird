@@ -47,7 +47,7 @@ class TaskPool {
     /* Number of all tasks handled by this pool. */
     int num_tasks_handled;
 
-    /* A full multiline description of the state of the pool after
+    /* A full multi-line description of the state of the pool after
      * all work is done.
      */
     string full_report() const;
@@ -61,7 +61,7 @@ class TaskPool {
   void wait_work(Summary *stats = NULL); /* work and wait until all tasks are done */
   void cancel(); /* cancel all tasks and wait until they are no longer executing */
 
-  bool canceled(); /* for worker threads, test if canceled */
+  static bool canceled(); /* For worker threads, test if current task pool canceled. */
 
  protected:
   tbb::task_group tbb_group;
@@ -71,8 +71,8 @@ class TaskPool {
   /* Time time stamp of first task pushed. */
   double start_time;
 
-  /* Number of all tasks handled by this pool. */
-  int num_tasks_handled;
+  /* Number of all tasks pushed to the pool. Cleared after wait_work() and cancel(). */
+  int num_tasks_pushed;
 };
 
 /* Task Scheduler

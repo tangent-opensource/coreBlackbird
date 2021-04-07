@@ -108,7 +108,7 @@ def do_versions(self):
         library_versions.setdefault(library.version, []).append(library)
 
     # Do versioning per library, since they might have different versions.
-    max_need_versioning = (2, 80, 41)
+    max_need_versioning = (2, 92, 14)
     for version, libraries in library_versions.items():
         if version > max_need_versioning:
             continue
@@ -137,9 +137,11 @@ def do_versions(self):
             # Caustics Reflective/Refractive separation in 272
             if version <= (2, 72, 0):
                 cscene = scene.cycles
-                if (cscene.get("no_caustics", False) and
-                    not cscene.is_property_set("caustics_reflective") and
-                    not cscene.is_property_set("caustics_refractive")):
+                if (
+                        cscene.get("no_caustics", False) and
+                        not cscene.is_property_set("caustics_reflective") and
+                        not cscene.is_property_set("caustics_refractive")
+                ):
                     cscene.caustics_reflective = False
                     cscene.caustics_refractive = False
 
@@ -191,6 +193,28 @@ def do_versions(self):
                     cscene.blur_glossy = 0.0
                 if not cscene.is_property_set("sample_clamp_indirect"):
                     cscene.sample_clamp_indirect = 0.0
+
+            if version <= (2, 92, 4):
+                if scene.render.engine == 'CYCLES':
+                  for view_layer in scene.view_layers:
+                    cview_layer = view_layer.cycles
+                    view_layer.use_pass_cryptomatte_object = cview_layer.get("use_pass_crypto_object", False)
+                    view_layer.use_pass_cryptomatte_material = cview_layer.get("use_pass_crypto_material", False)
+                    view_layer.use_pass_cryptomatte_asset = cview_layer.get("use_pass_crypto_asset", False)
+                    view_layer.pass_cryptomatte_depth = cview_layer.get("pass_crypto_depth", 6)
+                    view_layer.use_pass_cryptomatte_accurate = cview_layer.get("pass_crypto_accurate", True)
+
+            if version <= (2, 92, 14):
+                if scene.render.engine == 'CYCLES':
+                  for view_layer in scene.view_layers:
+                    cview_layer = view_layer.cycles
+                    for caov in cview_layer.get("aovs", []):
+                        aov_name = caov.get("name", "AOV")
+                        if aov_name in view_layer.aovs:
+                            continue
+                        baov = view_layer.aovs.add()
+                        baov.name = caov.get("name", "AOV")
+                        baov.type = "COLOR" if caov.get("type", 1) == 1 else "VALUE"
 
         # Lamps
         for light in bpy.data.lights:

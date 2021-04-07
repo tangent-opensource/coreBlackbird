@@ -24,7 +24,7 @@ CCL_NAMESPACE_BEGIN
 
 /* Task Pool */
 
-TaskPool::TaskPool() : start_time(time_dt()), num_tasks_handled(0)
+TaskPool::TaskPool() : start_time(time_dt()), num_tasks_pushed(0)
 {
 }
 
@@ -36,7 +36,7 @@ TaskPool::~TaskPool()
 void TaskPool::push(TaskRunFunction &&task)
 {
   tbb_group.run(std::move(task));
-  num_tasks_handled++;
+  num_tasks_pushed++;
 }
 
 void TaskPool::wait_work(Summary *stats)
@@ -45,19 +45,24 @@ void TaskPool::wait_work(Summary *stats)
 
   if (stats != NULL) {
     stats->time_total = time_dt() - start_time;
-    stats->num_tasks_handled = num_tasks_handled;
+    stats->num_tasks_handled = num_tasks_pushed;
   }
+
+  num_tasks_pushed = 0;
 }
 
 void TaskPool::cancel()
 {
-  tbb_group.cancel();
-  tbb_group.wait();
+  if (num_tasks_pushed > 0) {
+    tbb_group.cancel();
+    tbb_group.wait();
+    num_tasks_pushed = 0;
+  }
 }
 
 bool TaskPool::canceled()
 {
-  return tbb_group.is_canceling();
+  return tbb::is_current_task_group_canceling();
 }
 
 /* Task Scheduler */
