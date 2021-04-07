@@ -60,7 +60,34 @@ ccl_device_forceinline bool point_intersect_test_disc(const float4 point,
   const float3 P,
   const float3 dir,
   float *t) {
-  return false;
+
+  /* Would a min radius help with stability? 
+   * https://github.com/embree/embree/blob/ae029e2ff83bebbbe8742c88aba5b0521aba1a23/kernels/common/context.h#L38 */
+  const float3 center = float4_to_float3(point);
+  const float radius = point.w;
+
+  const float rd2 = 1.f / dot(dir, dir);
+
+  const float3  C0 = center - P;
+  const float projC0  = dot(C0, dir) * rd2;
+
+  // tnear?
+  if (projC0 >= *t) {
+    return false;
+  }
+
+  if (projC0 < radius) {
+    return false;
+  }
+
+  const float3 perp = C0 - projC0 * dir;
+  const float l2 = dot(perp, perp);
+  const float r2 = radius * radius;
+  if (!(l2 <= r2)) {
+    return false;
+  }
+
+  return true;
 }
 
 ccl_device_forceinline bool point_intersect_test_disc_oriented(const float4 point,
