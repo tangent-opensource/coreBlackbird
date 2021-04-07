@@ -153,10 +153,12 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
   sd->v = isect->v;
 #  endif
 
+
   /* Computer point center for normal. */
+  const int n_attrs = (sd->type & PRIMITIVE_POINT_DISC_ORIENTED) ? 2 : 1;
   float3 center = float4_to_float3((isect->type & PRIMITIVE_ALL_MOTION) ?
                                        motion_point(kg, sd->object, sd->prim, sd->time) :
-                                       kernel_tex_fetch(__points, sd->prim));
+                                       kernel_tex_fetch(__points, sd->prim * n_attrs));
 
   if (isect->object != OBJECT_NONE) {
 #  ifdef __OBJECT_MOTION__
@@ -170,7 +172,11 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
 
   /* Normal */
   if (sd->type & PRIMITIVE_POINT_DISC_ORIENTED) {
-    sd->Ng = make_float3(0.f, 1.f, 0.f);
+    //sd->Ng = make_float3(0.f, 1.f, 0.f);
+    sd->Ng = float4_to_float3(kernel_tex_fetch(__points, sd->prim * n_attrs + 1));
+    if (isect->object != OBJECT_NONE) {
+      object_inverse_normal_transform(kg, sd, &sd->Ng);
+    }
   } else {
     sd->Ng = normalize(sd->P - center);
     if (isect->object != OBJECT_NONE) {

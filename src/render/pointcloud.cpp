@@ -281,9 +281,21 @@ void PointCloud::pack(Scene *scene, float4 *packed_points, uint *packed_shader)
   float *radius_data = radius.data();
   int *shader_data = shader.data();
 
-  for (size_t i = 0; i < numpoints; i++) {
-    packed_points[i] = make_float4(
-        points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+  if (point_style == POINT_CLOUD_POINT_DISC_ORIENTED) {
+    Attribute* N_attr = attributes.find(ATTR_STD_VERTEX_NORMAL);
+    assert(N_attr);
+    float3* N = N_attr->data_float3();
+
+    for (size_t i = 0; i < numpoints; i++) {
+      packed_points[i * 2 + 0] = make_float4(
+          points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+      packed_points[i * 2 + 1] = float3_to_float4(N[i]);
+    }
+  } else {
+    for (size_t i = 0; i < numpoints; i++) {
+      packed_points[i] = make_float4(
+          points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+    }
   }
 
   uint shader_id = 0;

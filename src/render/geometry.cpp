@@ -217,6 +217,7 @@ void Geometry::compute_bvh(
 
       delete bvh;
       bvh = BVH::create(bparams, geometry, objects);
+      bvh->dscene = dscene;
       MEM_GUARDED_CALL(progress, bvh->build, *progress);
     }
   }
@@ -876,7 +877,7 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
 
       pointcloud->prim_offset = point_size;
 
-      point_size += pointcloud->num_points();
+      point_size += pointcloud->num_points() * pointcloud->num_attributes();
 
       pointcloud->optix_prim_offset = optix_prim_size;
       optix_prim_size += pointcloud->num_points();
@@ -933,7 +934,7 @@ void GeometryManager::device_update_mesh(
     }
     else if (geom->is_pointcloud()) {
       PointCloud *pointcloud = static_cast<PointCloud *>(geom);
-      point_size += pointcloud->num_points();
+      point_size += pointcloud->num_points() * pointcloud->num_attributes();
     }
   }
 

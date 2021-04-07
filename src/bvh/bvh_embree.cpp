@@ -1043,7 +1043,7 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
       verts = &attr_mP->data_float3()[t_ * num_points];
     }
 
-#if 0
+#if 1
     float4 *rtc_verts = (update) ? (float4 *)rtcGetGeometryBufferData(
                                        geom_id, RTC_BUFFER_TYPE_VERTEX, t) :
                                    (float4 *)rtcSetNewGeometryBuffer(geom_id,
@@ -1062,9 +1062,11 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
     }
 #else
     assert(dscene);
+    printf("Setting shared geometry buffer with points %llu offset %llu prims %llu\n", dscene->points.size(), pointcloud->prim_offset, pointcloud->points.size());
+    assert(pointcloud->prim_offset < dscene->points.size());
     rtcSetSharedGeometryBuffer(geom_id, RTC_BUFFER_TYPE_VERTEX, t, RTC_FORMAT_FLOAT4,
       dscene->points.data(),
-      pointcloud->prim_offset,
+      pointcloud->prim_offset * sizeof(float) * 4,
       sizeof(float) * 4,
       num_points);
 #endif
