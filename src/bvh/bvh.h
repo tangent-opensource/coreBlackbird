@@ -78,10 +78,15 @@ struct PackedBVH {
 
 enum BVH_TYPE { bvh2 };
 
+class DeviceScene;
+
 /* BVH */
 
 class BVH {
  public:
+  /* todo: move somewhere else */
+  DeviceScene* dscene;
+
   PackedBVH pack;
   BVHParams params;
   vector<Geometry *> geometry;

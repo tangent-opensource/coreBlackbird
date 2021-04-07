@@ -169,9 +169,13 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
   }
 
   /* Normal */
-  sd->Ng = normalize(sd->P - center);
-  if (isect->object != OBJECT_NONE) {
-    object_inverse_normal_transform(kg, sd, &sd->Ng);
+  if (sd->type & PRIMITIVE_POINT_DISC_ORIENTED) {
+    sd->Ng = make_float3(0.f, 1.f, 0.f);
+  } else {
+    sd->Ng = normalize(sd->P - center);
+    if (isect->object != OBJECT_NONE) {
+      object_inverse_normal_transform(kg, sd, &sd->Ng);
+    }
   }
   sd->N = sd->Ng;
 

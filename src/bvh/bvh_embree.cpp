@@ -48,6 +48,7 @@
 #  include "render/mesh.h"
 #  include "render/object.h"
 #  include "render/pointcloud.h"
+#  include "render/scene.h"
 
 #  include "util/util_foreach.h"
 #  include "util/util_logging.h"
@@ -283,6 +284,7 @@ static bool rtc_memory_monitor_func(void *userPtr, const ssize_t bytes, const bo
 
 static void rtc_error_func(void *, enum RTCError, const char *str)
 {
+  printf("Embree error %s\n", str);
   VLOG(1) << str;
 }
 
@@ -1029,6 +1031,7 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
   /* Copy the point data to Embree */
   const int t_mid = (num_motion_steps - 1) / 2;
   const float *radius = pointcloud->radius.data();
+  printf("Pointcloud filling motion steps %d\n", num_motion_steps);
   for (int t = 0; t < num_motion_steps; ++t) {
     const float3 *verts;
     int t_;
@@ -1040,6 +1043,7 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
       verts = &attr_mP->data_float3()[t_ * num_points];
     }
 
+#if 0
     float4 *rtc_verts = (update) ? (float4 *)rtcGetGeometryBufferData(
                                        geom_id, RTC_BUFFER_TYPE_VERTEX, t) :
                                    (float4 *)rtcSetNewGeometryBuffer(geom_id,
@@ -1056,6 +1060,14 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
         rtc_verts[j].w = radius[j];
       }
     }
+#else
+    assert(dscene);
+    rtcSetSharedGeometryBuffer(geom_id, RTC_BUFFER_TYPE_VERTEX, t, RTC_FORMAT_FLOAT4,
+      dscene->points.data(),
+      pointcloud->prim_offset,
+      sizeof(float) * 4,
+      num_points);
+#endif
 
     if (update) {
       rtcUpdateGeometryBuffer(geom_id, RTC_BUFFER_TYPE_VERTEX, t);
@@ -1070,24 +1082,28 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
         normals = &attr_mN->data_float3()[t_ * num_points];
       }
 
-      float4 *rtc_normals = (update) ? (float4 *)rtcGetGeometryBufferData(
+      #if 1
+      float *rtc_normals = (update) ? (float *)rtcGetGeometryBufferData(
                                            geom_id, RTC_BUFFER_TYPE_NORMAL, t) :
-                                       (float4 *)rtcSetNewGeometryBuffer(geom_id,
+                                       (float *)rtcSetNewGeometryBuffer(geom_id,
                                                                          RTC_BUFFER_TYPE_NORMAL,
                                                                          t,
-                                                                         RTC_FORMAT_FLOAT4,
-                                                                         sizeof(float) * 4,
+                                                                         RTC_FORMAT_FLOAT3,
+                                                                         sizeof(float) * 3,
                                                                          num_points);
       assert(rtc_normals);
       if (rtc_normals) {
         for (size_t j = 0; j < num_points; ++j) {
-          rtc_normals[j] = float3_to_float4(normals[j]);
+          for (int k = 0; k < 3; ++k) {
+            rtc_normals[j * 3 + k] = normals[j][k];
+          }
         }
       }
 
       if (update) {
         rtcUpdateGeometryBuffer(geom_id, RTC_BUFFER_TYPE_NORMAL, t);
       }
+      #endif
     }
   }
 }
@@ -1106,18 +1122,12 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   }
 
   enum RTCGeometryType type;
-  switch (pointcloud->point_style) {
-    case POINT_CLOUD_POINT_SPHERE:
-      type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
-      break;
-    case POINT_CLOUD_POINT_DISC:
-      type = RTC_GEOMETRY_TYPE_DISC_POINT;
-      break;
-    case POINT_CLOUD_POINT_DISC_ORIENTED:
-      type = RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT;
-      break;
-    default:
-      return;
+  if (pointcloud->point_style == POINT_CLOUD_POINT_DISC_ORIENTED) {
+    type = RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT;
+  } else if (pointcloud->point_style == POINT_CLOUD_POINT_DISC) {
+    type = RTC_GEOMETRY_TYPE_DISC_POINT;
+  } else {
+    type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
   }
 
   RTCGeometry geom_id = rtcNewGeometry(rtc_shared_device, type);

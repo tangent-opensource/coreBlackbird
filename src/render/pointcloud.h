@@ -23,6 +23,7 @@ CCL_NAMESPACE_BEGIN
 
 struct PackedBVH;
 
+// less ugly naming?
 enum PointCloudPointStyle {
   POINT_CLOUD_POINT_SPHERE,
   POINT_CLOUD_POINT_DISC,
@@ -64,9 +65,6 @@ class PointCloud : public Geometry {
   array<float3> points;
   array<float> radius;
   array<int> shader;
-
-  // Only needed if the point type is oriented
-  array<float3> normals;
 
   // NODE_SOCKET_API(array<float3>, points);
   // NODE_SOCKET_API(array<float>, radius);

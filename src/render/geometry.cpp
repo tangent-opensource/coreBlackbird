@@ -1132,6 +1132,7 @@ void GeometryManager::device_update_bvh(Device *device,
   VLOG(1) << "Using " << bvh_layout_name(bparams.bvh_layout) << " layout.";
 
   BVH *bvh = BVH::create(bparams, scene->geometry, scene->objects);
+  bvh->dscene = dscene;
   bvh->build(progress, &device->stats);
 
   if (progress.get_cancel()) {
