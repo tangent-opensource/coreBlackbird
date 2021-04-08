@@ -154,7 +154,7 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
 #  endif
 
   /* Computer point center for normal. */
-  const int n_attrs = (sd->type == PRIMITIVE_POINT_DISC) ? 1 : 1;
+  const int n_attrs = (sd->type == PRIMITIVE_POINT_DISC) ? 2 : 1;
   float3 center = float4_to_float3((isect->type & PRIMITIVE_ALL_MOTION) ?
                                        motion_point(kg, sd->object, sd->prim, sd->time) :
                                        kernel_tex_fetch(__points, sd->prim * n_attrs));
@@ -176,7 +176,7 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
     sd->Ng = normalize(-ray->D);
   } else if (sd->type == PRIMITIVE_POINT_DISC_ORIENTED) {
     /* todo: This buffer should be obtained from Embree */
-    sd->Ng = make_float3(1.0f, 0.f, 0.f);
+    sd->Ng = float4_to_float3(kernel_tex_fetch(__points, sd->prim * n_attrs + 1));
   }
   if (isect->object != OBJECT_NONE) {
     object_inverse_normal_transform(kg, sd, &sd->Ng);

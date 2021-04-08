@@ -101,6 +101,11 @@ class PointCloud : public Geometry {
     return points.size();
   }
 
+  size_t num_attributes() const
+  {
+    return point_style == POINT_CLOUD_POINT_DISC_ORIENTED ? 2 : 1;
+  }
+
   /* UDIM */
   void get_uv_tiles(ustring map, unordered_set<int> &tiles) override;
 
