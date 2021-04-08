@@ -1070,18 +1070,20 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
         normals = &attr_mN->data_float3()[t_ * num_points];
       }
 
-      float4 *rtc_normals = (update) ? (float4 *)rtcGetGeometryBufferData(
+      float *rtc_normals = (update) ? (float *)rtcGetGeometryBufferData(
                                            geom_id, RTC_BUFFER_TYPE_NORMAL, t) :
-                                       (float4 *)rtcSetNewGeometryBuffer(geom_id,
+                                       (float *)rtcSetNewGeometryBuffer(geom_id,
                                                                          RTC_BUFFER_TYPE_NORMAL,
                                                                          t,
-                                                                         RTC_FORMAT_FLOAT4,
-                                                                         sizeof(float) * 4,
+                                                                         RTC_FORMAT_FLOAT3,
+                                                                         sizeof(float) * 3,
                                                                          num_points);
       assert(rtc_normals);
       if (rtc_normals) {
         for (size_t j = 0; j < num_points; ++j) {
-          rtc_normals[j] = float3_to_float4(normals[j]);
+          for (int k = 0; k < 3; ++k) {
+            rtc_normals[j * 3 + k] = normals[j][k];
+          }
         }
       }
 
@@ -1106,18 +1108,12 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   }
 
   enum RTCGeometryType type;
-  switch (pointcloud->point_style) {
-    case POINT_CLOUD_POINT_SPHERE:
-      type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
-      break;
-    case POINT_CLOUD_POINT_DISC:
-      type = RTC_GEOMETRY_TYPE_DISC_POINT;
-      break;
-    case POINT_CLOUD_POINT_DISC_ORIENTED:
-      type = RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT;
-      break;
-    default:
-      return;
+  if (pointcloud->point_style == POINT_CLOUD_POINT_DISC_ORIENTED) {
+    type = RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT;
+  } else if (pointcloud->point_style == POINT_CLOUD_POINT_DISC) {
+    type = RTC_GEOMETRY_TYPE_DISC_POINT;
+  } else {
+    type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
   }
 
   RTCGeometry geom_id = rtcNewGeometry(rtc_shared_device, type);
