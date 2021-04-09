@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.9.1'
+version = '1.13.0-ta.1.9.3'
 
 authors = [
     'benjamin.skinner',
@@ -25,35 +25,19 @@ requires = [
     'gflags-2.2.2',
 ]
 
-build_requires = [
-    'cmake-3.18',
-]
-
 @early()
 def private_build_requires():
     import sys
     if 'win' in str(sys.platform):
-        return ['visual_studio', 'cmake-3.18+']
+        return ['cmake-3.18<3.20', 'visual_studio',]
     else:
-        return ['gcc-6', 'cmake-3.18+']
+        return ['cmake-3.18<3.20', 'gcc-6',]
 
-windows_variants = [
+variants = [
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3', 'boost-1.69.0', 'openvdb-7.0.0'],
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.2.2-houdini'],
-]
-
-linux_variants = [
     ['platform-linux', 'arch-x86_64', 'os-centos-7', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.2.2-houdini'],
 ]
-
-@early()
-def variants():
-    import sys
-    if 'win' in str(sys.platform):
-        return windows_variants
-    else:
-        return linux_variants
-
 
 # Using an external openvdb build caused instant crashes when hdcycles ran inside of houdini.
 # Ben might have missed something, however tried and failed.
