@@ -70,8 +70,6 @@ void OCTBuild::update_octree(const vector<Object *> &objects)
         if (metadata.depth > 1) {
           octree_root->bbox.grow(metadata.world_bounds);
 
-          octree_root->num_volumes++;
-          octree_root->vol_indices[i + vol_idx] = handle.svm_slot();
           octree_root->min_extinction = ccl::min(octree_root->min_extinction, metadata.min);
           octree_root->max_extinction = ccl::max(octree_root->max_extinction, metadata.max);
 
@@ -99,7 +97,6 @@ void OCTBuild::reset_octree()
 void OCTBuild::build_root_rec(OCTNode *root, int depth, int parent_idx)
 {
   root->bbox = BoundBox(BoundBox::empty);
-  memset(root->vol_indices, 0, sizeof(int) * 1024);
   memset(root->obj_indices, 0, sizeof(int) * 1024);
   root->depth = depth;
 
@@ -150,7 +147,6 @@ void OCTBuild::update_root_rec(OCTNode *node, const vector<Object *> &objects)
 
         Object *ob = objects[y];
 
-        int vol_idx = 0;
         bool add_object = false;
         foreach (Attribute &attr, ob->geometry->attributes.attributes) {
           if (attr.element == ATTR_ELEMENT_VOXEL) {
@@ -164,13 +160,10 @@ void OCTBuild::update_root_rec(OCTNode *node, const vector<Object *> &objects)
             if (metadata.depth > 1) {
               if (metadata.world_bounds.intersects(node->children[i]->bbox)) {
 
-                node->children[i]->num_volumes++;
-                node->children[i]->vol_indices[vol_idx] = handle.svm_slot();
                 node->children[i]->min_extinction = ccl::min(node->children[i]->min_extinction,
                                                              metadata.min);
                 node->children[i]->max_extinction = ccl::max(node->children[i]->max_extinction,
                                                              metadata.max);
-                vol_idx++;
                 add_object = true;
               }
             }
@@ -203,7 +196,6 @@ void OCTBuild::clear_root_rec(OCTNode *node)
 
   node->max_extinction = make_float3(0.0f);
   node->min_extinction = make_float3(FLT_MAX);
-  node->num_volumes = 0;
   node->num_objects = 0;
   node->bbox = BoundBox(BoundBox::empty);
 }
