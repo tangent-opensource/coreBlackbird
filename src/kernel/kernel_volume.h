@@ -1421,6 +1421,90 @@ ccl_device_inline void kernel_volume_clean_stack(KernelGlobals *kg,
   }
 }
 
+#  ifdef __VOLUME_OCTREE__
+ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg,
+                                                               PathState *state,
+                                                               Ray *ray,
+                                                               ShaderData *sd,
+                                                               float3 *throughput,
+                                                               float rphase)
+{
+  VolumeIntegrateResult result = VOLUME_PATH_MISSED;
+  KernelOCTree root = kernel_tex_fetch(__octree_nodes, 0);
+
+  if (is_zero(root.max_extinction)) {
+    return result;
+  }
+
+  float t = 0.0f;
+  float inv_max_extinction =
+      1.0f / root.max_extinction.x; /* TODO sample extiction channel based on rphase */
+  float3 pos = ray->P;
+
+  float3 extinction = make_float3(1.0f);
+  float3 absorption = make_float3(0.0f);
+
+  do {
+    float xi = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
+    t -= logf(1 - xi) * inv_max_extinction;
+
+    if (t > ray->t) {
+      return result;
+    }
+
+    pos = ray->P + ray->D * t;
+    sd->P = pos;
+
+    if (pos.x < root.bmin.x || pos.x > root.bmax.x || pos.y < root.bmin.y || pos.y > root.bmax.y ||
+        pos.z < root.bmin.z || pos.z > root.bmax.z) {
+
+      /* Ray ended up outside root bbox */
+      return result;
+    }
+
+    /* Sum all densities
+     * TODO evaulate shaders for scattering, absorptions and extinctions
+     * TODO move this to it's own function
+     * TODO volume velocity should be handled here
+     */
+    float density = 0.0f;
+    for (int i = 0; i < root.num_objects; i++) {
+      KernelObject ob = kernel_tex_fetch(__objects, root.obj_indices[i]);
+      sd->object = root.obj_indices[i];
+      sd->ob_tfm = ob.tfm;
+      sd->ob_itfm = ob.itfm;
+      AttributeDescriptor density_desc = find_attribute(kg, sd, ATTR_STD_VOLUME_DENSITY);
+
+      if (density_desc.offset != ATTR_STD_NOT_FOUND) {
+        density += volume_attribute_float(kg, sd, density_desc);
+      }
+    }
+
+    float zeta = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
+    if (density * extinction.x * inv_max_extinction >
+        zeta) { /* TODO sample extiction channel based on rphase */
+      result = VOLUME_PATH_SCATTERED;
+    }
+    else if (density * absorption.x * inv_max_extinction >
+             zeta) { /* TODO sample absorption channel based on rphase */
+      result = VOLUME_PATH_ATTENUATED;
+    }
+
+  } while (result != VOLUME_PATH_MISSED);
+
+  if (result == VOLUME_PATH_SCATTERED) {
+    return result;
+  }
+  else if (result == VOLUME_PATH_ATTENUATED) {
+    state->flag = PATH_RAY_TERMINATE;
+    *throughput = make_float3(0.0f);
+  }
+
+  return result;
+}
+
+#  endif /* __VOLUME_OCTREE__ */
+
 #endif /* __VOLUME__ */
 
 CCL_NAMESPACE_END

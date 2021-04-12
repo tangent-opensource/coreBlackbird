@@ -195,6 +195,59 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
     kernel_volume_shadow(kg, emission_sd, state, &volume_ray, throughput);
   }
 }
+
+#      ifdef __VOLUME_OCTREE__
+ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg,
+                                                               ShaderData *sd,
+                                                               PathState *state,
+                                                               Ray *ray,
+                                                               float3 *throughput,
+                                                               ccl_addr_space Intersection *isect,
+                                                               bool hit,
+                                                               ShaderData *indirect_sd,
+                                                               ShaderData *emission_sd,
+                                                               PathRadiance *L)
+{
+  /* Return if there is no octree intersection */
+  if (!isect->has_volume) {
+    return;
+  }
+
+  Ray volume_ray = *ray;
+
+  /* If ray position is outside of octree push it to be contained */
+  if (!isect->in_volume) {
+    volume_ray.P += volume_ray.D * (isect->v_t + 1e-4f /*epsilon*/);
+  }
+
+  int num_samples = kernel_data.integrator.volume_samples;
+  float num_samples_inv = 1.0f / num_samples;
+
+  for (int j = 0; j < num_samples; j++) {
+    PathState ps = *state;
+    Ray pray = *ray;
+    float3 tp = (*throughput) * num_samples_inv;
+
+    /* branch RNG state */
+    path_state_branch(&ps, j, num_samples);
+
+      /* Get the probabilistic volume scatter result */
+    float rphase = path_state_rng_1D(kg, &ps, PRNG_PHASE_CHANNEL);
+    VolumeIntegrateResult result = kernel_volume_traverse_octree(
+        kg, state, &volume_ray, sd, &tp, rphase);
+
+#        ifdef __VOLUME_SCATTER__
+    if (result == VOLUME_PATH_SCATTERED) {
+      *throughput *= make_float3(1.0f, 0.0f, 0.0f); /* Testing */
+    }
+
+    // TODO Volume shadow
+
+#        endif /* __VOLUME_SCATTER__ */
+  }
+}
+#      endif /* __VOLUME_OCTREE__ */
+
 #    endif /* __VOLUME__ */
 
 /* bounce off surface and integrate indirect light */
@@ -399,8 +452,14 @@ ccl_device void kernel_branched_path_integrate(KernelGlobals *kg,
 
 #    ifdef __VOLUME__
     /* Volume integration. */
+#      ifndef __VOLUME_OCTREE__
     kernel_branched_path_volume(
         kg, &sd, &state, &ray, &throughput, &isect, hit, &indirect_sd, emission_sd, L);
+#      else
+    kernel_branched_path_volume_octree(
+        kg, &sd, &state, &ray, &throughput, &isect, hit, &indirect_sd, emission_sd, L);
+#      endif  // !__VOLUME_OCTREE__
+
 #    endif /* __VOLUME__ */
 
     /* Shade background. */

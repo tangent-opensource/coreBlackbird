@@ -648,20 +648,19 @@ void GeometryManager::device_update_attributes(Device *device,
 
     foreach (Shader *shader, geom->used_shaders) {
       geom_attributes[i].add(shader->attributes);
-      
-      /* Add a request for volume velocity if a volume attribute is 
+
+      /* Add a request for volume velocity if a volume attribute is
       present and motion blur is on*/
       if (scene->need_motion() == Scene::MOTION_BLUR) {
         foreach (AttributeRequest &attr, geom_attributes[i].requests) {
-          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR
-          || attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT
-          || attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
+          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR ||
+              attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT ||
+              attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
             geom_attributes[i].add(ATTR_STD_VOLUME_VELOCITY);
             break;
           }
         }
       }
-
     }
   }
 
@@ -841,7 +840,8 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
 
       if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
-      } else {
+      }
+      else {
         normals_size += mesh->verts.size();
       }
 
@@ -886,7 +886,8 @@ void GeometryManager::device_update_mesh(
       /* Making more space for normals if they are per-corner */
       if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
-      } else {
+      }
+      else {
         normals_size += mesh->verts.size();
       }
 
@@ -971,11 +972,11 @@ void GeometryManager::device_update_mesh(
     dscene->tri_patch_uv.copy_to_device();
 
     /* Updating the normal buffer offset to be indexed by object */
-    int* vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
+    int *vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
     for (size_t i = 0; i < scene->objects.size(); ++i) {
-      const Geometry* geom = scene->objects[i]->geometry;
+      const Geometry *geom = scene->objects[i]->geometry;
       if (geom && geom->type == Geometry::MESH) {
-        const Mesh* mesh = static_cast<const Mesh *>(geom);
+        const Mesh *mesh = static_cast<const Mesh *>(geom);
 
         /* Start of the normal buffer or the geometry */
         vnormal_offset[i] = mesh->normals_offset;
@@ -983,8 +984,9 @@ void GeometryManager::device_update_mesh(
         /* Since the vertex/prim indices are global, we add the offset
          * correction here */
         if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
-          vnormal_offset[i] -= 3* mesh->prim_offset; /* Corner attribute */
-        } else {
+          vnormal_offset[i] -= 3 * mesh->prim_offset; /* Corner attribute */
+        }
+        else {
           vnormal_offset[i] -= mesh->vert_offset; /* Vertex attribute*/
         }
       }
@@ -1183,8 +1185,11 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
           volume_images_updated = true;
         }
 
+#ifndef WITH_OCTREE
         Mesh *mesh = static_cast<Mesh *>(geom);
         create_volume_mesh(mesh, progress);
+#endif  // !WITH_OCTREE
+
       }
     }
 

@@ -29,6 +29,7 @@ CCL_NAMESPACE_BEGIN
 struct ccl_align(16) OCTNode
 {
   int num_volumes = 0;
+  int num_objects = 0;
   int vol_indices[1024];
   int obj_indices[1024];
 

@@ -32,9 +32,6 @@ ccl_device_inline
   float3 dir = bvh_clamp_direction(ray->D);
   float3 idir = bvh_inverse_direction(dir);
 
-  isect->t = ray->t;
-  isect->u = 0.0f;
-  isect->v = 0.0f;
   isect->prim = PRIM_NONE;
   isect->object = OBJECT_NONE;
   isect->has_volume = false;
@@ -42,7 +39,7 @@ ccl_device_inline
 
   KernelOCTree root = kernel_tex_fetch(__octree_nodes, 0);
 
-  if (!root.num_volumes || !root.has_children) {
+  if (root.num_objects == 0) {
     return false;
   }
 
@@ -59,17 +56,17 @@ ccl_device_inline
   if (t_max <= 0.0f) {
     return false;  // box is behind
   }
+  if (t_min > ray->t) {
+    return false; // Object in between
+  }
   if (t_min > t_max) {
     return false;  // ray missed
   }
   if (t_min < 0) {
-    t_min = t_max;
-    if (t_min < 0) {
-      return false;
-    }
+    t_min = 0.0f;
   }
 
-  isect->t = t_min;
+  isect->v_t = t_min;
   isect->has_volume = true;
   if (P.x >= root.bmin.x && P.x <= root.bmax.x && 
       P.y >= root.bmin.y && P.y <= root.bmax.y &&

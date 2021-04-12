@@ -698,6 +698,10 @@ typedef struct Intersection {
   bool has_volume; /* Ray intersects an octree node */
   bool in_volume;  /* is ray position inside a volume */
 
+#ifdef __VOLUME_OCTREE__
+  float v_t;  
+#endif
+
 #ifdef __KERNEL_DEBUG__
   int num_traversed_nodes;
   int num_traversed_instances;
@@ -1460,6 +1464,7 @@ static_assert_align(KernelBVH, 16);
 #ifdef __VOLUME_OCTREE__
 typedef struct KernelOCTree {
   int num_volumes;
+  int num_objects;
   int vol_indices[1024];
   int obj_indices[1024];
   float3 max_extinction;

@@ -86,35 +86,32 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
   if (progress.get_cancel())
     return;
 
-  octree_builder->update_octree(volume_objects);
+  octree_builder->update_octree(scene->objects);
 
   vector<OCTNode *> host_vector = octree_builder->flatten_octree();
   KernelOCTree *k_tree_root = dscene->octree_nodes.alloc(octree_builder->get_num_nodes());
 
   foreach (OCTNode *node, host_vector) {
-    KernelOCTree k_oct;
-
-    k_oct.max_extinction = node->max_extinction;
-    k_oct.min_extinction = node->min_extinction;
-    k_oct.has_children = node->has_children;
-    k_oct.depth = node->depth;
-    k_oct.parent_idx = node->parent_idx;
-    k_oct.num_volumes = node->num_volumes;
-    k_oct.bmin = node->bbox.min;
-    k_oct.bmax = node->bbox.max;
+    k_tree_root[node->idx].max_extinction = node->max_extinction;
+    k_tree_root[node->idx].min_extinction = node->min_extinction;
+    k_tree_root[node->idx].has_children = node->has_children;
+    k_tree_root[node->idx].depth = node->depth;
+    k_tree_root[node->idx].parent_idx = node->parent_idx;
+    k_tree_root[node->idx].num_volumes = node->num_volumes;
+    k_tree_root[node->idx].num_objects = node->num_objects;
+    k_tree_root[node->idx].bmin = node->bbox.min;
+    k_tree_root[node->idx].bmax = node->bbox.max;
 
     for (int i = 0; i < 1024; i++) {
-      k_oct.vol_indices[i] = node->vol_indices[i];
-      k_oct.obj_indices[i] = node->obj_indices[i];
+      k_tree_root[node->idx].vol_indices[i] = node->vol_indices[i];
+      k_tree_root[node->idx].obj_indices[i] = node->obj_indices[i];
     }
 
     if (node->has_children) {
       for (int i = 0; i < 8; i++) {
-        k_oct.child_idx[i] = node->child_idx[i];
+        k_tree_root[node->idx].child_idx[i] = node->child_idx[i];
       }
     }
-
-    k_tree_root[node->idx] = k_oct;
   }
 
   dscene->octree_nodes.copy_to_device();

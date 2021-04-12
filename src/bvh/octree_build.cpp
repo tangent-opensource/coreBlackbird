@@ -20,10 +20,10 @@
 
 #include "util/util_foreach.h"
 
+#include "render/attribute.h"
+#include "render/geometry.h"
 #include "render/image.h"
 #include "render/object.h"
-#include "render/geometry.h"
-#include "render/attribute.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -51,11 +51,13 @@ void OCTBuild::init_octree()
 
 void OCTBuild::update_octree(const vector<Object *> &objects)
 {
+  int obj_idx = 0;
   for (int i = 0; i < objects.size(); i++) {
 
     Object *ob = objects[i];
 
     int vol_idx = 0;
+    bool add_object = false;
     foreach (Attribute &attr, ob->geometry->attributes.attributes) {
       if (attr.element == ATTR_ELEMENT_VOXEL) {
         ImageHandle &handle = attr.data_voxel();
@@ -74,11 +76,16 @@ void OCTBuild::update_octree(const vector<Object *> &objects)
           octree_root->max_extinction = ccl::max(octree_root->max_extinction, metadata.max);
 
           vol_idx++;
+          add_object = true;
         }
       }
     }
 
-    octree_root->obj_indices[i] = ob->random_id;
+    if (add_object) {
+      octree_root->obj_indices[obj_idx] = i;
+      octree_root->num_objects++;
+      obj_idx++;
+    }
   }
 
   update_root_rec(octree_root, objects);
@@ -100,7 +107,7 @@ void OCTBuild::build_root_rec(OCTNode *root, int depth, int parent_idx)
     for (int i = 0; i < 8; i++) {
       root->children[i] = new OCTNode;
       root->children[i]->parent = root;
-      root->children[i]->idx = (parent_idx * 8) + (i+1);
+      root->children[i]->idx = (parent_idx * 8) + (i + 1);
       root->children[i]->parent_idx = parent_idx;
 
       build_root_rec(root->children[i], depth - 1, root->children[i]->idx);
@@ -171,8 +178,9 @@ void OCTBuild::update_root_rec(OCTNode *node, const vector<Object *> &objects)
         }
 
         if (add_object) {
-            node->children[i]->obj_indices[obj_idx] = ob->random_id;
-            obj_idx++;
+          node->children[i]->obj_indices[obj_idx] = y;
+          node->children[i]->num_objects++;
+          obj_idx++;
         }
       }
 
@@ -196,6 +204,7 @@ void OCTBuild::clear_root_rec(OCTNode *node)
   node->max_extinction = make_float3(0.0f);
   node->min_extinction = make_float3(FLT_MAX);
   node->num_volumes = 0;
+  node->num_objects = 0;
   node->bbox = BoundBox(BoundBox::empty);
 }
 
