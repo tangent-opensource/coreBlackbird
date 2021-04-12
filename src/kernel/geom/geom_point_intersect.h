@@ -60,7 +60,33 @@ ccl_device_forceinline bool point_intersect_test_disc(const float4 point,
   const float3 P,
   const float3 dir,
   float *t) {
-  return false;
+
+  /* Would a min radius help with stability? */
+  const float3 center = float4_to_float3(point);
+  const float radius = point.w;
+
+  const float rd2 = 1.f / dot(dir, dir);
+
+  const float3 c0 = center - P;
+  const float projC0  = dot(c0, dir) * rd2;
+
+  if (*t <= projC0) {
+    return false;
+  }
+
+  if (projC0 < radius) {
+    return false;
+  }
+
+  const float3 perp = c0 - projC0 * dir;
+  const float l2 = dot(perp, perp);
+  const float r2 = radius * radius;
+  if (!(l2 <= r2)) {
+    return false;
+  }
+
+  *t = projC0;
+  return true;
 }
 
 ccl_device_forceinline bool point_intersect_test_disc_oriented(const float4 point,
