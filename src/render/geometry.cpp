@@ -1642,7 +1642,10 @@ void GeometryManager::create_motion_blur_geometry(
     else { /* velocity */
       for (size_t vert = 0; vert < num_points; ++vert) {
         mP[vert] = P[vert] + relative_time * V[vert];
+        mP[vert].w = P[vert].w;
         //mP[vert] = P[vert];
+        //printf("mP %.3f %.3f %.3f P %.3f %.3f %.3f V %.3f %.3f %.3f\n", 
+          //mP[vert].x, mP[vert].y, mP[vert].z, P[vert].x, P[vert].y, P[vert].z, V[vert].x, V[vert].y, V[vert].z);
       }
       printf("relative time %.3f\n", relative_time);
     }
@@ -1671,6 +1674,8 @@ void GeometryManager::create_motion_blur_geometry(const Scene *scene,
     PointCloud *pc = static_cast<PointCloud *>(geom);
     P = pc->points.data();
     num_points = pc->points.size();
+
+    /*  */
 
     auto it = pc->attributes.attributes.begin();
     while (it != pc->attributes.attributes.end()) {

@@ -1012,10 +1012,11 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
                                         const PointCloud *pointcloud,
                                         const bool update)
 {
-  const Attribute *attr_mP = NULL;
+  const Attribute *attr_mP = NULL, *attr_mN = NULL;
   size_t num_motion_steps = 1;
   if (pointcloud->has_motion_blur()) {
     attr_mP = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+    attr_mN = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_NORMAL);
     if (attr_mP) {
       num_motion_steps = pointcloud->motion_steps;
     }
@@ -1024,7 +1025,6 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
   const size_t num_points = pointcloud->num_points();
 
   const Attribute *attr_N = pointcloud->attributes.find(ATTR_STD_VERTEX_NORMAL);
-  const Attribute *attr_mN = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_NORMAL);
 
   /* Copy the point data to Embree */
   const int t_mid = (num_motion_steps - 1) / 2;
@@ -1137,18 +1137,18 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   const size_t prim_tri_index_size = pack.prim_tri_index.size();
   pack.prim_tri_index.resize(prim_tri_index_size + num_prims);
 
-  /* todo: bits or different types? */
-  uint prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT : 0x0;
+  uint prim_type = PRIMITIVE_NONE;
   switch(pointcloud->point_style) {
   case POINT_CLOUD_POINT_SPHERE:
-    prim_type |= PRIMITIVE_POINT_SPHERE;
+    prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE : PRIMITIVE_POINT_SPHERE;
     break;
   case POINT_CLOUD_POINT_DISC:
-    prim_type |= PRIMITIVE_POINT_DISC;
+    prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC : PRIMITIVE_POINT_DISC;
     break;
   case POINT_CLOUD_POINT_DISC_ORIENTED:
-    prim_type |= PRIMITIVE_POINT_DISC_ORIENTED;
+    prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED : PRIMITIVE_POINT_DISC_ORIENTED;
     break;
+  default: assert(false);
   }
 
   for (size_t j = 0; j < num_prims; ++j) {

@@ -144,7 +144,7 @@ ccl_device_forceinline bool point_intersect(KernelGlobals *kg,
   const int prim = kernel_tex_fetch(__prim_index, prim_addr);
 
   float4 point;
-  const int n_attrs = (type == PRIMITIVE_POINT_DISC_ORIENTED) ? 2 : 1;
+  const int n_attrs = (type == PRIMITIVE_POINT_DISC_ORIENTED || type == PRIMITIVE_MOTION_POINT_DISC_ORIENTED) ? 2 : 1;
  
   if (!is_motion) {
     point = kernel_tex_fetch(__points, prim * n_attrs);
@@ -152,17 +152,17 @@ ccl_device_forceinline bool point_intersect(KernelGlobals *kg,
   else {
     const int fobject = (object == OBJECT_NONE) ? kernel_tex_fetch(__prim_object, prim_addr) :
                                                   object;
-    point = motion_point(kg, fobject, prim, time);
+    point = motion_point(kg, fobject, prim, time, n_attrs);
   }
 
   float t = isect->t;
 
   bool ret_test;
-  if (type == PRIMITIVE_POINT_SPHERE) {
+  if (type == PRIMITIVE_POINT_SPHERE || type == PRIMITIVE_MOTION_POINT_SPHERE) {
     ret_test = point_intersect_test_sphere(point, P, dir, &t);
-  } else if (type == PRIMITIVE_POINT_DISC) {
+  } else if (type == PRIMITIVE_POINT_DISC || type == PRIMITIVE_MOTION_POINT_DISC) {
     ret_test = point_intersect_test_disc(point, P, dir, &t);
-  } else if (type == PRIMITIVE_POINT_DISC_ORIENTED) {
+  } else if (type == PRIMITIVE_POINT_DISC_ORIENTED || type == PRIMITIVE_MOTION_POINT_DISC_ORIENTED) {
     const float3 normal = float4_to_float3(kernel_tex_fetch(__points, prim * n_attrs + 1));
     ret_test = point_intersect_test_disc_oriented(point, P, normal, dir, &t);
   }
@@ -203,9 +203,9 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
 #  endif
 
   /* Computer point center for normal. */
-  const int n_attrs = (sd->type == PRIMITIVE_POINT_DISC_ORIENTED) ? 2 : 1;
+  const int n_attrs = (sd->type == PRIMITIVE_POINT_DISC_ORIENTED || sd->type == PRIMITIVE_MOTION_POINT_DISC_ORIENTED) ? 2 : 1;
   float3 center = float4_to_float3((isect->type & PRIMITIVE_ALL_MOTION) ?
-                                       motion_point(kg, sd->object, sd->prim, sd->time) :
+                                       motion_point(kg, sd->object, sd->prim, sd->time, n_attrs) :
                                        kernel_tex_fetch(__points, sd->prim * n_attrs));
 
   if (isect->object != OBJECT_NONE) {
@@ -219,11 +219,11 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
   }
 
   /* Normal */
-  if (sd->type == PRIMITIVE_POINT_SPHERE) {
+  if (sd->type == PRIMITIVE_POINT_SPHERE || sd->type == PRIMITIVE_MOTION_POINT_SPHERE) {
     sd->Ng = normalize(sd->P - center);
-  } else if (sd->type == PRIMITIVE_POINT_DISC) {
+  } else if (sd->type == PRIMITIVE_POINT_DISC || sd->type == PRIMITIVE_MOTION_POINT_DISC) {
     sd->Ng = normalize(-ray->D);
-  } else if (sd->type == PRIMITIVE_POINT_DISC_ORIENTED) {
+  } else if (sd->type == PRIMITIVE_POINT_DISC_ORIENTED || sd->type == PRIMITIVE_MOTION_POINT_DISC_ORIENTED) {
     /* todo: This buffer should be obtained from Embree */
     sd->Ng = float4_to_float3(kernel_tex_fetch(__points, sd->prim * n_attrs + 1));
   }

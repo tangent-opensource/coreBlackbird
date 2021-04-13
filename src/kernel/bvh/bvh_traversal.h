@@ -187,7 +187,9 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals *kg,
             case PRIMITIVE_POINT_SPHERE:
             case PRIMITIVE_POINT_DISC:
             case PRIMITIVE_POINT_DISC_ORIENTED:
-            case PRIMITIVE_MOTION_POINT: {
+            case PRIMITIVE_MOTION_POINT_SPHERE:
+            case PRIMITIVE_MOTION_POINT_DISC:
+            case PRIMITIVE_MOTION_POINT_DISC_ORIENTED: {
               for (; prim_addr < prim_addr2; prim_addr++) {
                 BVH_DEBUG_NEXT_INTERSECTION();
                 const bool hit = point_intersect(
