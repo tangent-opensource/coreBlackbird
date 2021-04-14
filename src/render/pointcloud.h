@@ -23,6 +23,12 @@ CCL_NAMESPACE_BEGIN
 
 struct PackedBVH;
 
+enum PointCloudPointStyle {
+  POINT_CLOUD_POINT_SPHERE,
+  POINT_CLOUD_POINT_DISC,
+  POINT_CLOUD_POINT_DISC_ORIENTED
+};
+
 class PointCloud : public Geometry {
  public:
   NODE_DECLARE
@@ -54,12 +60,17 @@ class PointCloud : public Geometry {
                           size_t p) const;
   };
 
+  PointCloudPointStyle point_style;
   array<float3> points;
   array<float> radius;
   array<int> shader;
-  //NODE_SOCKET_API(array<float3>, points);
-  //NODE_SOCKET_API(array<float>, radius);
-  //NODE_SOCKET_API(array<int>, shader);
+
+  // Only needed if the point type is oriented
+  array<float3> normals;
+
+  // NODE_SOCKET_API(array<float3>, points);
+  // NODE_SOCKET_API(array<float>, radius);
+  // NODE_SOCKET_API(array<int>, shader);
 
   /* Constructor/Destructor */
   PointCloud();
@@ -67,7 +78,7 @@ class PointCloud : public Geometry {
 
   /* Geometry */
   void clear(const bool preserver_shaders = false);
-  //override; port: not virtual 
+  // override; port: not virtual
 
   void resize(int numpoints);
   void reserve(int numpoints);
@@ -90,14 +101,19 @@ class PointCloud : public Geometry {
     return points.size();
   }
 
+  size_t num_attributes() const
+  {
+    return point_style == POINT_CLOUD_POINT_DISC_ORIENTED ? 2 : 1;
+  }
+
   /* UDIM */
   void get_uv_tiles(ustring map, unordered_set<int> &tiles) override;
 
   /* BVH */
   void pack(Scene *scene, float4 *packed_points, uint *packed_shader);
-  #if 0
+#if 0
   void pack_primitives(PackedBVH &pack, int object, uint visibility) override;
-  #endif
+#endif
 };
 
 CCL_NAMESPACE_END

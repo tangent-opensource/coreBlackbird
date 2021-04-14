@@ -566,6 +566,9 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
   }
   else if (geometry->type == Geometry::POINTCLOUD) {
     switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_VERTEX);
+        break;
       case ATTR_STD_UV:
         attr = add(name, TypeFloat2, ATTR_ELEMENT_VERTEX);
         break;
@@ -574,6 +577,15 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
         break;
       case ATTR_STD_MOTION_VERTEX_POSITION:
         attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX_MOTION);
+        break;
+      case ATTR_STD_VERTEX_VELOCITY:
+        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX);
+        break;
+      case ATTR_STD_VERTEX_ACCELERATION:
+        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX);
+        break;
+      case ATTR_STD_VERTEX_COLOR:
+        attr = add(name, TypeDesc::TypeColor, ATTR_ELEMENT_VERTEX);
         break;
       case ATTR_STD_POINT_RANDOM:
         attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_VERTEX);
