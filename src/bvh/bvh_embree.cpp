@@ -1051,6 +1051,7 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
 
     assert(rtc_verts);
     if (rtc_verts) {
+      printf("Verts %.3f %.3f %.3f %.3f\n", verts[0].x, verts[0].y, verts[0].z, verts[0].w);
       for (size_t j = 0; j < num_points; ++j) {
         rtc_verts[j] = float3_to_float4(verts[j]);
         rtc_verts[j].w = radius[j];
@@ -1106,6 +1107,9 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
       num_motion_steps = pointcloud->motion_steps;
     }
   }
+
+  printf("Adding points obj use_motion_blur %d pc use motion blur %d num steps %d mp %p\n", 
+    ob->use_motion(), pointcloud->use_motion_blur, num_motion_steps, attr_mP);
 
   enum RTCGeometryType type;
   if (pointcloud->point_style == POINT_CLOUD_POINT_DISC_ORIENTED) {

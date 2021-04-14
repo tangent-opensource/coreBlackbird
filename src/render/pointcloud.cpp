@@ -27,6 +27,8 @@ void PointCloud::Point::bounds_grow(const float3 *points,
                                     const float *radius,
                                     BoundBox &bounds) const
 {
+  //printf("Bounds now %.3f %.3f %.3f - %.3f %.3f %.3f\n", 
+//    bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z);
   bounds.grow(points[index], radius[index]);
 }
 

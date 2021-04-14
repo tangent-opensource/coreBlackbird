@@ -1246,8 +1246,6 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
     }
 
     // Generating motion blur geometry if possible
-    printf("Geometry %d has motion blur %d type %d steps %d attributes %d\n", 
-      (int)geom, geom->use_motion_blur, (int)geom->type, geom->motion_steps, geom->attributes.attributes.size());
     if (geom->use_motion_blur) {
       create_motion_blur_geometry(scene, geom, progress);
     }
@@ -1588,18 +1586,16 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
 }
 
 void GeometryManager::create_motion_blur_geometry(
-    const Scene *scene, Geometry *geom, const float3* P, int num_points)
+    const Scene *scene, Geometry *geom, const float3* P, const float* Pw, int num_points)
 {
   /* Skipping if motion positions already exit */
   Attribute *attr_mP = geom->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
-  printf("attr_mP %d\n", (int)attr_mP);
   if (attr_mP) {
     return;
   }
 
   /* Velocities are required */
   Attribute *attr_V = geom->attributes.find(ATTR_STD_VERTEX_VELOCITY);
-  printf("attr_V %d\n", (int)attr_V);
   if (!attr_V) {
     return;
   }
@@ -1617,10 +1613,11 @@ void GeometryManager::create_motion_blur_geometry(
 
   /* Making space for motion vertices */
   attr_mP = geom->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
-  float3 *mP = attr_mP->data_float3();
+  float4 *mP = attr_mP->data_float4();
 
   /* Transformation from unit/second to frame time */
-  const float to_frame_time = (scene->camera->shuttertime * 0.5f) / scene->camera->fps;
+  const float inv_fps = 1.0f / (scene->camera->fps > 0.0f ? scene->camera->fps : 24);
+  const float to_frame_time = (scene->camera->shuttertime * 0.5f) * inv_fps;
 
   /* Sampling uniform intervals in [-1, 1] skipping the center */
   const float step_time = 2.0f / (geom->motion_steps - 1);
@@ -1632,26 +1629,25 @@ void GeometryManager::create_motion_blur_geometry(
     }
 
     const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
-
+    
     if (A) { /* velocity + acceleration */
       for (size_t vert = 0; vert < num_points; ++vert) {
-        //mP[vert] = P[vert] + relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
-        mP[vert] = P[vert];
+        mP[vert] = float3_to_float4(P[vert] + relative_time * (V[vert] + (0.5f * relative_time * A[vert])));
       }
     }
     else { /* velocity */
       for (size_t vert = 0; vert < num_points; ++vert) {
-        mP[vert] = P[vert] + relative_time * V[vert];
-        mP[vert].w = P[vert].w;
-        //mP[vert] = P[vert];
-        //printf("mP %.3f %.3f %.3f P %.3f %.3f %.3f V %.3f %.3f %.3f\n", 
-          //mP[vert].x, mP[vert].y, mP[vert].z, P[vert].x, P[vert].y, P[vert].z, V[vert].x, V[vert].y, V[vert].z);
+        mP[vert] = float3_to_float4(P[vert] + relative_time * V[vert]);
       }
-      printf("relative time %.3f\n", relative_time);
+    }
+
+    if (Pw){
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        mP[vert].w = Pw[vert];
+      }
     }
 
     mP += num_points;
-    printf("Created motion blur geometry for step %d\n", timestep);
   }
 }
 
@@ -1662,9 +1658,8 @@ void GeometryManager::create_motion_blur_geometry(const Scene *scene,
                                                   Progress &progress)
 {
   const float3* P = nullptr;
+  const float* Pw = nullptr;
   int num_points = 0;
-
-  printf("CYCLES create motion blur geometry\n");
 
   if (geom->type == Geometry::MESH) {
     Mesh *mesh = static_cast<Mesh *>(geom);
@@ -1673,21 +1668,14 @@ void GeometryManager::create_motion_blur_geometry(const Scene *scene,
   } else if (geom->type == Geometry::POINTCLOUD) {
     PointCloud *pc = static_cast<PointCloud *>(geom);
     P = pc->points.data();
+    Pw = pc->radius.data();
     num_points = pc->points.size();
-
-    /*  */
-
-    auto it = pc->attributes.attributes.begin();
-    while (it != pc->attributes.attributes.end()) {
-      printf("Attribute %d\n", it->name.c_str());
-      ++it;
-    }
   } else {
     return;
   }
 
   progress.set_status("Creating mesh motion blur geometry\n");
-  create_motion_blur_geometry(scene, geom, P, num_points);
+  create_motion_blur_geometry(scene, geom, P, Pw, num_points);
 }
 
 CCL_NAMESPACE_END

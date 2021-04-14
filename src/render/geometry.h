@@ -174,7 +174,7 @@ class GeometryManager {
 
   void create_volume_mesh(Mesh *mesh, Progress &progress);
 
-  void create_motion_blur_geometry(const Scene *scene, Geometry *geom, const float3* P, int num_points);
+  void create_motion_blur_geometry(const Scene *scene, Geometry *geom, const float3* P, const float* Pw, int num_points);
   void create_motion_blur_geometry(const Scene *scene, Geometry *geom, Progress &progress);
 
   /* Attributes */

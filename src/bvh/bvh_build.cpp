@@ -319,6 +319,11 @@ void BVHBuild::add_reference_points(BoundBox &root,
       for (size_t step = 0; step < num_steps - 1; step++) {
         point.bounds_grow(motion_data + step * num_points, radius_data, bounds);
       }
+      //printf("Pushing reference %.3f %.3f %.3f - %.3f %.3f %.3f num steps %d\n", bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z, num_steps);
+      //printf("points_data[0] %.3f %.3f %.3f\n", points_data[0].x, points_data[0].y, points_data[0].z);
+      //printf("motion_data[0] %.3f %.3f %.3f\n", motion_data[0].x, motion_data[0].y, motion_data[0].z);
+      //printf("motion_data[0] %.3f %.3f %.3f\n", motion_data[num_points].x, motion_data[num_points].y, motion_data[num_points].z);
+
       if (bounds.valid()) {
         references.push_back(BVHReference(bounds, j, i, prim_type));
         root.grow(bounds);
