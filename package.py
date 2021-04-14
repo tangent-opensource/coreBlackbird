@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.8.0'
+version = '1.13.0-ta.1.9.3'
 
 authors = [
     'benjamin.skinner',
@@ -25,22 +25,18 @@ requires = [
     'gflags-2.2.2',
 ]
 
-
 @early()
 def private_build_requires():
     import sys
     if 'win' in str(sys.platform):
-        return ['visual_studio']
+        return ['cmake-3.18<3.20', 'visual_studio',]
     else:
-        return ['gcc-6']
+        return ['cmake-3.18<3.20', 'gcc-6',]
 
 variants = [
-    # Windows
     ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-1.8.9', 'opensubdiv-3.4.3', 'boost-1.69.0', 'openvdb-7.0.0'],
-    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.3.3-houdini', 'boost-1.65.1'],
-    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.1.0-houdini'],
-    # Linux
-    ['platform-linux', 'arch-x86_64', 'os-centos-7', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.1.0-houdini'],
+    ['platform-windows', 'arch-x64', 'os-windows-10', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.2.2-houdini'],
+    ['platform-linux', 'arch-x86_64', 'os-centos-7', 'oiio-2.0.10-houdini', 'opensubdiv-3.4.3-houdini', 'boost-1.65.1', 'openvdb-7.2.2-houdini'],
 ]
 
 # Using an external openvdb build caused instant crashes when hdcycles ran inside of houdini.
@@ -54,6 +50,11 @@ hashed_variants = True
 build_system = "cmake"
 
 def commands():
+
+    if building:
+        env.CMAKE_PREFIX_PATH.prepend('{}/lib/cmake'.format(env.REZ_GLOG_ROOT))
+        env.CMAKE_PREFIX_PATH.prepend('{}/lib/cmake'.format(env.REZ_GFLAGS_ROOT))
+        env.CMAKE_PREFIX_PATH.prepend('{root}/lib/cmake')
 
      # Split and store version and package version
     split_versions = str(version).split('-')

@@ -43,18 +43,6 @@ class Camera : public Node {
  public:
   NODE_DECLARE
 
-  /* Specifies an offset for the shutter's time interval. */
-  enum MotionPosition {
-    /* Shutter opens at the current frame. */
-    MOTION_POSITION_START = 0,
-    /* Shutter is fully open at the current frame. */
-    MOTION_POSITION_CENTER = 1,
-    /* Shutter closes at the current frame. */
-    MOTION_POSITION_END = 2,
-
-    MOTION_NUM_POSITIONS,
-  };
-
   /* Specifies rolling shutter effect. */
   enum RollingShutterType {
     /* No rolling shutter effect. */
@@ -74,6 +62,7 @@ class Camera : public Node {
 
   /* motion blur */
   float shuttertime;
+  float fps;
   MotionPosition motion_position;
   array<float> shutter_curve;
   size_t shutter_table_offset;

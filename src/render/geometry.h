@@ -174,6 +174,8 @@ class GeometryManager {
 
   void create_volume_mesh(Mesh *mesh, Progress &progress);
 
+  void create_motion_blur_geometry(const Scene* scene, Mesh *mesh, Progress &progress);
+
   /* Attributes */
   void update_osl_attributes(Device *device,
                              Scene *scene,

@@ -656,6 +656,20 @@ void GeometryManager::device_update_attributes(Device *device,
 
     foreach (Shader *shader, geom->used_shaders) {
       geom_attributes[i].add(shader->attributes);
+      
+      /* Add a request for volume velocity if a volume attribute is 
+      present and motion blur is on*/
+      if (scene->need_motion() == Scene::MOTION_BLUR) {
+        foreach (AttributeRequest &attr, geom_attributes[i].requests) {
+          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR
+          || attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT
+          || attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
+            geom_attributes[i].add(ATTR_STD_VOLUME_VELOCITY);
+            break;
+          }
+        }
+      }
+
     }
   }
 
@@ -1224,8 +1238,13 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
     // TANGENT PATCH: Removed to allow geometry overrides
     if (geom->type == Geometry::HAIR) {
       /* Set curve shape, still a global scene setting for now. */
-      //Hair *hair = static_cast<Hair *>(geom);
-      //hair->curve_shape = scene->params.hair_shape;
+      // Hair *hair = static_cast<Hair *>(geom);
+      // hair->curve_shape = scene->params.hair_shape;
+    }
+
+    // Generating motion blur geometry for Meshes with no authored motion samples
+    if (geom->type == Geometry::MESH) {
+      create_motion_blur_geometry(scene, static_cast<Mesh *>(geom), progress);
     }
   }
 
@@ -1560,6 +1579,73 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
   foreach (Geometry *geometry, scene->geometry) {
     stats->mesh.geometry.add_entry(
         NamedSizeEntry(string(geometry->name.c_str()), geometry->get_total_size_in_bytes()));
+  }
+}
+
+/* Generates motion positions from velocity/acceleration attributes
+ * only if no authored motion positions are available */
+void GeometryManager::create_motion_blur_geometry(const Scene *scene,
+                                                  Mesh *mesh,
+                                                  Progress &progress)
+{
+  if (!mesh->use_motion_blur) {
+    return;
+  }
+
+  Attribute *attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+  if (attr_mP) {
+    return;
+  }
+
+  Attribute *attr_V = mesh->attributes.find(ATTR_STD_VERTEX_VELOCITY);
+  if (!attr_V) {
+    return;
+  }
+
+  progress.set_status("Creating mesh motion blur geometry\n");
+
+  /* Rounding up to include center step */
+  mesh->motion_steps += (mesh->motion_steps % 2) ? 0 : 1;
+
+  /* Making space for motion vertices */
+  attr_mP = mesh->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
+  float3 *mP = attr_mP->data_float3();
+  const float3 *V = attr_V->data_float3();
+
+  /* Use accelerations in the integration if they are available */
+  Attribute *attr_A = mesh->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
+  float3 *A = NULL;
+  if (attr_A) {
+    A = attr_A->data_float3();
+  }
+
+  /* Transformation from unit/second to frame time */
+  const float to_frame_time = (scene->camera->shuttertime * 0.5f) / scene->camera->fps;
+
+  /* Sampling uniform intervals in [-1, 1] skipping the center */
+  const float step_time = 2.0f / (mesh->motion_steps - 1);
+  const int timestep_center = mesh->motion_steps / 2;
+
+  for (int timestep = 0; timestep < mesh->motion_steps; ++timestep) {
+    if (timestep == timestep_center) {
+      continue;
+    }
+
+    const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
+
+    if (A) { /* velocity + acceleration */
+      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
+        mP[vert] = mesh->verts[vert] +
+                   relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
+      }
+    }
+    else { /* velocity */
+      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
+        mP[vert] = mesh->verts[vert] + relative_time * V[vert];
+      }
+    }
+
+    mP += mesh->verts.size();
   }
 }
 
