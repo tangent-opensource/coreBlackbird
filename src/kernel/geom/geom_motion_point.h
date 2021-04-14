@@ -44,8 +44,13 @@ ccl_device_inline int find_attribute_point_motion(KernelGlobals *kg,
   return (attr_map.y == ATTR_ELEMENT_NONE) ? (int)ATTR_STD_NOT_FOUND : (int)attr_map.z;
 }
 
-ccl_device_inline float4
-motion_point_for_step(KernelGlobals *kg, int offset, int numkeys, int numsteps, int step, int prim, int n_points_attrs)
+ccl_device_inline float4 motion_point_for_step(KernelGlobals *kg,
+                                               int offset,
+                                               int numkeys,
+                                               int numsteps,
+                                               int step,
+                                               int prim,
+                                               int n_points_attrs)
 {
   if (step == numsteps) {
     /* center step: regular key location */
@@ -63,7 +68,8 @@ motion_point_for_step(KernelGlobals *kg, int offset, int numkeys, int numsteps, 
 }
 
 /* return 2 point key locations */
-ccl_device_inline float4 motion_point(KernelGlobals *kg, int object, int prim, float time, int n_points_attrs)
+ccl_device_inline float4
+motion_point(KernelGlobals *kg, int object, int prim, float time, int n_points_attrs)
 {
   /* get motion info */
   int numsteps, numkeys;
@@ -81,7 +87,8 @@ ccl_device_inline float4 motion_point(KernelGlobals *kg, int object, int prim, f
 
   /* fetch key coordinates */
   float4 point = motion_point_for_step(kg, offset, numkeys, numsteps, step, prim, n_points_attrs);
-  float4 next_point = motion_point_for_step(kg, offset, numkeys, numsteps, step + 1, prim, n_points_attrs);
+  float4 next_point = motion_point_for_step(
+      kg, offset, numkeys, numsteps, step + 1, prim, n_points_attrs);
 
   /* interpolate between steps */
   return (1.0f - t) * point + t * next_point;

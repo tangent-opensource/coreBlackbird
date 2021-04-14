@@ -65,12 +65,9 @@ class PointCloud : public Geometry {
   array<float> radius;
   array<int> shader;
 
-  // Only needed if the point type is oriented
-  array<float3> normals;
-
-  // NODE_SOCKET_API(array<float3>, points);
-  // NODE_SOCKET_API(array<float>, radius);
-  // NODE_SOCKET_API(array<int>, shader);
+  /* NODE_SOCKET_API(array<float3>, points);
+   * NODE_SOCKET_API(array<float>, radius);
+   * NODE_SOCKET_API(array<int>, shader); */
 
   /* Constructor/Destructor */
   PointCloud();
@@ -78,7 +75,7 @@ class PointCloud : public Geometry {
 
   /* Geometry */
   void clear(const bool preserver_shaders = false);
-  // override; port: not virtual
+  /* override; port: not virtual */
 
   void resize(int numpoints);
   void reserve(int numpoints);

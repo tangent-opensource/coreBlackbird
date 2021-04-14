@@ -1051,7 +1051,6 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
 
     assert(rtc_verts);
     if (rtc_verts) {
-      printf("Verts %.3f %.3f %.3f %.3f\n", verts[0].x, verts[0].y, verts[0].z, verts[0].w);
       for (size_t j = 0; j < num_points; ++j) {
         rtc_verts[j] = float3_to_float4(verts[j]);
         rtc_verts[j].w = radius[j];
@@ -1072,13 +1071,13 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
       }
 
       float *rtc_normals = (update) ? (float *)rtcGetGeometryBufferData(
-                                           geom_id, RTC_BUFFER_TYPE_NORMAL, t) :
-                                       (float *)rtcSetNewGeometryBuffer(geom_id,
-                                                                         RTC_BUFFER_TYPE_NORMAL,
-                                                                         t,
-                                                                         RTC_FORMAT_FLOAT3,
-                                                                         sizeof(float) * 3,
-                                                                         num_points);
+                                          geom_id, RTC_BUFFER_TYPE_NORMAL, t) :
+                                      (float *)rtcSetNewGeometryBuffer(geom_id,
+                                                                       RTC_BUFFER_TYPE_NORMAL,
+                                                                       t,
+                                                                       RTC_FORMAT_FLOAT3,
+                                                                       sizeof(float) * 3,
+                                                                       num_points);
       assert(rtc_normals);
       if (rtc_normals) {
         for (size_t j = 0; j < num_points; ++j) {
@@ -1108,15 +1107,14 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
     }
   }
 
-  printf("Adding points obj use_motion_blur %d pc use motion blur %d num steps %d mp %p\n", 
-    ob->use_motion(), pointcloud->use_motion_blur, num_motion_steps, attr_mP);
-
   enum RTCGeometryType type;
   if (pointcloud->point_style == POINT_CLOUD_POINT_DISC_ORIENTED) {
     type = RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT;
-  } else if (pointcloud->point_style == POINT_CLOUD_POINT_DISC) {
+  }
+  else if (pointcloud->point_style == POINT_CLOUD_POINT_DISC) {
     type = RTC_GEOMETRY_TYPE_DISC_POINT;
-  } else {
+  }
+  else {
     type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
   }
 
@@ -1142,17 +1140,21 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   pack.prim_tri_index.resize(prim_tri_index_size + num_prims);
 
   uint prim_type = PRIMITIVE_NONE;
-  switch(pointcloud->point_style) {
-  case POINT_CLOUD_POINT_SPHERE:
-    prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE : PRIMITIVE_POINT_SPHERE;
-    break;
-  case POINT_CLOUD_POINT_DISC:
-    prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC : PRIMITIVE_POINT_DISC;
-    break;
-  case POINT_CLOUD_POINT_DISC_ORIENTED:
-    prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED : PRIMITIVE_POINT_DISC_ORIENTED;
-    break;
-  default: assert(false);
+  switch (pointcloud->point_style) {
+    case POINT_CLOUD_POINT_SPHERE:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE :
+                                                  PRIMITIVE_POINT_SPHERE;
+      break;
+    case POINT_CLOUD_POINT_DISC:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC :
+                                                  PRIMITIVE_POINT_DISC;
+      break;
+    case POINT_CLOUD_POINT_DISC_ORIENTED:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED :
+                                                  PRIMITIVE_POINT_DISC_ORIENTED;
+      break;
+    default:
+      assert(false);
   }
 
   for (size_t j = 0; j < num_prims; ++j) {

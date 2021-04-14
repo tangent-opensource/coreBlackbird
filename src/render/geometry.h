@@ -49,11 +49,7 @@ class Geometry : public Node {
  public:
   NODE_ABSTRACT_DECLARE
 
-  enum Type { 
-    MESH, 
-    HAIR, 
-    POINTCLOUD 
-  };
+  enum Type { MESH, HAIR, POINTCLOUD };
 
   Type type;
 
@@ -174,7 +170,8 @@ class GeometryManager {
 
   void create_volume_mesh(Mesh *mesh, Progress &progress);
 
-  void create_motion_blur_geometry(const Scene *scene, Geometry *geom, const float3* P, const float* Pw, int num_points);
+  void create_motion_blur_geometry(
+      const Scene *scene, Geometry *geom, const float3 *P, const float *Pw, int num_points);
   void create_motion_blur_geometry(const Scene *scene, Geometry *geom, Progress &progress);
 
   /* Attributes */

@@ -656,20 +656,19 @@ void GeometryManager::device_update_attributes(Device *device,
 
     foreach (Shader *shader, geom->used_shaders) {
       geom_attributes[i].add(shader->attributes);
-      
-      /* Add a request for volume velocity if a volume attribute is 
+
+      /* Add a request for volume velocity if a volume attribute is
       present and motion blur is on*/
       if (scene->need_motion() == Scene::MOTION_BLUR) {
         foreach (AttributeRequest &attr, geom_attributes[i].requests) {
-          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR
-          || attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT
-          || attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
+          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR ||
+              attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT ||
+              attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
             geom_attributes[i].add(ATTR_STD_VOLUME_VELOCITY);
             break;
           }
         }
       }
-
     }
   }
 
@@ -1245,7 +1244,7 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       // hair->curve_shape = scene->params.hair_shape;
     }
 
-    // Generating motion blur geometry if possible
+    /* Generating motion blur geometry if possible */
     if (geom->use_motion_blur) {
       create_motion_blur_geometry(scene, geom, progress);
     }
@@ -1586,7 +1585,7 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
 }
 
 void GeometryManager::create_motion_blur_geometry(
-    const Scene *scene, Geometry *geom, const float3* P, const float* Pw, int num_points)
+    const Scene *scene, Geometry *geom, const float3 *P, const float *Pw, int num_points)
 {
   /* Skipping if motion positions already exit */
   Attribute *attr_mP = geom->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
@@ -1629,10 +1628,11 @@ void GeometryManager::create_motion_blur_geometry(
     }
 
     const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
-    
+
     if (A) { /* velocity + acceleration */
       for (size_t vert = 0; vert < num_points; ++vert) {
-        mP[vert] = float3_to_float4(P[vert] + relative_time * (V[vert] + (0.5f * relative_time * A[vert])));
+        mP[vert] = float3_to_float4(P[vert] +
+                                    relative_time * (V[vert] + (0.5f * relative_time * A[vert])));
       }
     }
     else { /* velocity */
@@ -1641,7 +1641,7 @@ void GeometryManager::create_motion_blur_geometry(
       }
     }
 
-    if (Pw){
+    if (Pw) {
       for (size_t vert = 0; vert < num_points; ++vert) {
         mP[vert].w = Pw[vert];
       }
@@ -1657,20 +1657,22 @@ void GeometryManager::create_motion_blur_geometry(const Scene *scene,
                                                   Geometry *geom,
                                                   Progress &progress)
 {
-  const float3* P = nullptr;
-  const float* Pw = nullptr;
+  const float3 *P = nullptr;
+  const float *Pw = nullptr;
   int num_points = 0;
 
   if (geom->type == Geometry::MESH) {
     Mesh *mesh = static_cast<Mesh *>(geom);
     P = mesh->verts.data();
     num_points = mesh->verts.size();
-  } else if (geom->type == Geometry::POINTCLOUD) {
+  }
+  else if (geom->type == Geometry::POINTCLOUD) {
     PointCloud *pc = static_cast<PointCloud *>(geom);
     P = pc->points.data();
     Pw = pc->radius.data();
     num_points = pc->points.size();
-  } else {
+  }
+  else {
     return;
   }
 
