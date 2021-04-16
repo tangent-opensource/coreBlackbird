@@ -145,11 +145,6 @@ class Mesh : public Geometry {
 
   SubdParams *subd_params;
 
-  size_t element_size(AttributeElement element) const final {
-    const AttributeSet &attrs = (subdivision_type == SUBDIVISION_NONE) ? attributes : subd_attributes;
-    return Geometry::element_size(element, attrs.prim);
-  }
-
   AttributeSet subd_attributes;
 
   PackedPatchTable *patch_table;
