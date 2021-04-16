@@ -1641,10 +1641,9 @@ void GeometryManager::create_motion_blur_geometry(
       }
     }
     else { /* acceleration */
-      float3 dV;
       const float relative_time2 = relative_time * relative_time;
       for (size_t vert = 0; vert < num_points; ++vert) {
-        mP[vert] = float3_to_float4(P[vert] + relative_time2 * A[vert] * 0.f);
+        mP[vert] = float3_to_float4(P[vert] + relative_time2 * A[vert] * 0.5f);
       }
     }
 
