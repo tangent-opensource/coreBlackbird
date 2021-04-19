@@ -158,78 +158,7 @@ size_t Attribute::element_size(Geometry *geom, AttributePrimitive prim) const
     return buffer.size() / data_sizeof();
   }
 
-  size_t size = 0;
-
-  switch (element) {
-    case ATTR_ELEMENT_OBJECT:
-    case ATTR_ELEMENT_MESH:
-    case ATTR_ELEMENT_VOXEL:
-      size = 1;
-      break;
-    case ATTR_ELEMENT_VERTEX:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        size = mesh->verts.size() + mesh->num_ngons;
-        if (prim == ATTR_PRIM_SUBD) {
-          size -= mesh->num_subd_verts;
-        }
-      }
-      break;
-    case ATTR_ELEMENT_VERTEX_MOTION:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        size = (mesh->verts.size() + mesh->num_ngons) * (mesh->motion_steps - 1);
-        if (prim == ATTR_PRIM_SUBD) {
-          size -= mesh->num_subd_verts * (mesh->motion_steps - 1);
-        }
-      }
-      break;
-    case ATTR_ELEMENT_FACE:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        if (prim == ATTR_PRIM_GEOMETRY) {
-          size = mesh->num_triangles();
-        }
-        else {
-          size = mesh->subd_faces.size() + mesh->num_ngons;
-        }
-      }
-      break;
-    case ATTR_ELEMENT_CORNER:
-    case ATTR_ELEMENT_CORNER_BYTE:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        if (prim == ATTR_PRIM_GEOMETRY) {
-          size = mesh->num_triangles() * 3;
-        }
-        else {
-          size = mesh->subd_face_corners.size() + mesh->num_ngons;
-        }
-      }
-      break;
-    case ATTR_ELEMENT_CURVE:
-      if (geom->type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(geom);
-        size = hair->num_curves();
-      }
-      break;
-    case ATTR_ELEMENT_CURVE_KEY:
-      if (geom->type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(geom);
-        size = hair->curve_keys.size();
-      }
-      break;
-    case ATTR_ELEMENT_CURVE_KEY_MOTION:
-      if (geom->type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(geom);
-        size = hair->curve_keys.size() * (hair->motion_steps - 1);
-      }
-      break;
-    default:
-      break;
-  }
-
-  return size;
+  return geom->element_size(element, prim);
 }
 
 size_t Attribute::buffer_size(Geometry *geom, AttributePrimitive prim) const
