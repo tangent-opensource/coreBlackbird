@@ -155,6 +155,8 @@ class Geometry : public Node {
   {
     return geometry_type == HAIR;
   }
+  
+  size_t element_size(AttributeElement element, AttributePrimitive prim);
 
   /* Updates */
   void tag_update(Scene *scene, bool rebuild);

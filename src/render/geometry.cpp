@@ -291,6 +291,86 @@ void Geometry::tag_bvh_update(bool rebuild)
   }
 }
 
+size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
+{
+  //if (flags & ATTR_FINAL_SIZE) {
+  //  return buffer.size() / data_sizeof();
+  //}
+
+  size_t size = 0;
+
+  switch (element) {
+    case ATTR_ELEMENT_OBJECT:
+    case ATTR_ELEMENT_MESH:
+    case ATTR_ELEMENT_VOXEL:
+      size = 1;
+      break;
+    case ATTR_ELEMENT_VERTEX:
+      if (geometry_type == Geometry::MESH || geometry_type == Geometry::VOLUME) {
+        Mesh *mesh = static_cast<Mesh *>(this);
+        size = mesh->get_verts().size() + mesh->get_num_ngons();
+        if (prim == ATTR_PRIM_SUBD) {
+          size -= mesh->get_num_subd_verts();
+        }
+      }
+      break;
+    case ATTR_ELEMENT_VERTEX_MOTION:
+      if (geometry_type == Geometry::MESH) {
+        Mesh *mesh = static_cast<Mesh *>(this);
+        size = (mesh->get_verts().size() + mesh->get_num_ngons()) * (mesh->motion_steps - 1);
+        if (prim == ATTR_PRIM_SUBD) {
+          size -= mesh->get_num_subd_verts() * (mesh->get_motion_steps() - 1);
+        }
+      }
+      break;
+    case ATTR_ELEMENT_FACE:
+      if (geometry_type == Geometry::MESH) {
+        Mesh *mesh = static_cast<Mesh *>(this);
+        if (prim == ATTR_PRIM_GEOMETRY) {
+          size = mesh->num_triangles();
+        }
+        else {
+          size = mesh->get_subd_face_corners().size() + mesh->get_num_ngons();
+        }
+      }
+      break;
+    case ATTR_ELEMENT_CORNER:
+    case ATTR_ELEMENT_CORNER_BYTE:
+      if (geometry_type == Geometry::MESH) {
+        Mesh *mesh = static_cast<Mesh *>(this);
+        if (prim == ATTR_PRIM_GEOMETRY) {
+          size = mesh->num_triangles() * 3;
+        }
+        else {
+          size = mesh->get_subd_face_corners().size() + mesh->get_num_ngons();
+        }
+      }
+      break;
+    case ATTR_ELEMENT_CURVE:
+      if (geometry_type == Geometry::HAIR) {
+        Hair *hair = static_cast<Hair *>(this);
+        size = hair->num_curves();
+      }
+      break;
+    case ATTR_ELEMENT_CURVE_KEY:
+      if (geometry_type == Geometry::HAIR) {
+        Hair *hair = static_cast<Hair *>(this);
+        size = hair->get_curve_keys().size();
+      }
+      break;
+    case ATTR_ELEMENT_CURVE_KEY_MOTION:
+      if (geometry_type == Geometry::HAIR) {
+        Hair *hair = static_cast<Hair *>(this);
+        size = hair->get_curve_keys().size() * (hair->get_motion_steps() - 1);
+      }
+      break;
+    default:
+      break;
+  }
+
+  return size;
+}
+
 /* Geometry Manager */
 
 GeometryManager::GeometryManager()
