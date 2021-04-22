@@ -153,22 +153,22 @@ NODE_DEFINE(Camera)
 
 Camera::Camera() : Node(node_type)
 {
-  shuttertime = 1.f;
-  fps = 24.f;
+  shuttertime = 1.0f;
+  fps = 24.0f;
   motion_position = MOTION_POSITION_CENTER;
 
   shutter_table_offset = TABLE_OFFSET_INVALID;
 
   rolling_shutter_type = ROLLING_SHUTTER_NONE;
-  rolling_shutter_duration = 0.f;
+  rolling_shutter_duration = 0.0f;
 
-  focaldistance = 0.f;
-  aperturesize = 0.f;
+  focaldistance = 0.0f;
+  aperturesize = 0.0f;
   blades = 0;
-  bladesrotation = 0.f;
+  bladesrotation = 0.0f;
 
   type = CAMERA_PERSPECTIVE;
-  fov = M_PI_F * 0.25;
+  fov = 0.25f;
 
   nearclip = 0.01f;
   farclip = 100000.f;
