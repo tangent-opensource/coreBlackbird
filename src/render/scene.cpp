@@ -244,6 +244,12 @@ void Scene::device_update(Device *device_, Progress &progress)
   if (progress.get_cancel() || device->have_error())
     return;
 
+  progress.set_status("Updating Volume Objects");
+  volume_manager->device_update(&dscene, this, progress);
+
+  if (progress.get_cancel() || device->have_error())
+    return;
+
   progress.set_status("Updating Meshes");
   geometry_manager->device_update(device, &dscene, this, progress);
 
@@ -258,12 +264,6 @@ void Scene::device_update(Device *device_, Progress &progress)
 
   progress.set_status("Updating Images");
   image_manager->device_update(device, this, progress);
-
-  if (progress.get_cancel() || device->have_error())
-    return;
-
-  progress.set_status("Updating Volume Objects");
-  volume_manager->device_update(&dscene, this, progress);
 
   if (progress.get_cancel() || device->have_error())
     return;

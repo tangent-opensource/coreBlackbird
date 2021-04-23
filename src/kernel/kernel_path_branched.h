@@ -232,16 +232,16 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
     path_state_branch(&ps, j, num_samples);
 
       /* Get the probabilistic volume scatter result */
-    float rphase = path_state_rng_1D(kg, &ps, PRNG_PHASE_CHANNEL);
     VolumeIntegrateResult result = kernel_volume_traverse_octree(
-        kg, state, &volume_ray, sd, &tp, rphase);
+        kg, state, &volume_ray, sd, &tp);
 
 #        ifdef __VOLUME_SCATTER__
     if (result == VOLUME_PATH_SCATTERED) {
-      *throughput *= make_float3(1.0f, 0.0f, 0.0f); /* Testing */
+      *throughput = tp;
     }
 
     // TODO Volume shadow
+    // TODO Volume emission
 
 #        endif /* __VOLUME_SCATTER__ */
   }

@@ -19,6 +19,7 @@
 #include "render/volume.h"
 #include "render/attribute.h"
 #include "render/geometry.h"
+#include "render/mesh.h"
 #include "render/object.h"
 #include "render/scene.h"
 
@@ -56,6 +57,58 @@ void VolumeManager::device_update(DeviceScene *dscene, Scene *scene, Progress &p
   foreach (Object *object, scene->objects) {
     if (object->geometry->has_volume) {
       volume_objects.push_back(object);
+    }
+  }
+
+  /* Add a single triangle for each volume object
+   *  so that the triangle shaders vector is updated
+   */
+  foreach (Object *object, volume_objects) {
+    Mesh *mesh = static_cast<Mesh *>(object->geometry);
+
+    /* Create mesh. */
+    vector<float3> vertices;
+    vector<int> indices;
+    vector<float3> face_normals;
+
+    vertices.push_back(make_float3(-0.00001f, 0.0f, 0.0f));
+    vertices.push_back(make_float3(0.00001f, 0.0f, 0.0f));
+    vertices.push_back(make_float3(0.0f, 0.0f, 0.00001f));
+
+    indices.push_back(0);
+    indices.push_back(1);
+    indices.push_back(2);
+
+    face_normals.push_back(make_float3(0.0f, 1.0f, 0.0f));
+
+    Shader *volume_shader = NULL;
+    foreach (Shader *shader, object->geometry->used_shaders) {
+      if (!shader->has_volume) {
+        continue;
+      }
+
+      volume_shader = shader;
+      break;
+    }
+
+    mesh->clear(true);
+    mesh->reserve_mesh(vertices.size(), 1);
+    mesh->used_shaders.push_back(volume_shader);
+    mesh->need_update_rebuild = true;
+
+    for (size_t i = 0; i < vertices.size(); ++i) {
+      mesh->add_vertex(vertices[i]);
+    }
+
+    for (size_t i = 0; i < indices.size(); i += 3) {
+      mesh->add_triangle(indices[i], indices[i + 1], indices[i + 2], 0, false);
+    }
+
+    Attribute *attr_fN = mesh->attributes.add(ATTR_STD_FACE_NORMAL);
+    float3 *fN = attr_fN->data_float3();
+
+    for (size_t i = 0; i < face_normals.size(); ++i) {
+      fN[i] = face_normals[i];
     }
   }
 }
@@ -103,6 +156,7 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
 
     for (int i = 0; i < 1024; i++) {
       k_tree_root[node->idx].obj_indices[i] = node->obj_indices[i];
+      k_tree_root[node->idx].sd_indices[i] = node->sd_indices[i];
     }
 
     if (node->has_children) {

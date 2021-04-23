@@ -1465,6 +1465,7 @@ static_assert_align(KernelBVH, 16);
 typedef struct KernelOCTree {
   int num_objects;
   int obj_indices[1024];
+  uint sd_indices[1024];
   float3 max_extinction;
   float3 min_extinction;
   int depth;

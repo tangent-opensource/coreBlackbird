@@ -1367,6 +1367,85 @@ ccl_device_inline void shader_eval_volume(KernelGlobals *kg,
   }
 }
 
+ccl_device_inline void shader_eval_volume_shader(
+    KernelGlobals *kg, ShaderData *sd, ccl_addr_space PathState *state, int path_flag)
+{
+  sd->flag = 0;
+  sd->object_flag = 0;
+
+  sd->num_closure = 0;
+  sd->lamp = LAMP_NONE;
+
+  sd->flag &= ~SD_SHADER_FLAGS;
+  sd->flag |= kernel_tex_fetch(__shaders, (sd->shader & SHADER_MASK)).flags;
+  sd->object_flag &= ~SD_OBJECT_FLAGS;
+
+  if (sd->object != OBJECT_NONE) {
+    sd->object_flag |= kernel_tex_fetch(__object_flag, sd->object);
+
+#  ifdef __OBJECT_MOTION__
+    /* todo: this is inefficient for motion blur, we should be
+     * caching matrices instead of recomputing them each step */
+    shader_setup_object_transforms(kg, sd, sd->time);
+
+    /* Do motion blur if motion blur is on and object has velocity field */
+    if (kernel_tex_fetch(__objects, sd->object).use_motion_blur &&
+        kernel_data.cam.shuttertime != -1.0f &&
+        kernel_tex_fetch(__objects, sd->object).velocity_scale > 0.0f) {
+
+      AttributeDescriptor v_desc = find_attribute(kg, sd, ATTR_STD_VOLUME_VELOCITY);
+
+      if (v_desc.offset != ATTR_STD_NOT_FOUND) {
+        const float3 P = sd->P;
+
+        const float time_offset = kernel_data.cam.motion_position == MOTION_POSITION_CENTER ?
+                                      0.5f :
+                                      0.0f;
+        const float time = kernel_data.cam.motion_position == MOTION_POSITION_END ?
+                               (1.0f - kernel_data.cam.shuttertime) + sd->time :
+                               sd->time;
+        /* Velocity scale: Assume m/s as input, convert to m/(shutter duration).
+           Optional scaling parameter is for artistic control. */
+        const float velocity_scale = kernel_data.cam.inv_fps * kernel_data.cam.shuttertime *
+                                     kernel_tex_fetch(__objects, sd->object).velocity_scale;
+
+        /* Find new sampling position as mentioned in
+         * https://www.arnoldrenderer.com/research/Arnold_TOG2018.pdf */
+
+        /* Find velocity. */
+        float3 velocity = volume_attribute_float3(kg, sd, v_desc);
+        object_dir_transform(kg, sd, &velocity);
+        /*velocity = volume_transform_velocity(kg, sd, velocity);*/
+
+        /* Find advected P. */
+        sd->P = P - (time - time_offset) * velocity_scale * velocity;
+
+        /* Find advected velocity. */
+        velocity = volume_attribute_float3(kg, sd, v_desc);
+        object_dir_transform(kg, sd, &velocity);
+        /*velocity = volume_transform_velocity(kg, sd, velocity);*/
+
+        /* Find advected P. */
+        sd->P = P - (time - time_offset) * velocity_scale * velocity;
+      }
+    }
+#  endif
+  }
+
+  /* evaluate shader */
+#  ifdef __SVM__
+#    ifdef __OSL__
+  if (kg->osl) {
+    OSLShader::eval_volume(kg, sd, state, path_flag);
+  }
+  else
+#    endif
+  {
+    svm_eval_nodes(kg, sd, state, NULL, SHADER_TYPE_VOLUME, path_flag);
+  }
+#  endif
+}
+
 #endif /* __VOLUME__ */
 
 /* Displacement Evaluation */

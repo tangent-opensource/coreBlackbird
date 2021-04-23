@@ -65,7 +65,12 @@ ccl_device_inline bool volume_shader_sample(KernelGlobals *kg,
                                             VolumeShaderCoefficients *coeff)
 {
   sd->P = P;
+
+#  ifndef __VOLUME_OCTREE__
   shader_eval_volume(kg, sd, state, state->volume_stack, state->flag);
+#  else
+  shader_eval_volume_shader(kg, sd, state, state->flag);
+#  endif  // !__VOLUME_OCTREE__
 
   if (!(sd->flag & (SD_EXTINCTION | SD_SCATTER | SD_EMISSION)))
     return false;
@@ -1422,12 +1427,8 @@ ccl_device_inline void kernel_volume_clean_stack(KernelGlobals *kg,
 }
 
 #  ifdef __VOLUME_OCTREE__
-ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg,
-                                                               PathState *state,
-                                                               Ray *ray,
-                                                               ShaderData *sd,
-                                                               float3 *throughput,
-                                                               float rphase)
+ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
+    KernelGlobals *kg, PathState *state, Ray *ray, ShaderData *sd, float3 *throughput)
 {
   VolumeIntegrateResult result = VOLUME_PATH_MISSED;
   KernelOCTree root = kernel_tex_fetch(__octree_nodes, 0);
@@ -1436,13 +1437,17 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
     return result;
   }
 
+  float rphase = path_state_rng_1D(kg, state, PRNG_PHASE_CHANNEL);
+
+  // Random rgb channel 
+  int channel = floorf(rphase * 3.0f);
+  float3 channel_pdf = make_float3(1.0f /3.0f);
+
   float t = 0.0f;
-  float inv_max_extinction =
-      1.0f / root.max_extinction.x; /* TODO sample extiction channel based on rphase */
+  float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
   float3 pos = ray->P;
 
-  float3 extinction = make_float3(1.0f);
-  float3 absorption = make_float3(0.0f);
+  float3 accum_transmittance = make_float3(1.0f);
 
   do {
     float xi = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
@@ -1462,43 +1467,46 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
       return result;
     }
 
-    /* Sum all densities
-     * TODO evaulate shaders for scattering, absorptions and extinctions
-     * TODO move this to it's own function
-     * TODO volume velocity should be handled here
-     */
-    float density = 0.0f;
+    /* Sum all volume attributes */
+    float absorption_sample = 0.0f;
+    float scattering_sample = 0.0f;
+    float extinction_sample = 0.0f;
+
+    float3 albedo = make_float3(0.0f);
+
     for (int i = 0; i < root.num_objects; i++) {
       KernelObject ob = kernel_tex_fetch(__objects, root.obj_indices[i]);
       sd->object = root.obj_indices[i];
       sd->ob_tfm = ob.tfm;
       sd->ob_itfm = ob.itfm;
-      AttributeDescriptor density_desc = find_attribute(kg, sd, ATTR_STD_VOLUME_DENSITY);
 
-      if (density_desc.offset != ATTR_STD_NOT_FOUND) {
-        density += volume_attribute_float(kg, sd, density_desc);
+      VolumeShaderCoefficients coeff ccl_optional_struct_init;
+
+      sd->shader = kernel_tex_fetch(__tri_shader, root.sd_indices[i]);
+
+      if (volume_shader_sample(kg, sd, state, pos, &coeff)) {
+        extinction_sample += kernel_volume_channel_get(coeff.sigma_t, channel);
+        scattering_sample += kernel_volume_channel_get(coeff.sigma_s, channel);
+        absorption_sample += kernel_volume_channel_get(coeff.sigma_t - coeff.sigma_s, channel);
+        
+        albedo += safe_divide_color(coeff.sigma_s, coeff.sigma_t);
       }
     }
 
     float zeta = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
-    if (density * extinction.x * inv_max_extinction >
-        zeta) { /* TODO sample extiction channel based on rphase */
+    if (extinction_sample * inv_max_extinction > zeta) {
+      *throughput *= albedo;
       result = VOLUME_PATH_SCATTERED;
+      return result;
     }
-    else if (density * absorption.x * inv_max_extinction >
-             zeta) { /* TODO sample absorption channel based on rphase */
+    else if (absorption_sample * inv_max_extinction > zeta) {
+      state->flag = PATH_RAY_TERMINATE;
+      *throughput = make_float3(0.0f);
       result = VOLUME_PATH_ATTENUATED;
+      return result;
     }
 
   } while (result != VOLUME_PATH_MISSED);
-
-  if (result == VOLUME_PATH_SCATTERED) {
-    return result;
-  }
-  else if (result == VOLUME_PATH_ATTENUATED) {
-    state->flag = PATH_RAY_TERMINATE;
-    *throughput = make_float3(0.0f);
-  }
 
   return result;
 }

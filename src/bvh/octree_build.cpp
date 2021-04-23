@@ -22,6 +22,7 @@
 
 #include "render/attribute.h"
 #include "render/geometry.h"
+#include "render/mesh.h"
 #include "render/image.h"
 #include "render/object.h"
 
@@ -55,8 +56,7 @@ void OCTBuild::update_octree(const vector<Object *> &objects)
   for (int i = 0; i < objects.size(); i++) {
 
     Object *ob = objects[i];
-
-    int vol_idx = 0;
+    
     bool add_object = false;
     foreach (Attribute &attr, ob->geometry->attributes.attributes) {
       if (attr.element == ATTR_ELEMENT_VOXEL) {
@@ -73,7 +73,6 @@ void OCTBuild::update_octree(const vector<Object *> &objects)
           octree_root->min_extinction = ccl::min(octree_root->min_extinction, metadata.min);
           octree_root->max_extinction = ccl::max(octree_root->max_extinction, metadata.max);
 
-          vol_idx++;
           add_object = true;
         }
       }
@@ -81,6 +80,8 @@ void OCTBuild::update_octree(const vector<Object *> &objects)
 
     if (add_object) {
       octree_root->obj_indices[obj_idx] = i;
+      Mesh *mesh = static_cast<Mesh *>(ob->geometry);
+      octree_root->sd_indices[obj_idx] = mesh->prim_offset;
       octree_root->num_objects++;
       obj_idx++;
     }
@@ -98,6 +99,7 @@ void OCTBuild::build_root_rec(OCTNode *root, int depth, int parent_idx)
 {
   root->bbox = BoundBox(BoundBox::empty);
   memset(root->obj_indices, 0, sizeof(int) * 1024);
+  memset(root->sd_indices, 0, sizeof(uint) * 1024);
   root->depth = depth;
 
   if (depth > 0) {
@@ -172,6 +174,8 @@ void OCTBuild::update_root_rec(OCTNode *node, const vector<Object *> &objects)
 
         if (add_object) {
           node->children[i]->obj_indices[obj_idx] = y;
+          Mesh *mesh = static_cast<Mesh *>(ob->geometry);
+          node->children[i]->sd_indices[obj_idx] = mesh->prim_offset;
           node->children[i]->num_objects++;
           obj_idx++;
         }
