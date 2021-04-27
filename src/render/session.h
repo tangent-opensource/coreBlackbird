@@ -121,6 +121,23 @@ class SessionParams {
   }
 };
 
+struct DisplayBufferPass {
+  PassType type = PASS_NONE;
+  device_pixels<half4> rgba_half;
+
+  // How do I keep track of its updated
+  int width = 0, height = 0;
+
+  DisplayBufferPass(Device* device) :
+    rgba_half(device, "display buffer half") {
+
+  }
+
+  ~DisplayBufferPass() {
+    rgba_half.free();
+  }
+};
+
 /* Session
  *
  * This is the class that contains the session thread, running the render
@@ -137,6 +154,8 @@ class Session {
   TileManager tile_manager;
   Stats stats;
   Profiler profiler;
+
+  std::vector<DisplayBufferPass*> display_passes;
 
   function<void(RenderTile &)> write_render_tile_cb;
   function<void(RenderTile &, bool)> update_render_tile_cb;

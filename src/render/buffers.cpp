@@ -522,6 +522,7 @@ DisplayBuffer::~DisplayBuffer()
 
 void DisplayBuffer::reset(BufferParams &params_)
 {
+  printf("Resize display buffer %d %d\n", params.width, params.height);
   draw_width = 0;
   draw_height = 0;
 
