@@ -415,8 +415,10 @@ if(WITH_GTESTS)
   add_subdirectory(test)
 endif()
 
-if(NOT WITH_BLENDER AND WITH_CYCLES_STANDALONE)
-  delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+# TANGENT: This needs to match the add_subdirectory(app) above
+# Is WITH_CYCLES_STANDALONE in the BF version
+if(NOT WITH_BLENDER AND WITH_CYCLES_STANDALONE_GUI)
+#  delayed_do_install(${CMAKE_BINARY_DIR}/bin)
 endif()
 
 #
