@@ -23,6 +23,10 @@
 #include "util/util_thread.h"
 #include "util/util_vector.h"
 
+#ifdef WITH_TBB_GLOBAL_CONTROL
+#include <tbb/global_control.h>
+#endif
+
 CCL_NAMESPACE_BEGIN
 
 class TaskPool;
