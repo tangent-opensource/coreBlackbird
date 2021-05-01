@@ -24,6 +24,7 @@
 #include "util/util_vector.h"
 
 #ifdef WITH_TBB_GLOBAL_CONTROL
+#define TBB_PREVIEW_GLOBAL_CONTROL
 #include <tbb/global_control.h>
 #endif
 
