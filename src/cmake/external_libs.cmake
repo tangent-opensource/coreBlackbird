@@ -375,13 +375,13 @@ if(CYCLES_STANDALONE_REPOSITORY)
   if(WITH_CYCLES_OSL)
     list(APPEND __boost_packages wave)
   endif()
-  find_package(Boost 1.48 COMPONENTS ${__boost_packages} REQUIRED)
+  find_package(Boost COMPONENTS ${__boost_packages} REQUIRED)
   if(NOT Boost_FOUND)
     # Try to find non-multithreaded if -mt not found, this flag
     # doesn't matter for us, it has nothing to do with thread
     # safety, but keep it to not disturb build setups.
     set(Boost_USE_MULTITHREADED OFF)
-    find_package(Boost 1.48 COMPONENTS ${__boost_packages})
+    find_package(Boost COMPONENTS ${__boost_packages})
   endif()
   unset(__boost_packages)
   set(BOOST_INCLUDE_DIR ${Boost_INCLUDE_DIRS})
