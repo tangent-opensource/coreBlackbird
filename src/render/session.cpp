@@ -1274,59 +1274,6 @@ void Session::copy_to_display_buffer(int sample)
     }
   }
 
-  for (size_t i = 0; i < display_passes.size(); ++i) {
-    DisplayBufferPass &display_pass = *display_passes[i];
-
-    // todo: this doesn't need to be done every time
-    // also, it can be done through the display_pass_stride
-
-    size_t sample_offset = 0;
-    for (size_t j = 0; j < buffers->params.passes.size(); j++) {
-      Pass &pass = buffers->params.passes[j];
-      if (display_pass.type == pass.type) {
-        break;
-      }
-      if (pass.type != PASS_SAMPLE_COUNT) {
-        sample_offset += pass.components;
-        continue;
-      }
-      // else {
-      // sample_count = buffer.data() + sample_offset;
-      // break;
-      //}
-    }
-
-    if (display_pass.width != display->params.width ||
-        display_pass.height != display->params.height) {
-      if (display_pass.width != 0) {
-        display_pass.rgba_half.free();
-      }
-      printf("resizing display buffers\n");
-      display_pass.rgba_half.alloc_to_device(display->params.width, display->params.height);
-      display_pass.width = display->params.width;
-      display_pass.height = display->params.height;
-    }
-
-    /* add film conversion task */
-    DeviceTask task(DeviceTask::FILM_CONVERT);
-    task.x = tile_manager.state.buffer.full_x;
-    task.y = tile_manager.state.buffer.full_y;
-    task.w = tile_manager.state.buffer.width;
-    task.h = tile_manager.state.buffer.height;
-    task.rgba_byte = NULL;
-    task.rgba_half = display_pass.rgba_half.device_pointer;
-    task.buffer = (device_ptr)(buffers->buffer.device_pointer) + sample_offset;
-    task.sample = sample;
-    tile_manager.state.buffer.get_offset_stride(task.offset, task.stride);
-
-    if (task.w > 0 && task.h > 0) {
-      device->task_add(task);
-      device->task_wait();
-
-      last_display_time = time_dt();
-    }
-  }
-
   display_outdated = false;
 }
 
