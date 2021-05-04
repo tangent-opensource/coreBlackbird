@@ -128,12 +128,12 @@ struct DisplayBufferPass {
   // How do I keep track of its updated
   int width = 0, height = 0;
 
-  DisplayBufferPass(Device* device) :
-    rgba_half(device, "display buffer half") {
-
+  DisplayBufferPass(Device *device) : rgba_half(device, "display buffer half")
+  {
   }
 
-  ~DisplayBufferPass() {
+  ~DisplayBufferPass()
+  {
     rgba_half.free();
   }
 };
@@ -154,8 +154,9 @@ class Session {
   TileManager tile_manager;
   Stats stats;
   Profiler profiler;
+  std::function<void(int samples)> display_copy_cb;
 
-  std::vector<DisplayBufferPass*> display_passes;
+  std::vector<DisplayBufferPass *> display_passes;
 
   function<void(RenderTile &)> write_render_tile_cb;
   function<void(RenderTile &, bool)> update_render_tile_cb;

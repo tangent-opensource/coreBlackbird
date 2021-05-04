@@ -88,6 +88,33 @@ class RenderBuffers {
   void zero();
 
   bool copy_from_device();
+
+  // todo: figure out whether to use OIIO types or something else
+  enum class ComponentType {
+    None,
+    Float32,
+    Float32x3,
+    Float32x4,
+    Float16,
+    Float16x3,
+    Float16x4,
+    Int8,
+    UInt8
+  };
+
+  /* Copies one of the render passes rect bounded by src_width, src_height
+   * to a user specified buffer of the full size (buffer params) with
+   * nearest point sampling. */
+  bool get_pass_rect_as(const string &name,
+                        float exposure,
+                        int sample,
+                        int components,
+                        uint8_t *pixels,
+                        ComponentType type,
+                        int src_width,
+                        int src_height,
+                        int pixels_stride);
+
   bool get_pass_rect(
       const string &name, float exposure, int sample, int components, float *pixels);
   bool get_denoising_pass_rect(

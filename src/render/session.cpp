@@ -752,6 +752,9 @@ void Session::run_cpu()
         /* Only copy to display_buffer if we do not reset, we don't
          * want to show the result of an incomplete sample */
         copy_to_display_buffer(tile_manager.state.sample);
+        if (display_copy_cb) {
+          display_copy_cb(tile_manager.state.sample);
+        }
       }
 
       if (!device->error_message().empty())
@@ -1272,7 +1275,7 @@ void Session::copy_to_display_buffer(int sample)
   }
 
   for (size_t i = 0; i < display_passes.size(); ++i) {
-    DisplayBufferPass& display_pass = *display_passes[i];
+    DisplayBufferPass &display_pass = *display_passes[i];
 
     // todo: this doesn't need to be done every time
     // also, it can be done through the display_pass_stride
@@ -1287,14 +1290,14 @@ void Session::copy_to_display_buffer(int sample)
         sample_offset += pass.components;
         continue;
       }
-      //else {
-        //sample_count = buffer.data() + sample_offset;
-        //break;
+      // else {
+      // sample_count = buffer.data() + sample_offset;
+      // break;
       //}
     }
 
     if (display_pass.width != display->params.width ||
-      display_pass.height != display->params.height) {
+        display_pass.height != display->params.height) {
       if (display_pass.width != 0) {
         display_pass.rgba_half.free();
       }
@@ -1389,7 +1392,8 @@ void Session::collect_statistics(RenderStats *render_stats)
   }
 }
 
-thread_scoped_lock Session::acquire_display_lock() {
+thread_scoped_lock Session::acquire_display_lock()
+{
   return thread_scoped_lock(display_mutex);
 }
 
