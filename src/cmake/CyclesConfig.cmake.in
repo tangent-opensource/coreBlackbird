@@ -5,8 +5,10 @@ include(${CMAKE_CURRENT_LIST_DIR}/CyclesTargets.cmake)
 # Cycles standalone requirements
 include(CMakeFindDependencyMacro)
 
-find_dependency(gflags)
-find_dependency(glog)
+if(@WITH_CYCLES_LOGGING@)
+    find_dependency(gflags)
+    find_dependency(glog)
+endif()
 
 target_link_libraries(Cycles::Cycles
     INTERFACE
@@ -67,11 +69,12 @@ target_link_libraries(Cycles::Cycles
     "@OPENJPEG_LIBRARY@" # OpenJPEG
     )
 
-if(gflags_FOUND)
-    target_link_libraries(Cycles::Cycles INTERFACE gflags)
-endif()
+if(@WITH_CYCLES_LOGGING@)
+    if(gflags_FOUND)
+        target_link_libraries(Cycles::Cycles INTERFACE gflags)
+    endif()
 
-if(glog_FOUND)
-    target_link_libraries(Cycles::Cycles INTERFACE glog::glog)
+    if(glog_FOUND)
+        target_link_libraries(Cycles::Cycles INTERFACE glog::glog)
+    endif()
 endif()
-    

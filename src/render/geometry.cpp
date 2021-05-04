@@ -259,6 +259,89 @@ void Geometry::tag_update(Scene *scene, bool rebuild)
   scene->object_manager->need_update = true;
 }
 
+size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim) const {
+  size_t size = 0;
+
+  switch (element) {
+    case ATTR_ELEMENT_OBJECT:
+    case ATTR_ELEMENT_MESH:
+    case ATTR_ELEMENT_VOXEL:
+      size = 1;
+      break;
+    case ATTR_ELEMENT_VERTEX:
+      if (type == Geometry::MESH) {
+        const Mesh *mesh = static_cast<const Mesh *>(this);
+        size = mesh->verts.size() + mesh->num_ngons;
+        if (prim == ATTR_PRIM_SUBD) {
+          size -= mesh->num_subd_verts;
+        }
+      }
+      else if (type == Geometry::POINTCLOUD) {
+        const PointCloud *pointcloud = static_cast<const PointCloud *>(this);
+        size = pointcloud->num_points();
+      }
+      break;
+    case ATTR_ELEMENT_VERTEX_MOTION:
+      if (type == Geometry::MESH) {
+        const Mesh *mesh = static_cast<const Mesh *>(this);
+        size = (mesh->verts.size() + mesh->num_ngons) * (mesh->motion_steps - 1);
+        if (prim == ATTR_PRIM_SUBD) {
+          size -= mesh->num_subd_verts * (mesh->motion_steps - 1);
+        }
+      }
+      else if (type == Geometry::POINTCLOUD) {
+        const PointCloud *pointcloud = static_cast<const PointCloud *>(this);
+        size = pointcloud->num_points() * (pointcloud->motion_steps - 1);
+      }
+      break;
+    case ATTR_ELEMENT_FACE:
+      if (type == Geometry::MESH) {
+        const Mesh *mesh = static_cast<const Mesh *>(this);
+        if (prim == ATTR_PRIM_GEOMETRY) {
+          size = mesh->num_triangles();
+        }
+        else {
+          size = mesh->subd_faces.size() + mesh->num_ngons;
+        }
+      }
+      break;
+    case ATTR_ELEMENT_CORNER:
+    case ATTR_ELEMENT_CORNER_BYTE:
+      if (type == Geometry::MESH) {
+        const Mesh *mesh = static_cast<const Mesh *>(this);
+        if (prim == ATTR_PRIM_GEOMETRY) {
+          size = mesh->num_triangles() * 3;
+        }
+        else {
+          size = mesh->subd_face_corners.size() + mesh->num_ngons;
+        }
+      }
+      break;
+    case ATTR_ELEMENT_CURVE:
+      if (type == Geometry::HAIR) {
+        const Hair *hair = static_cast<const Hair *>(this);
+        size = hair->num_curves();
+      }
+      break;
+    case ATTR_ELEMENT_CURVE_KEY:
+      if (type == Geometry::HAIR) {
+        const Hair *hair = static_cast<const Hair *>(this);
+        size = hair->curve_keys.size();
+      }
+      break;
+    case ATTR_ELEMENT_CURVE_KEY_MOTION:
+      if (type == Geometry::HAIR) {
+        const Hair *hair = static_cast<const Hair *>(this);
+        size = hair->curve_keys.size() * (hair->motion_steps - 1);
+      }
+      break;
+    default:
+      break;
+  }
+
+  return size;
+}
+
 /* Geometry Manager */
 
 GeometryManager::GeometryManager()

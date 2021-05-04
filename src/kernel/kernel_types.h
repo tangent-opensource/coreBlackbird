@@ -21,6 +21,11 @@
 #  include <embree3/rtcore.h>
 #  include <embree3/rtcore_scene.h>
 #  define __EMBREE__
+
+#ifndef RTC_NAMESPACE
+#define RTC_NAMESPACE
+#endif
+
 #endif
 
 #include "kernel/kernel_math.h"
@@ -1446,7 +1451,7 @@ typedef struct KernelBVH {
   OptixTraversableHandle scene;
 #else
 #  ifdef __EMBREE__
-  RTCScene scene;
+  RTC_NAMESPACE::RTCScene scene;
 #    ifndef __KERNEL_64_BIT__
   int pad2;
 #    endif

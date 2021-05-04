@@ -202,7 +202,7 @@ ccl_device_intersect bool scene_intersect(KernelGlobals *kg,
     isect->t = ray->t;
     CCLIntersectContext ctx(kg, CCLIntersectContext::RAY_REGULAR);
     IntersectContext rtc_ctx(&ctx);
-    RTCRayHit ray_hit;
+    RTC_NAMESPACE::RTCRayHit ray_hit;
     kernel_embree_setup_rayhit(*ray, ray_hit, visibility);
     rtcIntersect1(kernel_data.bvh.scene, &rtc_ctx.context, &ray_hit);
     if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID &&
@@ -301,12 +301,12 @@ ccl_device_intersect bool scene_intersect_local(KernelGlobals *kg,
     }
     ctx.local_object_id = local_object;
     IntersectContext rtc_ctx(&ctx);
-    RTCRay rtc_ray;
+    RTC_NAMESPACE::RTCRay rtc_ray;
     kernel_embree_setup_ray(*ray, rtc_ray, PATH_RAY_ALL_VISIBILITY);
 
     /* If this object has its own BVH, use it. */
     if (has_bvh) {
-      RTCGeometry geom = rtcGetGeometry(kernel_data.bvh.scene, local_object * 2);
+      RTC_NAMESPACE::RTCGeometry geom = rtcGetGeometry(kernel_data.bvh.scene, local_object * 2);
       if (geom) {
         float3 P = ray->P;
         float3 dir = ray->D;
@@ -324,7 +324,7 @@ ccl_device_intersect bool scene_intersect_local(KernelGlobals *kg,
         rtc_ray.dir_x = dir.x;
         rtc_ray.dir_y = dir.y;
         rtc_ray.dir_z = dir.z;
-        RTCScene scene = (RTCScene)rtcGetGeometryUserData(geom);
+        RTC_NAMESPACE::RTCScene scene = (RTC_NAMESPACE::RTCScene)RTC_NAMESPACE::rtcGetGeometryUserData(geom);
         kernel_assert(scene);
         if (scene) {
           rtcOccluded1(scene, &rtc_ctx.context, &rtc_ray);
@@ -402,7 +402,7 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals *kg,
     ctx.max_hits = max_hits;
     ctx.num_hits = 0;
     IntersectContext rtc_ctx(&ctx);
-    RTCRay rtc_ray;
+    RTC_NAMESPACE::RTCRay rtc_ray;
     kernel_embree_setup_ray(*ray, rtc_ray, visibility);
     rtcOccluded1(kernel_data.bvh.scene, &rtc_ctx.context, &rtc_ray);
 
@@ -516,7 +516,7 @@ ccl_device_intersect uint scene_intersect_volume_all(KernelGlobals *kg,
     ctx.max_hits = max_hits;
     ctx.num_hits = 0;
     IntersectContext rtc_ctx(&ctx);
-    RTCRay rtc_ray;
+    RTC_NAMESPACE::RTCRay rtc_ray;
     kernel_embree_setup_ray(*ray, rtc_ray, visibility);
     rtcOccluded1(kernel_data.bvh.scene, &rtc_ctx.context, &rtc_ray);
     return ctx.num_hits;
