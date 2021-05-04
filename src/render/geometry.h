@@ -137,7 +137,7 @@ class Geometry : public Node {
   {
     return type == POINTCLOUD;
   }
-  
+
   size_t element_size(AttributeElement element, AttributePrimitive prim) const;
 
   /* Updates */
