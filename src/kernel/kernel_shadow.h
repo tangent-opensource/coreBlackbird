@@ -161,6 +161,27 @@ ccl_device bool shadow_blocked_transparent_all_loop(KernelGlobals *kg,
   VolumeState volume_state;
 #      endif
 #    endif
+
+#    ifdef __VOLUME_OCTREE__
+  if (!blocked && hits->has_volume) {
+    float3 throughput = make_float3(1.0f, 1.0f, 1.0f);
+    Ray volume_shadow_ray = *ray;
+      
+    if (!hits->in_volume) {
+      volume_shadow_ray.P += volume_shadow_ray.D * (hits->v_t + 1e-4f /*epsilon*/);
+    }
+
+    volume_shadow_ray.t = fminf(hits->v_tmax, ray->t);
+    kernel_volume_shadow_octree_rr(kg, shadow_sd, state, &volume_shadow_ray, &throughput);
+
+    if (is_zero(throughput)) {
+        return true;
+    }
+
+    *shadow *= throughput;
+  }
+#    endif  // __VOLUME_OCTREE__
+
   /* If no opaque surface found but we did find transparent hits,
    * shade them.
    */
@@ -381,7 +402,7 @@ ccl_device bool shadow_blocked_transparent_stepped(KernelGlobals *kg,
 }
 
 #  endif /* __KERNEL_GPU__ || !__SHADOW_RECORD_ALL__ */
-#endif   /* __TRANSPARENT_SHADOWS__ */
+#endif /* __TRANSPARENT_SHADOWS__ */
 
 ccl_device_inline bool shadow_blocked(KernelGlobals *kg,
                                       ShaderData *sd,
@@ -453,12 +474,12 @@ ccl_device_inline bool shadow_blocked(KernelGlobals *kg,
 #    endif /* __KERNEL_GPU__ */
   return shadow_blocked_transparent_all(
       kg, sd, shadow_sd, state, visibility, ray, max_hits, shadow);
-#  else  /* __SHADOW_RECORD_ALL__ */
+#  else /* __SHADOW_RECORD_ALL__ */
   /* Fallback to a slowest version which works on all devices. */
   return shadow_blocked_transparent_stepped(
       kg, sd, shadow_sd, state, visibility, ray, &isect, shadow);
 #  endif /* __SHADOW_RECORD_ALL__ */
-#endif   /* __TRANSPARENT_SHADOWS__ */
+#endif /* __TRANSPARENT_SHADOWS__ */
 }
 
 #undef SHADOW_STACK_MAX_HITS

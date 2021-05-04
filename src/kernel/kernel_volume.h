@@ -294,6 +294,192 @@ ccl_device_noinline void kernel_volume_shadow(KernelGlobals *kg,
     kernel_volume_shadow_homogeneous(kg, state, ray, shadow_sd, throughput);
 }
 
+#  ifdef __VOLUME_OCTREE__
+
+/* Residual ratio tracking to estimate for volume transmission.
+ See Novak et al, 2014 (https://cs.dartmouth.edu/wjarosz/publications/novak14residual.pdf),
+ "Residual Ratio Tracking for Estimating Attenuation in Participating Media.
+ " sigma_c should be the lower bound of the volume density, sigma_r should be the difference
+ between lower and upper bound of volume density. When sigma_c == 0, it is the same as ratio
+ tracking. */
+ccl_device_inline void kernel_volume_shadow_octree_rr(KernelGlobals *kg,
+                                                     ShaderData *shadow_sd,
+                                                     ccl_addr_space PathState *state,
+                                                     Ray *ray,
+                                                     float3 *throughput)
+{
+  shader_setup_from_volume(kg, shadow_sd, ray);
+
+  KernelOCTree root = kernel_tex_fetch(__octree_nodes, 0);
+
+  if (is_zero(root.max_extinction)) {
+    return;
+  }
+
+  const float tp_eps = 1e-6f; /* todo: this is likely not the right value */
+  float rphase = path_state_rng_1D(kg, state, PRNG_PHASE_CHANNEL);
+
+  // Random rgb channel
+  int channel = floorf(rphase * 3.0f);
+  float3 channel_pdf = make_float3(1.0f / 3.0f);
+
+  /* Control variate, set to min density. */
+  const float sigma_c = kernel_volume_channel_get(root.min_extinction, channel);
+  /* Residual compononent, max density - min density. */
+  const float sigma_r = kernel_volume_channel_get(root.max_extinction, channel) - sigma_c;
+
+  float T_c = expf(-sigma_c * ray->t);
+  float3 T_r = *throughput;
+
+  float t = 0.0f;
+  float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
+  float3 pos = ray->P;
+
+  uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
+
+  do {
+
+    float xi = lcg_step_float_addrspace(&lcg_state);
+
+    t -= logf(1 - xi) * inv_max_extinction;
+
+    if (t > ray->t) {
+      break;
+    }
+
+    pos = ray->P + ray->D * t;
+    shadow_sd->P = pos;
+
+    if (pos.x < root.bmin.x || pos.x > root.bmax.x || pos.y < root.bmin.y || pos.y > root.bmax.y ||
+        pos.z < root.bmin.z || pos.z > root.bmax.z) {
+
+      /* Ray ended up outside root bbox */
+      break;
+    }
+
+    /* Sum all volume extinction */
+    float3 sigma_t = make_float3(0.0f, 0.0f, 0.0f);
+
+    for (int i = 0; i < root.num_objects; i++) {
+      KernelObject ob = kernel_tex_fetch(__objects, root.obj_indices[i]);
+      shadow_sd->object = root.obj_indices[i];
+      shadow_sd->ob_tfm = ob.tfm;
+      shadow_sd->ob_itfm = ob.itfm;
+
+      VolumeShaderCoefficients coeff ccl_optional_struct_init;
+
+      shadow_sd->shader = kernel_tex_fetch(__tri_shader, root.sd_indices[i]);
+
+      if (volume_shader_sample(kg, shadow_sd, state, pos, &coeff)) {
+        if (shadow_sd->flag & SD_EXTINCTION) {
+          sigma_t += coeff.sigma_t;
+        }
+      }
+    }
+
+    T_r = T_r * (make_float3(1.0f, 1.0f, 1.0f) -
+                 (sigma_t - make_float3(sigma_c, sigma_c, sigma_c)) / sigma_r);
+
+    /* stop if nearly all light is blocked */
+    if (len(T_r) < tp_eps) {
+      break;
+    }
+
+  } while (true);
+
+  T_r *= T_c;
+
+  throughput->x = saturate(T_r.x);
+  throughput->y = saturate(T_r.y);
+  throughput->z = saturate(T_r.z);
+  return;
+}
+
+/* Get the transmittance by integrating volume attenuation in octree structure
+ * Assumes the root bbox intersection has been done and ray has been pushed to
+ * be contained in the bbox */
+ccl_device_noinline void kernel_volume_shadow_octree_delta(KernelGlobals *kg,
+                                                     ShaderData *shadow_sd,
+                                                     ccl_addr_space PathState *state,
+                                                     Ray *ray,
+                                                     float3 *throughput)
+{
+  shader_setup_from_volume(kg, shadow_sd, ray);
+
+  KernelOCTree root = kernel_tex_fetch(__octree_nodes, 0);
+
+  if (is_zero(root.max_extinction)) {
+    return;
+  }
+
+  const float tp_eps = 1e-6f; /* todo: this is likely not the right value */
+  float rphase = path_state_rng_1D(kg, state, PRNG_PHASE_CHANNEL);
+
+  // Random rgb channel
+  int channel = floorf(rphase * 3.0f);
+  float3 channel_pdf = make_float3(1.0f / 3.0f);
+
+  float t = 0.0f;
+  float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
+  float3 pos = ray->P;
+
+  float accum_transmittance = 1.0f;
+
+  uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
+
+  do {
+    
+    float xi = lcg_step_float_addrspace(&lcg_state);
+    
+    t -= logf(1 - xi) * inv_max_extinction;
+
+    if (t > ray->t) {
+      break;
+    }
+
+    pos = ray->P + ray->D * t;
+    shadow_sd->P = pos;
+
+    if (pos.x < root.bmin.x || pos.x > root.bmax.x || pos.y < root.bmin.y || pos.y > root.bmax.y ||
+        pos.z < root.bmin.z || pos.z > root.bmax.z) {
+
+      /* Ray ended up outside root bbox */
+      break;
+    }
+
+    /* Sum all volume extinction */
+    float extinction = 0.0f;
+
+    for (int i = 0; i < root.num_objects; i++) {
+      KernelObject ob = kernel_tex_fetch(__objects, root.obj_indices[i]);
+      shadow_sd->object = root.obj_indices[i];
+      shadow_sd->ob_tfm = ob.tfm;
+      shadow_sd->ob_itfm = ob.itfm;
+
+      VolumeShaderCoefficients coeff ccl_optional_struct_init;
+
+      shadow_sd->shader = kernel_tex_fetch(__tri_shader, root.sd_indices[i]);
+
+      if (volume_shader_sample(kg, shadow_sd, state, pos, &coeff)) {
+        if (shadow_sd->flag & SD_EXTINCTION) {
+          extinction += kernel_volume_channel_get(coeff.sigma_t, channel);
+        }
+      }
+    }
+
+    accum_transmittance *= 1.0f - (extinction * inv_max_extinction);
+
+    /* stop if nearly all light is blocked */
+    if (accum_transmittance < tp_eps) {
+      break;
+    }
+
+  } while (true);
+
+  *throughput *= accum_transmittance;
+}
+#  endif  // __VOLUME_OCTREE__
+
 #endif /* __VOLUME__ */
 
 /* Equi-angular sampling as in:
@@ -1439,9 +1625,9 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
 
   float rphase = path_state_rng_1D(kg, state, PRNG_PHASE_CHANNEL);
 
-  // Random rgb channel 
+  // Random rgb channel
   int channel = floorf(rphase * 3.0f);
-  float3 channel_pdf = make_float3(1.0f /3.0f);
+  float3 channel_pdf = make_float3(1.0f / 3.0f);
 
   float t = 0.0f;
   float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
@@ -1488,7 +1674,7 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
         extinction_sample += kernel_volume_channel_get(coeff.sigma_t, channel);
         scattering_sample += kernel_volume_channel_get(coeff.sigma_s, channel);
         absorption_sample += kernel_volume_channel_get(coeff.sigma_t - coeff.sigma_s, channel);
-        
+
         albedo += safe_divide_color(coeff.sigma_s, coeff.sigma_t);
       }
     }

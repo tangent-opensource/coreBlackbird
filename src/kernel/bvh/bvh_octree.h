@@ -67,7 +67,9 @@ ccl_device_inline
   }
 
   isect->v_t = t_min;
+  isect->v_tmax = t_max - t_min; // length of exit - enter (used for residual ratio tracking)
   isect->has_volume = true;
+
   if (P.x >= root.bmin.x && P.x <= root.bmax.x && 
       P.y >= root.bmin.y && P.y <= root.bmax.y &&
       P.z >= root.bmin.z && P.z <= root.bmax.z) {

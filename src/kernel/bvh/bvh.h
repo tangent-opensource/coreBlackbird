@@ -404,6 +404,10 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals *kg,
     return false;
   }
 
+#    ifdef __VOLUME_OCTREE__
+  bvh_intersect_octree(kg, ray, isect, visibility);
+#    endif
+
 #    ifdef __EMBREE__
   if (kernel_data.bvh.scene) {
     CCLIntersectContext ctx(kg, CCLIntersectContext::RAY_SHADOW_ALL);

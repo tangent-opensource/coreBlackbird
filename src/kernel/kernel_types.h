@@ -700,6 +700,7 @@ typedef struct Intersection {
 
 #ifdef __VOLUME_OCTREE__
   float v_t;  
+  float v_tmax;  
 #endif
 
 #ifdef __KERNEL_DEBUG__

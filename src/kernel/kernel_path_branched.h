@@ -214,6 +214,7 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
   }
 
   Ray volume_ray = *ray;
+  volume_ray.t = fminf(isect->v_tmax, ray->t);
 
   /* If ray position is outside of octree push it to be contained */
   if (!isect->in_volume) {
@@ -231,20 +232,23 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
     /* branch RNG state */
     path_state_branch(&ps, j, num_samples);
 
-      /* Get the probabilistic volume scatter result */
-    VolumeIntegrateResult result = kernel_volume_traverse_octree(
-        kg, state, &volume_ray, sd, &tp);
+    /* Get the probabilistic volume scatter result */
+    VolumeIntegrateResult result = kernel_volume_traverse_octree(kg, state, &volume_ray, sd, &tp);
 
 #        ifdef __VOLUME_SCATTER__
     if (result == VOLUME_PATH_SCATTERED) {
-      *throughput = tp;
+      kernel_path_volume_connect_light(kg, sd, emission_sd, tp, state, L);
+
+      // TODO indirect bounce
+      /* for render passes, sum and reset indirect light pass variables
+       * for the next samples */
+      path_radiance_sum_indirect(L);
+      path_radiance_reset_indirect(L);
     }
-
-    // TODO Volume shadow
-    // TODO Volume emission
-
 #        endif /* __VOLUME_SCATTER__ */
   }
+
+  kernel_volume_shadow_octree_rr(kg, emission_sd, state, &volume_ray, throughput);
 }
 #      endif /* __VOLUME_OCTREE__ */
 
