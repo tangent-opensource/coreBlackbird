@@ -1635,8 +1635,10 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
 
   float3 accum_transmittance = make_float3(1.0f);
 
+  uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
+
   do {
-    float xi = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
+    float xi = lcg_step_float_addrspace(&lcg_state);
     t -= logf(1 - xi) * inv_max_extinction;
 
     if (t > ray->t) {
