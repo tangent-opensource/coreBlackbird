@@ -271,6 +271,10 @@ ccl_device_inline void store_pass_pixel1(uint8_t *pixels,
       ((half *)pixels)[0] = float_to_half(val);
       return;
     }
+    case RenderBuffers::ComponentType::Int32: {
+      ((int32_t*)pixels)[0] = (int32_t)val;
+      return;
+    }
     default:
       assert(false);
       return;

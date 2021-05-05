@@ -98,8 +98,7 @@ class RenderBuffers {
     Float16,
     Float16x3,
     Float16x4,
-    Int8,
-    UInt8
+    Int32
   };
 
   /* Copies one of the render passes rect bounded by src_width, src_height
