@@ -139,6 +139,8 @@ class Geometry : public Node {
   }
 
   size_t element_size(AttributeElement element, AttributePrimitive prim) const;
+  TypeDesc standard_type(AttributeStandard std) const;
+  AttributeElement standard_element(AttributeStandard std) const;
 
   /* Updates */
   void tag_update(Scene *scene, bool rebuild);
