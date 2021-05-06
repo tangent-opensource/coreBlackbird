@@ -41,8 +41,8 @@ class BVHEmbree : public BVH {
   virtual void build(Progress &progress, Stats *stats) override;
   virtual void copy_to_device(Progress &progress, DeviceScene *dscene) override;
   virtual ~BVHEmbree();
-  RTCScene scene;
-  static void destroy(RTCScene);
+  RTC_NAMESPACE::RTCScene scene;
+  static void destroy(RTC_NAMESPACE::RTCScene);
 
   /* Building process. */
   virtual BVHNode *widen_children_nodes(const BVHNode *root) override;
@@ -64,7 +64,7 @@ class BVHEmbree : public BVH {
 
   ssize_t mem_used;
 
-  void add_delayed_delete_scene(RTCScene scene)
+  void add_delayed_delete_scene(RTC_NAMESPACE::RTCScene scene)
   {
     delayed_delete_scenes.push_back(scene);
   }
@@ -72,20 +72,20 @@ class BVHEmbree : public BVH {
 
  private:
   void delete_rtcScene();
-  void set_tri_vertex_buffer(RTCGeometry geom_id, const Mesh *mesh, const bool update);
-  void set_curve_vertex_buffer(RTCGeometry geom_id, const Hair *hair, const bool update);
-  void set_point_vertex_buffer(RTCGeometry geom_id,
+  void set_tri_vertex_buffer(RTC_NAMESPACE::RTCGeometry geom_id, const Mesh *mesh, const bool update);
+  void set_curve_vertex_buffer(RTC_NAMESPACE::RTCGeometry geom_id, const Hair *hair, const bool update);
+  void set_point_vertex_buffer(RTC_NAMESPACE::RTCGeometry geom_id,
                                const PointCloud *pointcloud,
                                const bool update);
 
-  static RTCDevice rtc_shared_device;
+  static RTC_NAMESPACE::RTCDevice rtc_shared_device;
   static int rtc_shared_users;
   static thread_mutex rtc_shared_mutex;
 
   Stats *stats;
-  vector<RTCScene> delayed_delete_scenes;
+  vector<RTC_NAMESPACE::RTCScene> delayed_delete_scenes;
   int curve_subdivisions;
-  enum RTCBuildQuality build_quality;
+  enum RTC_NAMESPACE::RTCBuildQuality build_quality;
   bool dynamic_scene;
 };
 

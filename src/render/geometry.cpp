@@ -259,7 +259,8 @@ void Geometry::tag_update(Scene *scene, bool rebuild)
   scene->object_manager->need_update = true;
 }
 
-size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim) const {
+size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim) const
+{
   size_t size = 0;
 
   switch (element) {
