@@ -1037,11 +1037,11 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
     }
 
     float4 *rtc_verts = (update) ? (float4 *)rtcGetGeometryBufferData(
-                                       geom_id, RTC_BUFFER_TYPE_VERTEX, t) :
+                                       geom_id, RTC_NAMESPACE::RTC_BUFFER_TYPE_VERTEX, t) :
                                    (float4 *)rtcSetNewGeometryBuffer(geom_id,
-                                                                     RTC_BUFFER_TYPE_VERTEX,
+                                                                     RTC_NAMESPACE::RTC_BUFFER_TYPE_VERTEX,
                                                                      t,
-                                                                     RTC_FORMAT_FLOAT4,
+                                                                     RTC_NAMESPACE::RTC_FORMAT_FLOAT4,
                                                                      sizeof(float) * 4,
                                                                      num_points);
 
@@ -1072,9 +1072,9 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
     }
   }
 
-  enum RTCGeometryType type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
+  enum RTC_NAMESPACE::RTCGeometryType type = RTC_NAMESPACE::RTC_GEOMETRY_TYPE_SPHERE_POINT;
 
-  RTCGeometry geom_id = rtcNewGeometry(rtc_shared_device, type);
+  RTC_NAMESPACE::RTCGeometry geom_id = rtcNewGeometry(rtc_shared_device, type);
 
   rtcSetGeometryBuildQuality(geom_id, build_quality);
   rtcSetGeometryTimeStepCount(geom_id, num_motion_steps);
