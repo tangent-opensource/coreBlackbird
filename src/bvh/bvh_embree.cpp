@@ -47,6 +47,7 @@
 #  include "render/hair.h"
 #  include "render/mesh.h"
 #  include "render/object.h"
+#  include "render/pointcloud.h"
 
 #  include "util/util_foreach.h"
 #  include "util/util_logging.h"
@@ -96,12 +97,16 @@ static void rtc_filter_occluded_func(const RTC_NAMESPACE::RTCFilterFunctionNArgu
         *isect = current_isect;
         int prim = kernel_tex_fetch(__prim_index, isect->prim);
         int shader = 0;
-        if (kernel_tex_fetch(__prim_type, isect->prim) & PRIMITIVE_ALL_TRIANGLE) {
+        int prim_type = kernel_tex_fetch(__prim_type, isect->prim);
+        if (prim_type & PRIMITIVE_ALL_TRIANGLE) {
           shader = kernel_tex_fetch(__tri_shader, prim);
         }
-        else {
+        else if (prim_type & PRIMITIVE_ALL_CURVE) {
           float4 str = kernel_tex_fetch(__curves, prim);
           shader = __float_as_int(str.z);
+        }
+        else if (prim_type & PRIMITIVE_ALL_POINT) {
+          shader = kernel_tex_fetch(__points_shader, prim);
         }
         int flag = kernel_tex_fetch(__shaders, shader & SHADER_MASK).flags;
         /* If no transparent shadows, all light is blocked. */
@@ -313,6 +318,11 @@ static size_t count_primitives(Geometry *geom)
   else if (geom->type == Geometry::HAIR) {
     Hair *hair = static_cast<Hair *>(geom);
     return hair->num_segments();
+  }
+  /* This has been moved to GeometryManager::device_update_bvh */
+  else if (geom->type == Geometry::POINTCLOUD) {
+    PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+    return pointcloud->num_points();
   }
 
   return 0;
@@ -541,6 +551,12 @@ void BVHEmbree::add_object(Object *ob, int i)
     Hair *hair = static_cast<Hair *>(geom);
     if (hair->num_curves() > 0) {
       add_curves(ob, hair, i);
+    }
+  }
+  else if (geom->type == Geometry::POINTCLOUD) {
+    PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+    if (pointcloud->num_points() > 0) {
+      add_points(ob, pointcloud, i);
     }
   }
 }
@@ -992,6 +1008,111 @@ void BVHEmbree::pack_nodes(const BVHNode *)
   }
 }
 
+void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
+                                        const PointCloud *pointcloud,
+                                        const bool update)
+{
+  const Attribute *attr_mP = NULL;
+  size_t num_motion_steps = 1;
+  if (pointcloud->has_motion_blur()) {
+    attr_mP = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+    if (attr_mP) {
+      num_motion_steps = pointcloud->motion_steps;
+    }
+  }
+
+  const size_t num_points = pointcloud->num_points();
+
+  /* Copy the point data to Embree */
+  const int t_mid = (num_motion_steps - 1) / 2;
+  const float *radius = pointcloud->radius.data();
+  for (int t = 0; t < num_motion_steps; ++t) {
+    const float3 *verts;
+    if (t == t_mid || attr_mP == NULL) {
+      verts = pointcloud->points.data();
+    }
+    else {
+      int t_ = (t > t_mid) ? (t - 1) : t;
+      verts = &attr_mP->data_float3()[t_ * num_points];
+    }
+
+    float4 *rtc_verts = (update) ? (float4 *)rtcGetGeometryBufferData(
+                                       geom_id, RTC_NAMESPACE::RTC_BUFFER_TYPE_VERTEX, t) :
+                                   (float4 *)rtcSetNewGeometryBuffer(geom_id,
+                                                                     RTC_NAMESPACE::RTC_BUFFER_TYPE_VERTEX,
+                                                                     t,
+                                                                     RTC_NAMESPACE::RTC_FORMAT_FLOAT4,
+                                                                     sizeof(float) * 4,
+                                                                     num_points);
+
+    assert(rtc_verts);
+    if (rtc_verts) {
+      for (size_t j = 0; j < num_points; ++j) {
+        rtc_verts[j] = float3_to_float4(verts[j]);
+        rtc_verts[j].w = radius[j];
+      }
+    }
+
+    if (update) {
+      rtcUpdateGeometryBuffer(geom_id, RTC_BUFFER_TYPE_VERTEX, t);
+    }
+  }
+}
+
+void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i)
+{
+  size_t prim_offset = pointcloud->optix_prim_offset;
+
+  const Attribute *attr_mP = NULL;
+  size_t num_motion_steps = 1;
+  if (pointcloud->has_motion_blur()) {
+    attr_mP = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+    if (attr_mP) {
+      num_motion_steps = pointcloud->motion_steps;
+    }
+  }
+
+  enum RTC_NAMESPACE::RTCGeometryType type = RTC_NAMESPACE::RTC_GEOMETRY_TYPE_SPHERE_POINT;
+
+  RTC_NAMESPACE::RTCGeometry geom_id = rtcNewGeometry(rtc_shared_device, type);
+
+  rtcSetGeometryBuildQuality(geom_id, build_quality);
+  rtcSetGeometryTimeStepCount(geom_id, num_motion_steps);
+
+  set_point_vertex_buffer(geom_id, pointcloud, false);
+
+  const size_t num_prims = pointcloud->points.size();
+  const size_t prim_object_size = pack.prim_object.size();
+  pack.prim_object.resize(prim_object_size + num_prims);
+  const size_t prim_type_size = pack.prim_type.size();
+  pack.prim_type.resize(prim_type_size + num_prims);
+
+  // todo: remove me. older code assumes this, newer does not?
+  assert(pack.prim_index.size() == pack.prim_tri_index.size());
+
+  const size_t prim_index_size = pack.prim_index.size();
+  pack.prim_index.resize(prim_index_size + num_prims);
+  const size_t prim_tri_index_size = pack.prim_tri_index.size();
+  pack.prim_tri_index.resize(prim_tri_index_size + num_prims);
+
+  const uint prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT : PRIMITIVE_POINT;
+
+  for (size_t j = 0; j < num_prims; ++j) {
+    pack.prim_object[prim_object_size + j] = i;
+    pack.prim_type[prim_type_size + j] = prim_type;
+    pack.prim_index[prim_index_size + j] = j;
+    pack.prim_tri_index[prim_tri_index_size + j] = -1;
+  }
+
+  rtcSetGeometryUserData(geom_id, (void *)prim_offset);
+  rtcSetGeometryOccludedFilterFunction(geom_id, rtc_filter_occluded_func);
+  rtcSetGeometryMask(geom_id, ob->visibility_for_tracing());
+
+  rtcCommitGeometry(geom_id);
+  rtcAttachGeometryByID(scene, geom_id, i * 2);
+  rtcReleaseGeometry(geom_id);
+}
+
 void BVHEmbree::refit_nodes()
 {
   /* Update all vertex buffers, then tell Embree to rebuild/-fit the BVHs. */
@@ -1013,6 +1134,14 @@ void BVHEmbree::refit_nodes()
         if (hair->num_curves() > 0) {
           RTC_NAMESPACE::RTCGeometry geom = rtcGetGeometry(scene, geom_id + 1);
           set_curve_vertex_buffer(geom, hair, true);
+          rtcCommitGeometry(geom);
+        }
+      }
+      else if (geom->type == Geometry::POINTCLOUD) {
+        PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+        if (pointcloud->num_points() > 0) {
+          RTCGeometry geom = rtcGetGeometry(scene, geom_id);
+          set_point_vertex_buffer(geom, pointcloud, true);
           rtcCommitGeometry(geom);
         }
       }
