@@ -1008,7 +1008,7 @@ void BVHEmbree::pack_nodes(const BVHNode *)
   }
 }
 
-void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
+void BVHEmbree::set_point_vertex_buffer(RTC_NAMESPACE::RTCGeometry geom_id,
                                         const PointCloud *pointcloud,
                                         const bool update)
 {
@@ -1200,7 +1200,7 @@ void BVHEmbree::refit_nodes()
       else if (geom->type == Geometry::POINTCLOUD) {
         PointCloud *pointcloud = static_cast<PointCloud *>(geom);
         if (pointcloud->num_points() > 0) {
-          RTCGeometry geom = rtcGetGeometry(scene, geom_id);
+          RTC_NAMESPACE::RTCGeometry geom = rtcGetGeometry(scene, geom_id);
           set_point_vertex_buffer(geom, pointcloud, true);
           rtcCommitGeometry(geom);
         }
