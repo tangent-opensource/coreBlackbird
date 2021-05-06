@@ -1020,7 +1020,6 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
     if (attr_mP) {
       num_motion_steps = pointcloud->motion_steps;
     }
-    printf("Pointcloud has motion blur\n");
   }
 
   const size_t num_points = pointcloud->num_points();

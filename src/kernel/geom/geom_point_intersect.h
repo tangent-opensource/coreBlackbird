@@ -197,7 +197,6 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
                                           const Intersection *isect,
                                           const Ray *ray)
 {
-  //printf("Point shader setup\n");
   sd->shader = kernel_tex_fetch(__points_shader, sd->prim);
   sd->P = ray->P + ray->D * isect->t;
 
