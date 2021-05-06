@@ -791,8 +791,13 @@ typedef enum AttributeStandard {
   ATTR_STD_GENERATED_TRANSFORM,
   ATTR_STD_POSITION_UNDEFORMED,
   ATTR_STD_POSITION_UNDISPLACED,
+  /*
+   * If one of these attribute is present, motion blur is enabled
+   * and ATTR_STD_MOTION_VERTEX_POSITION is not present, the geometry will
+   * be generated using either or both the velocity/acceleration. */
   ATTR_STD_VERTEX_VELOCITY,
   ATTR_STD_VERTEX_ACCELERATION,
+
   ATTR_STD_MOTION_VERTEX_POSITION,
   ATTR_STD_MOTION_VERTEX_NORMAL,
   ATTR_STD_PARTICLE,

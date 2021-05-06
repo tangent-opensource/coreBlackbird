@@ -1679,10 +1679,10 @@ void GeometryManager::create_motion_blur_geometry(
 
   /* Velocities are required */
   Attribute *attr_V = geom->attributes.find(ATTR_STD_VERTEX_VELOCITY);
-  if (!attr_V) {
-    return;
+  const float3 *V = nullptr;
+  if (attr_V) {
+    V = attr_V->data_float3();
   }
-  const float3 *V = attr_V->data_float3();
 
   /* Use accelerations in the integration if they are available */
   Attribute *attr_A = geom->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
@@ -1713,15 +1713,21 @@ void GeometryManager::create_motion_blur_geometry(
 
     const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
 
-    if (A) { /* velocity + acceleration */
+    if (V && A) { /* velocity + acceleration */
       for (size_t vert = 0; vert < num_points; ++vert) {
         mP[vert] = float3_to_float4(P[vert] +
                                     relative_time * (V[vert] + (0.5f * relative_time * A[vert])));
       }
     }
-    else { /* velocity */
+    else if (V) { /* velocity */
       for (size_t vert = 0; vert < num_points; ++vert) {
         mP[vert] = float3_to_float4(P[vert] + relative_time * V[vert]);
+      }
+    }
+    else { /* acceleration */
+      const float relative_time2 = relative_time * relative_time;
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        mP[vert] = float3_to_float4(P[vert] + relative_time2 * A[vert] * 0.5f);
       }
     }
 
