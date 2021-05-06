@@ -44,12 +44,17 @@ ccl_device_inline int find_attribute_point_motion(KernelGlobals *kg,
   return (attr_map.y == ATTR_ELEMENT_NONE) ? (int)ATTR_STD_NOT_FOUND : (int)attr_map.z;
 }
 
-ccl_device_inline float4
-motion_point_for_step(KernelGlobals *kg, int offset, int numkeys, int numsteps, int step, int prim)
+ccl_device_inline float4 motion_point_for_step(KernelGlobals *kg,
+                                               int offset,
+                                               int numkeys,
+                                               int numsteps,
+                                               int step,
+                                               int prim,
+                                               int n_points_attrs)
 {
   if (step == numsteps) {
     /* center step: regular key location */
-    return kernel_tex_fetch(__points, prim);
+    return kernel_tex_fetch(__points, prim * n_points_attrs);
   }
   else {
     /* center step is not stored in this array */
@@ -63,7 +68,8 @@ motion_point_for_step(KernelGlobals *kg, int offset, int numkeys, int numsteps, 
 }
 
 /* return 2 point key locations */
-ccl_device_inline float4 motion_point(KernelGlobals *kg, int object, int prim, float time)
+ccl_device_inline float4
+motion_point(KernelGlobals *kg, int object, int prim, float time, int n_points_attrs)
 {
   /* get motion info */
   int numsteps, numkeys;
@@ -80,8 +86,9 @@ ccl_device_inline float4 motion_point(KernelGlobals *kg, int object, int prim, f
   kernel_assert(offset != ATTR_STD_NOT_FOUND);
 
   /* fetch key coordinates */
-  float4 point = motion_point_for_step(kg, offset, numkeys, numsteps, step, prim);
-  float4 next_point = motion_point_for_step(kg, offset, numkeys, numsteps, step + 1, prim);
+  float4 point = motion_point_for_step(kg, offset, numkeys, numsteps, step, prim, n_points_attrs);
+  float4 next_point = motion_point_for_step(
+      kg, offset, numkeys, numsteps, step + 1, prim, n_points_attrs);
 
   /* interpolate between steps */
   return (1.0f - t) * point + t * next_point;
