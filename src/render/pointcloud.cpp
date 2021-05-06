@@ -105,7 +105,8 @@ NODE_DEFINE(PointCloud)
   return type;
 }
 
-PointCloud::PointCloud() : Geometry(node_type, Geometry::POINTCLOUD)
+PointCloud::PointCloud()
+    : Geometry(node_type, Geometry::POINTCLOUD), point_style(POINT_CLOUD_POINT_SPHERE)
 {
 }
 
@@ -120,10 +121,10 @@ void PointCloud::resize(int numpoints)
   shader.resize(numpoints);
   attributes.resize();
 
-  // todo: what about this?
-  //tag_points_modified();
-  //tag_radius_modified();
-  //tag_shader_modified();
+  /* todo: what about this?
+   * tag_points_modified();
+   * tag_radius_modified();
+   * tag_shader_modified(); */
 }
 
 void PointCloud::reserve(int numpoints)
@@ -137,17 +138,17 @@ void PointCloud::reserve(int numpoints)
 void PointCloud::clear(const bool preserve_shaders)
 {
   Geometry::clear();
-  // port: no preserve_shader
-  //Geometry::clear(preserve_shaders);
+  /* port: no preserve_shader
+   * Geometry::clear(preserve_shaders); */
 
   points.clear();
   radius.clear();
   shader.clear();
   attributes.clear();
 
-  //tag_points_modified();
-  //tag_radius_modified();
-  //tag_shader_modified();
+  /* tag_points_modified();
+   * tag_radius_modified();
+   * tag_shader_modified(); */
 }
 
 void PointCloud::add_point(float3 co, float r, int shader_index)
@@ -156,10 +157,10 @@ void PointCloud::add_point(float3 co, float r, int shader_index)
   radius.push_back_reserved(r);
   shader.push_back_reserved(shader_index);
 
-  // todo: ?
-  //tag_points_modified();
-  //tag_radius_modified();
-  //tag_shader_modified();
+  /* todo: ?
+   * tag_points_modified();
+   * tag_radius_modified();
+   * tag_shader_modified(); */
 }
 
 void PointCloud::copy_center_to_motion_step(const int motion_step)
@@ -280,9 +281,22 @@ void PointCloud::pack(Scene *scene, float4 *packed_points, uint *packed_shader)
   float *radius_data = radius.data();
   int *shader_data = shader.data();
 
-  for (size_t i = 0; i < numpoints; i++) {
-    packed_points[i] = make_float4(
-        points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+  if (point_style == POINT_CLOUD_POINT_DISC_ORIENTED) {
+    Attribute *N_attr = attributes.find(ATTR_STD_VERTEX_NORMAL);
+    assert(N_attr);
+    float3 *N = N_attr->data_float3();
+
+    for (size_t i = 0; i < numpoints; i++) {
+      packed_points[i * 2 + 0] = make_float4(
+          points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+      packed_points[i * 2 + 1] = float3_to_float4(N[i]);
+    }
+  }
+  else {
+    for (size_t i = 0; i < numpoints; i++) {
+      packed_points[i] = make_float4(
+          points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+    }
   }
 
   uint shader_id = 0;
