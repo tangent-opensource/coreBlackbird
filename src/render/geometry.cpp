@@ -418,6 +418,33 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const {
         return TypeUnknown;
     }
   }
+  else if (type == Geometry::POINTCLOUD) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_UV:
+        return TypeFloat2;
+      case ATTR_STD_GENERATED:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_ACCELERATION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_COLOR:
+        return TypeDesc::TypeColor;
+      case ATTR_STD_POINT_RANDOM:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return TypeDesc::TypeMatrix;
+      default:
+        assert(0);
+        return TypeUnknown;
+    }
+  }
+
+  return TypeUnknown;
 }
 
 AttributeElement Geometry::standard_element(AttributeStandard std) const {
@@ -494,6 +521,33 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const {
         return ATTR_ELEMENT_NONE;
     }
   }
+  else if (type == Geometry::POINTCLOUD) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_UV:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED:
+        return  ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_ACCELERATION:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_COLOR:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_POINT_RANDOM:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return ATTR_ELEMENT_MESH;
+      default:
+        assert(0);
+        return ATTR_ELEMENT_NONE;
+    }
+  }
+
+  return ATTR_ELEMENT_NONE;
 }
 
 /* Geometry Manager */
