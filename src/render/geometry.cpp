@@ -343,6 +343,213 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
   return size;
 }
 
+TypeDesc Geometry::standard_type(AttributeStandard std) const {
+  if (type == Geometry::MESH) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_FACE_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_CORNER_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_UV:
+        return TypeFloat2;
+      case ATTR_STD_UV_TANGENT:
+        return TypeDesc::TypeVector;
+      case ATTR_STD_UV_TANGENT_SIGN:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_VERTEX_COLOR:
+        return TypeRGBA;
+        break;
+      case ATTR_STD_GENERATED:
+      case ATTR_STD_POSITION_UNDEFORMED:
+      case ATTR_STD_POSITION_UNDISPLACED:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return TypeDesc::TypeVector;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_PTEX_FACE_ID:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_PTEX_UV:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return TypeDesc::TypeMatrix;
+      case ATTR_STD_VOLUME_DENSITY:
+      case ATTR_STD_VOLUME_FLAME:
+      case ATTR_STD_VOLUME_HEAT:
+      case ATTR_STD_VOLUME_TEMPERATURE:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_VOLUME_COLOR:
+        return TypeDesc::TypeColor;
+      case ATTR_STD_VOLUME_VELOCITY:
+        return TypeDesc::TypeVector;
+      case ATTR_STD_POINTINESS:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return TypeDesc::TypeFloat;
+      default:
+        assert(0);
+        return TypeUnknown;
+    }
+  }
+  else if (type == Geometry::HAIR) {
+    switch (std) {
+      case ATTR_STD_UV:
+        return TypeFloat2;
+      case ATTR_STD_GENERATED:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_CURVE_INTERCEPT:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_CURVE_RANDOM:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return TypeDesc::TypeMatrix;
+      case ATTR_STD_POINTINESS:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return TypeDesc::TypeFloat;
+      default:
+        assert(0);
+        return TypeUnknown;
+    }
+  }
+  else if (type == Geometry::POINTCLOUD) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_UV:
+        return TypeFloat2;
+      case ATTR_STD_GENERATED:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_ACCELERATION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_COLOR:
+        return TypeDesc::TypeColor;
+      case ATTR_STD_POINT_RANDOM:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return TypeDesc::TypeMatrix;
+      default:
+        assert(0);
+        return TypeUnknown;
+    }
+  }
+
+  return TypeUnknown;
+}
+
+AttributeElement Geometry::standard_element(AttributeStandard std) const {
+  if (type == Geometry::MESH) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_FACE_NORMAL:
+        return ATTR_ELEMENT_FACE;
+      case ATTR_STD_CORNER_NORMAL:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_UV:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_UV_TANGENT:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_UV_TANGENT_SIGN:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_VERTEX_COLOR:
+        return ATTR_ELEMENT_CORNER_BYTE;
+      case ATTR_STD_GENERATED:
+      case ATTR_STD_POSITION_UNDEFORMED:
+      case ATTR_STD_POSITION_UNDISPLACED:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_MOTION_VERTEX_NORMAL:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_PTEX_FACE_ID:
+        return ATTR_ELEMENT_FACE;
+      case ATTR_STD_PTEX_UV:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return ATTR_ELEMENT_MESH;
+      case ATTR_STD_VOLUME_DENSITY:
+      case ATTR_STD_VOLUME_FLAME:
+      case ATTR_STD_VOLUME_HEAT:
+      case ATTR_STD_VOLUME_TEMPERATURE:
+        return ATTR_ELEMENT_VOXEL;
+      case ATTR_STD_VOLUME_COLOR:
+        return ATTR_ELEMENT_VOXEL;
+      case ATTR_STD_VOLUME_VELOCITY:
+        return ATTR_ELEMENT_VOXEL;
+      case ATTR_STD_POINTINESS:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return ATTR_ELEMENT_FACE;
+      default:
+        assert(0);
+        return ATTR_ELEMENT_NONE;
+    }
+  }
+  else if (type == Geometry::HAIR) {
+    switch (std) {
+      case ATTR_STD_UV:
+        return ATTR_ELEMENT_CURVE;
+      case ATTR_STD_GENERATED:
+        return ATTR_ELEMENT_CURVE;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_CURVE_KEY_MOTION;
+      case ATTR_STD_CURVE_INTERCEPT:
+        return ATTR_ELEMENT_CURVE_KEY;
+      case ATTR_STD_CURVE_RANDOM:
+        return ATTR_ELEMENT_CURVE;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return ATTR_ELEMENT_MESH;
+      case ATTR_STD_POINTINESS:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return ATTR_ELEMENT_FACE;
+      default:
+        assert(0);
+        return ATTR_ELEMENT_NONE;
+    }
+  }
+  else if (type == Geometry::POINTCLOUD) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_UV:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED:
+        return  ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_ACCELERATION:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_COLOR:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_POINT_RANDOM:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return ATTR_ELEMENT_MESH;
+      default:
+        assert(0);
+        return ATTR_ELEMENT_NONE;
+    }
+  }
+
+  return ATTR_ELEMENT_NONE;
+}
+
 /* Geometry Manager */
 
 GeometryManager::GeometryManager()
