@@ -75,16 +75,38 @@ ccl_device_inline void triangle_vertices(KernelGlobals *kg, int prim, float3 P[3
   P[2] = float4_to_float3(kernel_tex_fetch(__prim_tri_verts, tri_vindex.w + 2));
 }
 
+/* Interpolate normals for each corner */
+ccl_device_inline float3
+triangle_corner_normal(KernelGlobals *kg, float3 Ng, int prim, int obj, float u, float v)
+{
+  /* base pointer for the geometry's normal buffer - base primitive offset */
+  int prim_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
+
+  /* load corner normals */
+  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 0));
+  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 1));
+  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 2));
+
+  float3 N = safe_normalize((1.0f - u - v) * n2 + u * n0 + v * n1);
+
+  return is_zero(N) ? Ng : N;
+}
+
 /* Interpolate smooth vertex normal from vertices */
 
 ccl_device_inline float3
-triangle_smooth_normal(KernelGlobals *kg, float3 Ng, int prim, float u, float v)
+triangle_smooth_normal(KernelGlobals *kg, float3 Ng, int prim, int obj, float u, float v)
 {
   /* load triangle vertices */
   const uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
-  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, tri_vindex.x));
-  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, tri_vindex.y));
-  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, tri_vindex.z));
+  
+  /* base pointer for the geometry's normal buffer - base primitive offset */
+  int vert_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
+
+  /* load vertex normals */
+  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.x));
+  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.y));
+  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.z));
 
   float3 N = safe_normalize((1.0f - u - v) * n2 + u * n0 + v * n1);
 

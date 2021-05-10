@@ -256,6 +256,14 @@ if(WITH_CYCLES_EMBREE)
   )
 endif()
 
+if(WITH_NANOVDB)
+  add_definitions(-DWITH_NANOVDB)
+  include_directories(
+    SYSTEM
+    ${NANOVDB_INCLUDE_DIR}
+  )
+endif()
+
 if(WITH_OPENSUBDIV)
   add_definitions(-DWITH_OPENSUBDIV)
   include_directories(
@@ -314,7 +322,7 @@ endif()
 # Warnings
 if(CMAKE_COMPILER_IS_GNUCXX)
   ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS _has_cxxflag_float_conversion "-Werror=float-conversion")
-  ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS _has_cxxflag_double_promotion "-Werror=double-promotion")
+#  ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS _has_cxxflag_double_promotion "-Werror=double-promotion")
   ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS _has_no_error_unused_macros "-Wno-error=unused-macros")
   unset(_has_cxxflag_float_conversion)
   unset(_has_cxxflag_double_promotion)
@@ -365,8 +373,12 @@ if(WITH_CYCLES_NETWORK)
   add_definitions(-DWITH_NETWORK)
 endif()
 
-if(WITH_CYCLES_STANDALONE OR WITH_CYCLES_NETWORK OR WITH_CYCLES_CUBIN_COMPILER)
-  add_subdirectory(app)
+# TANGENT: We do not need this and was causing build errors
+# For now we check if GUI
+if(WITH_CYCLES_STANDALONE_GUI)
+  if(WITH_CYCLES_STANDALONE OR WITH_CYCLES_NETWORK OR WITH_CYCLES_CUBIN_COMPILER)
+    add_subdirectory(app)
+  endif()
 endif()
 
 add_subdirectory(bvh)
@@ -385,4 +397,59 @@ endif()
 
 if(NOT WITH_BLENDER AND WITH_CYCLES_STANDALONE)
   delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+endif()
+
+#
+# Top level Cycles interface with all definitions
+#
+
+if(WITH_CYCLES_STANDALONE)
+  add_library(Cycles INTERFACE)
+
+  target_include_directories(Cycles
+          INTERFACE
+          $<BUILD_INTERFACE:.>
+          $<INSTALL_INTERFACE:include>
+          )
+
+  target_link_libraries(Cycles
+          INTERFACE
+          extern_sky
+          extern_cuew
+          extern_clew
+          cycles_bvh
+          cycles_render
+          cycles_util
+          cycles_device
+          cycles_subd
+          cycles_kernel
+          )
+
+  # create target export and install actual targets
+  install(TARGETS
+          extern_sky
+          extern_cuew
+          extern_clew
+          extern_numaapi
+          cycles_bvh
+          cycles_render
+          cycles_util
+          cycles_device
+          cycles_subd
+          cycles_kernel
+          cycles_graph
+          Cycles
+          EXPORT CyclesTargets
+          )
+
+  install(EXPORT CyclesTargets
+          FILE CyclesTargets.cmake
+          NAMESPACE Cycles::
+          DESTINATION lib/cmake/Cycles
+          )
+
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(cmake/CyclesConfig.cmake.in CyclesConfig.cmake INSTALL_DESTINATION lib/cmake/Cycles)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CyclesConfig.cmake DESTINATION lib/cmake/Cycles)
+
 endif()

@@ -1,0 +1,80 @@
+@PACKAGE_INIT@
+
+include(${CMAKE_CURRENT_LIST_DIR}/CyclesTargets.cmake)
+
+# Cycles standalone requirements
+include(CMakeFindDependencyMacro)
+
+if(@WITH_CYCLES_LOGGING@)
+    find_dependency(gflags)
+    find_dependency(glog)
+endif()
+
+target_link_libraries(Cycles::Cycles
+    INTERFACE
+    Cycles::extern_sky
+    Cycles::extern_cuew
+    Cycles::extern_clew
+    Cycles::extern_numaapi
+    Cycles::cycles_bvh
+    Cycles::cycles_render
+    Cycles::cycles_util
+    Cycles::cycles_device
+    Cycles::cycles_subd
+    Cycles::cycles_kernel
+    Cycles::cycles_graph
+    )
+
+# This is a temporary solution, when all of the dependnecies get their configurations exported
+# then, we can link with their exported targets
+
+target_include_directories(Cycles::Cycles SYSTEM 
+    INTERFACE
+    "@TIFF_INCLUDE_DIR@" "@TIFF_INCLUDE_DIRS@" # TIFF
+    "@PNG_INCLUDE_DIRS@" # PNG
+    "@JPEG_INCLUDE_DIRS@" #JPEG
+    "@OPENGL_INCLUDE_DIR@" # OpenGL
+    "@OPENIMAGEIO_INCLUDE_DIR@" # OpenImageIO
+    "@OPENIMAGEDENOISE_INCLUDE_DIR@" # OpenImageIO Denoise
+    "@OPENEXR_INCLUDE_DIR@" #OpenEXR
+    "@OSL_INCLUDE_DIR@" # Osl
+    "@OPENCOLORIO_INCLUDE_DIR@" # OpenColorIO 
+    "@Boost_INCLUDE_DIRS@" # Boost
+    "@EMBREE_INCLUDE_DIR@" # Embree
+    "@OPENSUBDIV_INCLUDE_DIRS@" # Osd
+    "@OPENVDB_INCLUDE_DIRS@" # Vdb
+    "@NANOVDB_INCLUDE_DIR@" # NanoVdb
+    "@TBB_INCLUDE_DIRS@" # Tbb
+    "@GLEW_INCLUDE_DIR@" # GLEW
+    "@OPENJPEG_INCLUDE_DIR@" # OpenJPEG
+    )
+
+target_link_libraries(Cycles::Cycles 
+    INTERFACE
+    "@TIFF_LIBRARIES@" # TIFF
+    "@PNG_LIBRARIES@" # PNG
+    "@JPEG_LIBRARIES@" # JPEG
+    "@OPENGL_LIBRARIES@" # OpenGL
+    "@OPENIMAGEIO_LIBRARY@" # OpenImageIO
+    "@OPENIMAGEDENOISE_LIBRARIES@" # OpenImageIO Denoise
+    "@OPENEXR_LIBRARIES@" # OpenEXR
+    "@OSL_LIBRARIES@" # Osl
+    "@OPENCOLORIO_LIBRARY@" # OpenColorIO
+    "@Boost_LIBRARIES@" # Boost
+    "@EMBREE_LIBRARIES@" # Embree
+    "@OPENSUBDIV_LIBRARIES@" # Osd
+    "@OPENVDB_LIBRARIES@" # Vdb
+    "@TBB_LIBRARIES@" # Tbb
+    "@GLEW_LIBRARY@" # GLEW
+    "@OPENJPEG_LIBRARY@" # OpenJPEG
+    )
+
+if(@WITH_CYCLES_LOGGING@)
+    if(gflags_FOUND)
+        target_link_libraries(Cycles::Cycles INTERFACE gflags)
+    endif()
+
+    if(glog_FOUND)
+        target_link_libraries(Cycles::Cycles INTERFACE glog::glog)
+    endif()
+endif()

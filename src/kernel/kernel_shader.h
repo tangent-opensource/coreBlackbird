@@ -90,6 +90,13 @@ ccl_device_noinline
   }
   else
 #endif
+#ifdef __POINTCLOUD__
+      if (sd->type & PRIMITIVE_ALL_POINT) {
+    /* point */
+    point_shader_setup(kg, sd, isect, ray);
+  }
+  else
+#endif
       if (sd->type & PRIMITIVE_TRIANGLE) {
     /* static triangle */
     float3 Ng = triangle_normal(kg, sd);
@@ -100,9 +107,11 @@ ccl_device_noinline
     sd->Ng = Ng;
     sd->N = Ng;
 
-    /* smooth normal */
-    if (sd->shader & SHADER_SMOOTH_NORMAL)
-      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->u, sd->v);
+    /* load vertex or corner normal */
+    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS)
+      sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+    else if (sd->shader & SHADER_SMOOTH_NORMAL)
+      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
 #ifdef __DPDU__
     /* dPdu/dPdv */
@@ -189,8 +198,11 @@ ccl_device_inline
     sd->Ng = Ng;
     sd->N = Ng;
 
-    if (sd->shader & SHADER_SMOOTH_NORMAL)
-      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->u, sd->v);
+    /* load corner or smooth normal */
+    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS)
+      sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+    else if (sd->shader & SHADER_SMOOTH_NORMAL)
+      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
 #  ifdef __DPDU__
     /* dPdu/dPdv */
@@ -309,9 +321,17 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
   }
 
   if (sd->type & PRIMITIVE_TRIANGLE) {
+    /* corner normal */
+    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS) {
+      sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
+
+      if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
+        object_normal_transform_auto(kg, sd, &sd->N);
+      }
+    }
     /* smooth normal */
-    if (sd->shader & SHADER_SMOOTH_NORMAL) {
-      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->u, sd->v);
+    else if (sd->shader & SHADER_SMOOTH_NORMAL) {
+      sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
       if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
         object_normal_transform_auto(kg, sd, &sd->N);
@@ -1289,6 +1309,49 @@ ccl_device_inline void shader_eval_volume(KernelGlobals *kg,
       /* todo: this is inefficient for motion blur, we should be
        * caching matrices instead of recomputing them each step */
       shader_setup_object_transforms(kg, sd, sd->time);
+
+      /* Do motion blur if motion blur is on and object has velocity field */
+      if (kernel_tex_fetch(__objects, sd->object).use_motion_blur &&
+          kernel_data.cam.shuttertime != -1.0f &&
+          kernel_tex_fetch(__objects, sd->object).velocity_scale > 0.0f) {
+          
+          AttributeDescriptor v_desc = find_attribute(kg, sd, ATTR_STD_VOLUME_VELOCITY);
+          
+          if (v_desc.offset != ATTR_STD_NOT_FOUND) {
+            const float3 P = sd->P;
+
+            const float time_offset = kernel_data.cam.motion_position == MOTION_POSITION_CENTER ?
+                                          0.5f :
+                                          0.0f;
+            const float time = kernel_data.cam.motion_position == MOTION_POSITION_END ?
+                                   (1.0f - kernel_data.cam.shuttertime) + sd->time :
+                                   sd->time;
+            /* Velocity scale: Assume m/s as input, convert to m/(shutter duration).
+               Optional scaling parameter is for artistic control. */
+            const float velocity_scale = kernel_data.cam.inv_fps * kernel_data.cam.shuttertime *
+                                         kernel_tex_fetch(__objects, sd->object).velocity_scale;
+
+            /* Find new sampling position as mentioned in
+             * https://www.arnoldrenderer.com/research/Arnold_TOG2018.pdf */
+
+            /* Find velocity. */
+            float3 velocity = volume_attribute_float3(kg, sd, v_desc);
+            object_dir_transform(kg, sd, &velocity);
+            /*velocity = volume_transform_velocity(kg, sd, velocity);*/
+
+            /* Find advected P. */
+            sd->P = P - (time - time_offset) * velocity_scale * velocity;
+
+            /* Find advected velocity. */
+            velocity = volume_attribute_float3(kg, sd, v_desc);
+            object_dir_transform(kg, sd, &velocity);
+            /*velocity = volume_transform_velocity(kg, sd, velocity);*/
+
+            /* Find advected P. */
+            sd->P = P - (time - time_offset) * velocity_scale * velocity;
+          }
+
+      }
 #  endif
     }
 
@@ -1344,16 +1407,22 @@ ccl_device bool shader_transparent_shadow(KernelGlobals *kg, Intersection *isect
   int shader = 0;
 
 #  ifdef __HAIR__
-  if (isect->type & PRIMITIVE_ALL_TRIANGLE) {
-#  endif
-    shader = kernel_tex_fetch(__tri_shader, prim);
-#  ifdef __HAIR__
-  }
-  else {
+  if (isect->type & PRIMITIVE_ALL_CURVE) {
     float4 str = kernel_tex_fetch(__curves, prim);
     shader = __float_as_int(str.z);
   }
+  else
 #  endif
+#  ifdef __POINTCLOUD__
+      if (isect->type & PRIMITIVE_ALL_POINT) {
+    shader = kernel_tex_fetch(__points_shader, prim);
+  }
+  else
+#  endif
+  {
+    shader = kernel_tex_fetch(__tri_shader, prim);
+  }
+
   int flag = kernel_tex_fetch(__shaders, (shader & SHADER_MASK)).flags;
 
   return (flag & SD_HAS_TRANSPARENT_SHADOW) != 0;

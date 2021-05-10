@@ -35,7 +35,9 @@
 #  include "util/util_logging.h"
 #  include "util/util_map.h"
 #  include "util/util_md5.h"
+#ifdef USE_OPENGL
 #  include "util/util_opengl.h"
+#endif
 #  include "util/util_path.h"
 #  include "util/util_string.h"
 #  include "util/util_system.h"
@@ -358,6 +360,10 @@ string CUDADevice::compile_kernel_get_common_cflags(
   if (split) {
     cflags += " -D__SPLIT__";
   }
+
+#  ifdef WITH_NANOVDB
+  cflags += " -DWITH_NANOVDB";
+#  endif
 
   return cflags;
 }
@@ -1253,42 +1259,6 @@ void CUDADevice::tex_alloc(device_texture &mem)
     cuda_assert(cuMemcpyHtoD(mem.device_pointer, mem.host_pointer, size));
   }
 
-  /* Kepler+, bindless textures. */
-  CUDA_RESOURCE_DESC resDesc;
-  memset(&resDesc, 0, sizeof(resDesc));
-
-  if (array_3d) {
-    resDesc.resType = CU_RESOURCE_TYPE_ARRAY;
-    resDesc.res.array.hArray = array_3d;
-    resDesc.flags = 0;
-  }
-  else if (mem.data_height > 0) {
-    resDesc.resType = CU_RESOURCE_TYPE_PITCH2D;
-    resDesc.res.pitch2D.devPtr = mem.device_pointer;
-    resDesc.res.pitch2D.format = format;
-    resDesc.res.pitch2D.numChannels = mem.data_elements;
-    resDesc.res.pitch2D.height = mem.data_height;
-    resDesc.res.pitch2D.width = mem.data_width;
-    resDesc.res.pitch2D.pitchInBytes = dst_pitch;
-  }
-  else {
-    resDesc.resType = CU_RESOURCE_TYPE_LINEAR;
-    resDesc.res.linear.devPtr = mem.device_pointer;
-    resDesc.res.linear.format = format;
-    resDesc.res.linear.numChannels = mem.data_elements;
-    resDesc.res.linear.sizeInBytes = mem.device_size;
-  }
-
-  CUDA_TEXTURE_DESC texDesc;
-  memset(&texDesc, 0, sizeof(texDesc));
-  texDesc.addressMode[0] = address_mode;
-  texDesc.addressMode[1] = address_mode;
-  texDesc.addressMode[2] = address_mode;
-  texDesc.filterMode = filter_mode;
-  texDesc.flags = CU_TRSF_NORMALIZED_COORDINATES;
-
-  cuda_assert(cuTexObjectCreate(&cmem->texobject, &resDesc, &texDesc, NULL));
-
   /* Resize once */
   const uint slot = mem.slot;
   if (slot >= texture_info.size()) {
@@ -1299,8 +1269,51 @@ void CUDADevice::tex_alloc(device_texture &mem)
 
   /* Set Mapping and tag that we need to (re-)upload to device */
   texture_info[slot] = mem.info;
-  texture_info[slot].data = (uint64_t)cmem->texobject;
   need_texture_info = true;
+
+  if (mem.info.data_type != IMAGE_DATA_TYPE_NANOVDB_FLOAT &&
+      mem.info.data_type != IMAGE_DATA_TYPE_NANOVDB_FLOAT3) {
+    /* Kepler+, bindless textures. */
+    CUDA_RESOURCE_DESC resDesc;
+    memset(&resDesc, 0, sizeof(resDesc));
+
+    if (array_3d) {
+      resDesc.resType = CU_RESOURCE_TYPE_ARRAY;
+      resDesc.res.array.hArray = array_3d;
+      resDesc.flags = 0;
+    }
+    else if (mem.data_height > 0) {
+      resDesc.resType = CU_RESOURCE_TYPE_PITCH2D;
+      resDesc.res.pitch2D.devPtr = mem.device_pointer;
+      resDesc.res.pitch2D.format = format;
+      resDesc.res.pitch2D.numChannels = mem.data_elements;
+      resDesc.res.pitch2D.height = mem.data_height;
+      resDesc.res.pitch2D.width = mem.data_width;
+      resDesc.res.pitch2D.pitchInBytes = dst_pitch;
+    }
+    else {
+      resDesc.resType = CU_RESOURCE_TYPE_LINEAR;
+      resDesc.res.linear.devPtr = mem.device_pointer;
+      resDesc.res.linear.format = format;
+      resDesc.res.linear.numChannels = mem.data_elements;
+      resDesc.res.linear.sizeInBytes = mem.device_size;
+    }
+
+    CUDA_TEXTURE_DESC texDesc;
+    memset(&texDesc, 0, sizeof(texDesc));
+    texDesc.addressMode[0] = address_mode;
+    texDesc.addressMode[1] = address_mode;
+    texDesc.addressMode[2] = address_mode;
+    texDesc.filterMode = filter_mode;
+    texDesc.flags = CU_TRSF_NORMALIZED_COORDINATES;
+
+    cuda_assert(cuTexObjectCreate(&cmem->texobject, &resDesc, &texDesc, NULL));
+
+    texture_info[slot].data = (uint64_t)cmem->texobject;
+  }
+  else {
+    texture_info[slot].data = (uint64_t)mem.device_pointer;
+  }
 }
 
 void CUDADevice::tex_free(device_texture &mem)
@@ -2125,7 +2138,7 @@ void CUDADevice::pixels_alloc(device_memory &mem)
   pmem.h = mem.data_height;
 
   CUDAContextScope scope(this);
-
+#ifdef USE_OPENGL
   glGenBuffers(1, &pmem.cuPBO);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pmem.cuPBO);
   if (mem.data_type == TYPE_HALF)
@@ -2167,10 +2180,12 @@ void CUDADevice::pixels_alloc(device_memory &mem)
 
     background = true;
   }
+#endif
 }
 
 void CUDADevice::pixels_copy_from(device_memory &mem, int y, int w, int h)
 {
+#ifdef USE_OPENGL
   PixelMem pmem = pixel_mem_map[mem.device_pointer];
 
   CUDAContextScope scope(this);
@@ -2181,10 +2196,12 @@ void CUDADevice::pixels_copy_from(device_memory &mem, int y, int w, int h)
   memcpy((uchar *)mem.host_pointer + offset, pixels + offset, sizeof(uchar) * 4 * w * h);
   glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+#endif
 }
 
 void CUDADevice::pixels_free(device_memory &mem)
 {
+#ifdef USE_OPENGL
   if (mem.device_pointer) {
     PixelMem pmem = pixel_mem_map[mem.device_pointer];
 
@@ -2200,6 +2217,7 @@ void CUDADevice::pixels_free(device_memory &mem)
     stats.mem_free(mem.device_size);
     mem.device_size = 0;
   }
+#endif
 }
 
 void CUDADevice::draw_pixels(device_memory &mem,
@@ -2216,7 +2234,7 @@ void CUDADevice::draw_pixels(device_memory &mem,
                              const DeviceDrawParams &draw_params)
 {
   assert(mem.type == MEM_PIXELS);
-
+#ifdef USE_OPENGL
   if (!background) {
     const bool use_fallback_shader = (draw_params.bind_display_space_shader_cb == NULL);
     PixelMem pmem = pixel_mem_map[mem.device_pointer];
@@ -2335,7 +2353,7 @@ void CUDADevice::draw_pixels(device_memory &mem,
 
     return;
   }
-
+#endif
   Device::draw_pixels(mem, y, w, h, width, height, dx, dy, dw, dh, transparent, draw_params);
 }
 

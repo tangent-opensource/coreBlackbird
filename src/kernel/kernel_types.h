@@ -21,6 +21,11 @@
 #  include <embree3/rtcore.h>
 #  include <embree3/rtcore_scene.h>
 #  define __EMBREE__
+
+#ifndef RTC_NAMESPACE
+#define RTC_NAMESPACE
+#endif
+
 #endif
 
 #include "kernel/kernel_math.h"
@@ -99,6 +104,7 @@ CCL_NAMESPACE_BEGIN
 #define __AO__
 #define __PASSES__
 #define __HAIR__
+#define __POINTCLOUD__
 
 /* Without these we get an AO render, used by OpenCL preview kernel. */
 #ifndef __KERNEL_AO_PREVIEW__
@@ -155,6 +161,9 @@ CCL_NAMESPACE_BEGIN
 #endif
 #ifdef __NO_HAIR__
 #  undef __HAIR__
+#endif
+#ifdef __NO_POINTCLOUD__
+#  undef __POINTCLOUD__
 #endif
 #ifdef __NO_VOLUME__
 #  undef __VOLUME__
@@ -626,6 +635,18 @@ enum PanoramaType {
   PANORAMA_NUM_TYPES,
 };
 
+/* Specifies an offset for the shutter's time interval. */
+enum MotionPosition {
+  /* Shutter opens at the current frame. */
+  MOTION_POSITION_START = 0,
+  /* Shutter is fully open at the current frame. */
+  MOTION_POSITION_CENTER = 1,
+  /* Shutter closes at the current frame. */
+  MOTION_POSITION_END = 2,
+
+  MOTION_NUM_POSITIONS,
+};
+
 /* Differential */
 
 typedef struct differential3 {
@@ -695,22 +716,32 @@ typedef enum PrimitiveType {
   PRIMITIVE_MOTION_CURVE_THICK = (1 << 3),
   PRIMITIVE_CURVE_RIBBON = (1 << 4),
   PRIMITIVE_MOTION_CURVE_RIBBON = (1 << 5),
+  PRIMITIVE_POINT_SPHERE = (1 << 6),
+  PRIMITIVE_MOTION_POINT_SPHERE = (1 << 7),
+  PRIMITIVE_POINT_DISC = (1 << 8),
+  PRIMITIVE_MOTION_POINT_DISC = (1 << 9),
+  PRIMITIVE_POINT_DISC_ORIENTED = (1 << 10),
+  PRIMITIVE_MOTION_POINT_DISC_ORIENTED = (1 << 11),
   /* Lamp primitive is not included below on purpose,
    * since it is no real traceable primitive.
    */
-  PRIMITIVE_LAMP = (1 << 6),
+  PRIMITIVE_LAMP = (1 << 12),
 
   PRIMITIVE_ALL_TRIANGLE = (PRIMITIVE_TRIANGLE | PRIMITIVE_MOTION_TRIANGLE),
   PRIMITIVE_ALL_CURVE = (PRIMITIVE_CURVE_THICK | PRIMITIVE_MOTION_CURVE_THICK |
                          PRIMITIVE_CURVE_RIBBON | PRIMITIVE_MOTION_CURVE_RIBBON),
+  PRIMITIVE_ALL_POINT = (PRIMITIVE_POINT_SPHERE | PRIMITIVE_MOTION_POINT_SPHERE |
+                         PRIMITIVE_POINT_DISC | PRIMITIVE_MOTION_POINT_DISC |
+                         PRIMITIVE_POINT_DISC_ORIENTED | PRIMITIVE_MOTION_POINT_DISC_ORIENTED),
   PRIMITIVE_ALL_MOTION = (PRIMITIVE_MOTION_TRIANGLE | PRIMITIVE_MOTION_CURVE_THICK |
-                          PRIMITIVE_MOTION_CURVE_RIBBON),
-  PRIMITIVE_ALL = (PRIMITIVE_ALL_TRIANGLE | PRIMITIVE_ALL_CURVE),
+                          PRIMITIVE_MOTION_CURVE_RIBBON | PRIMITIVE_MOTION_POINT_SPHERE |
+                          PRIMITIVE_MOTION_POINT_DISC | PRIMITIVE_MOTION_POINT_DISC_ORIENTED),
+  PRIMITIVE_ALL = (PRIMITIVE_ALL_TRIANGLE | PRIMITIVE_ALL_CURVE | PRIMITIVE_ALL_POINT),
 
   /* Total number of different traceable primitives.
    * NOTE: This is an actual value, not a bitflag.
    */
-  PRIMITIVE_NUM_TOTAL = 6,
+  PRIMITIVE_NUM_TOTAL = 12,
 } PrimitiveType;
 
 #define PRIMITIVE_PACK_SEGMENT(type, segment) ((segment << PRIMITIVE_NUM_TOTAL) | (type))
@@ -751,6 +782,7 @@ typedef enum AttributeStandard {
   ATTR_STD_NONE = 0,
   ATTR_STD_VERTEX_NORMAL,
   ATTR_STD_FACE_NORMAL,
+  ATTR_STD_CORNER_NORMAL,
   ATTR_STD_UV,
   ATTR_STD_UV_TANGENT,
   ATTR_STD_UV_TANGENT_SIGN,
@@ -759,11 +791,19 @@ typedef enum AttributeStandard {
   ATTR_STD_GENERATED_TRANSFORM,
   ATTR_STD_POSITION_UNDEFORMED,
   ATTR_STD_POSITION_UNDISPLACED,
+  /*
+   * If one of these attribute is present, motion blur is enabled
+   * and ATTR_STD_MOTION_VERTEX_POSITION is not present, the geometry will
+   * be generated using either or both the velocity/acceleration. */
+  ATTR_STD_VERTEX_VELOCITY,
+  ATTR_STD_VERTEX_ACCELERATION,
+
   ATTR_STD_MOTION_VERTEX_POSITION,
   ATTR_STD_MOTION_VERTEX_NORMAL,
   ATTR_STD_PARTICLE,
   ATTR_STD_CURVE_INTERCEPT,
   ATTR_STD_CURVE_RANDOM,
+  ATTR_STD_POINT_RANDOM,
   ATTR_STD_PTEX_FACE_ID,
   ATTR_STD_PTEX_UV,
   ATTR_STD_VOLUME_DENSITY,
@@ -924,11 +964,13 @@ enum ShaderDataObjectFlag {
   SD_OBJECT_SHADOW_CATCHER = (1 << 7),
   /* object has volume attributes */
   SD_OBJECT_HAS_VOLUME_ATTRIBUTES = (1 << 8),
+  /* object has per-corner normals */
+  SD_OBJECT_HAS_CORNER_NORMALS = (1 << 9),
 
   SD_OBJECT_FLAGS = (SD_OBJECT_HOLDOUT_MASK | SD_OBJECT_MOTION | SD_OBJECT_TRANSFORM_APPLIED |
                      SD_OBJECT_NEGATIVE_SCALE_APPLIED | SD_OBJECT_HAS_VOLUME |
                      SD_OBJECT_INTERSECTS_VOLUME | SD_OBJECT_SHADOW_CATCHER |
-                     SD_OBJECT_HAS_VOLUME_ATTRIBUTES)
+                     SD_OBJECT_HAS_VOLUME_ATTRIBUTES | SD_OBJECT_HAS_CORNER_NORMALS)
 };
 
 typedef ccl_addr_space struct ccl_align(16) ShaderData
@@ -1147,6 +1189,8 @@ typedef struct KernelCamera {
 
   /* motion blur */
   float shuttertime;
+  int motion_position;
+  float inv_fps;
   int num_motion_steps, have_perspective_motion;
 
   /* clipping */
@@ -1419,7 +1463,7 @@ typedef struct KernelBVH {
   OptixTraversableHandle scene;
 #else
 #  ifdef __EMBREE__
-  RTCScene scene;
+  RTC_NAMESPACE::RTCScene scene;
 #    ifndef __KERNEL_64_BIT__
   int pad2;
 #    endif
@@ -1478,6 +1522,9 @@ typedef struct KernelObject {
   uint attribute_map_offset;
   uint motion_offset;
 
+  bool use_motion_blur;
+  float velocity_scale;
+  /*uint up_axis;*/
   float cryptomatte_object;
   float cryptomatte_asset;
 

@@ -17,7 +17,7 @@ endif()
 ###########################################################################
 # Policies
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 # So library linking is more sane.
 cmake_policy(SET CMP0003 NEW)
@@ -98,6 +98,19 @@ endif()
 option(WITH_CUDA_DYNLOAD           "Dynamically load CUDA libraries at runtime" ON)
 mark_as_advanced(WITH_CUDA_DYNLOAD)
 
+# ====== Tangent Rez Deps
+option(BUILD_WITH_REZ "Build with rez" ON)
+option(BUILD_WITH_HOUDINI "Build with houdini" OFF)
+
+if(${BUILD_WITH_REZ})
+    include(src/cmake/rez_deps.cmake)
+elseif(${BUILD_WITH_HOUDINI})
+	include(src/cmake/hou_deps.cmake)
+else()
+    set(USE_OPENGL TRUE)
+    add_definitions(-DUSE_OPENGL)
+endif()
+
 include(external_libs)
 
 ###########################################################################
@@ -117,5 +130,5 @@ include_directories(
 ###########################################################################
 # Sources.
 
-add_subdirectory(src)
 add_subdirectory(third_party)
+add_subdirectory(src)

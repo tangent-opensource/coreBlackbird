@@ -20,8 +20,19 @@ function(cycles_set_solution_folder target)
   endif()
 endfunction()
 
+macro(install_external_library target_ext)
+  install(TARGETS ${target_ext} DESTINATION lib)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+endmacro()
+
 macro(cycles_add_library target library_deps)
-  add_library(${target} ${ARGN})
+  add_library(${target} STATIC ${ARGN})
+
+  install(TARGETS ${target} ARCHIVE DESTINATION lib)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+
+  get_directory_property(DIRECTORY_DEFINITIONS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS)
+  target_compile_definitions(${target} PUBLIC ${DIRECTORY_DEFINITIONS})
 
   # On Windows certain libraries have two sets of binaries: one for debug builds and one for
   # release builds. The root of this requirement goes into ABI, I believe, but that's outside
@@ -178,19 +189,21 @@ endmacro()
 
 macro(cycles_install_libraries target)
   # Copy DLLs for dynamically linked libraries.
-  if(WIN32)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      install(
-        FILES
-	${TBB_ROOT_DIR}/lib/debug/tbb_debug${CMAKE_SHARED_LIBRARY_SUFFIX}
-        ${OPENVDB_ROOT_DIR}/bin/openvdb_d${CMAKE_SHARED_LIBRARY_SUFFIX}
-	DESTINATION $<TARGET_FILE_DIR:${target}>)
-    else()
-      install(
-        FILES
-	${TBB_ROOT_DIR}/lib/tbb${CMAKE_SHARED_LIBRARY_SUFFIX}
-        ${OPENVDB_ROOT_DIR}/bin/openvdb${CMAKE_SHARED_LIBRARY_SUFFIX}
-	DESTINATION $<TARGET_FILE_DIR:${target}>)
-    endif()
-  endif()
+  # Tangent (bjs): Disabled install because of openvdb, technically we don't need any install
+  # but this build doesnt use vdb, so breaks regardless
+  # if(WIN32)
+  #   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  #     install(
+  #       FILES
+	# ${TBB_ROOT_DIR}/lib/debug/tbb_debug${CMAKE_SHARED_LIBRARY_SUFFIX}
+  #       ${OPENVDB_ROOT_DIR}/bin/openvdb_d${CMAKE_SHARED_LIBRARY_SUFFIX}
+	# DESTINATION $<TARGET_FILE_DIR:${target}>)
+  #   else()
+  #     install(
+  #       FILES
+	# ${TBB_ROOT_DIR}/lib/tbb${CMAKE_SHARED_LIBRARY_SUFFIX}
+  #       ${OPENVDB_ROOT_DIR}/bin/openvdb${CMAKE_SHARED_LIBRARY_SUFFIX}
+	# DESTINATION $<TARGET_FILE_DIR:${target}>)
+  #   endif()
+  # endif()
 endmacro()

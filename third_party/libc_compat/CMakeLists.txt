@@ -30,3 +30,4 @@ include_directories(
 )
 
 add_library(extern_libc_compat "${SRC}" "${INC}" "${INC_SYS}")
+install_external_library(extern_libc_compat)

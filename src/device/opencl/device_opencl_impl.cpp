@@ -100,6 +100,7 @@ void OpenCLDevice::enable_default_features(DeviceRequestedFeatures &features)
     features.max_nodes_group = NODE_GROUP_LEVEL_MAX;
     features.nodes_features = NODE_FEATURE_ALL;
     features.use_hair = true;
+    features.use_pointcloud = true;
     features.use_subsurface = true;
     features.use_camera_motion = false;
     features.use_object_motion = false;
@@ -124,6 +125,7 @@ string OpenCLDevice::get_build_options(const DeviceRequestedFeatures &requested_
     features.use_object_motion = false;
     features.use_camera_motion = false;
     features.use_hair = true;
+    features.use_pointcloud = true;
     features.use_subsurface = true;
     features.max_nodes_group = NODE_GROUP_LEVEL_MAX;
     features.nodes_features = NODE_FEATURE_ALL;
@@ -188,6 +190,7 @@ string OpenCLDevice::get_build_options(const DeviceRequestedFeatures &requested_
   if (preview_kernel) {
     DeviceRequestedFeatures preview_features;
     preview_features.use_hair = true;
+    preview_features.use_pointcloud = true;
     build_options += "-D__KERNEL_AO_PREVIEW__ ";
     build_options += preview_features.get_build_options();
   }
@@ -2033,6 +2036,10 @@ string OpenCLDevice::kernel_build_options(const string *debug_src)
 
 #  ifdef WITH_CYCLES_DEBUG
   build_options += "-D__KERNEL_DEBUG__ ";
+#  endif
+
+#  ifdef WITH_NANOVDB
+  build_options += "-DWITH_NANOVDB ";
 #  endif
 
   return build_options;

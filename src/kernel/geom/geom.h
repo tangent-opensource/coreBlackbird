@@ -29,6 +29,9 @@
 #include "kernel/geom/geom_motion_curve.h"
 #include "kernel/geom/geom_curve.h"
 #include "kernel/geom/geom_curve_intersect.h"
+#include "kernel/geom/geom_motion_point.h"
+#include "kernel/geom/geom_point.h"
+#include "kernel/geom/geom_point_intersect.h"
 #include "kernel/geom/geom_volume.h"
 #include "kernel/geom/geom_primitive.h"
 // clang-format on

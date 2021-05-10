@@ -346,8 +346,8 @@ void Session::run_gpu()
 
 void Session::reset_cpu(BufferParams &buffer_params, int samples)
 {
-  thread_scoped_lock reset_lock(delayed_reset.mutex);
   thread_scoped_lock pause_lock(pause_mutex);
+  thread_scoped_lock reset_lock(delayed_reset.mutex);
 
   display_outdated = true;
   reset_time = time_dt();
@@ -803,6 +803,9 @@ DeviceRequestedFeatures Session::get_requested_device_features()
     }
     else if (geom->type == Geometry::HAIR) {
       requested_features.use_hair = true;
+    }
+    else if (geom->is_pointcloud()) {
+      requested_features.use_pointcloud = true;
     }
   }
 
@@ -1332,6 +1335,10 @@ void Session::collect_statistics(RenderStats *render_stats)
   if (params.use_profiling && (params.device.type == DEVICE_CPU)) {
     render_stats->collect_profiling(scene, profiler);
   }
+}
+
+thread_scoped_lock Session::acquire_display_lock() {
+  return thread_scoped_lock(display_mutex);
 }
 
 int Session::get_max_closure_count()

@@ -23,6 +23,7 @@
 #include "render/light.h"
 #include "render/mesh.h"
 #include "render/particles.h"
+#include "render/pointcloud.h"
 #include "render/scene.h"
 
 #include "util/util_foreach.h"
@@ -310,10 +311,15 @@ float Object::compute_volume_step_size() const
       /* User specified step size. */
       float voxel_step_size = mesh->volume_step_size;
 
-      if (voxel_step_size == 0.0f) {
-        /* Auto detect step size. */
-        float3 size = make_float3(
-            1.0f / metadata.width, 1.0f / metadata.height, 1.0f / metadata.depth);
+        if (voxel_step_size == 0.0f) {
+          /* Auto detect step size. */
+          float3 size = make_float3(1.0f, 1.0f, 1.0f);
+#ifdef WITH_NANOVDB
+          /* Dimensions were not applied to image transform with NanOVDB (see image_vdb.cpp) */
+          if (metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT &&
+              metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT3)
+#endif
+            size /= make_float3(metadata.width, metadata.height, metadata.depth);
 
         /* Step size is transformed from voxel to world space. */
         Transform voxel_tfm = tfm;
@@ -465,7 +471,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.random_number = random_number;
   kobject.particle_index = particle_index;
   kobject.motion_offset = 0;
-
+  
   if (geom->use_motion_blur) {
     state->have_motion = true;
   }
@@ -517,12 +523,16 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
     }
   }
 
+
   /* Dupli object coords and motion info. */
   kobject.dupli_generated[0] = ob->dupli_generated[0];
   kobject.dupli_generated[1] = ob->dupli_generated[1];
   kobject.dupli_generated[2] = ob->dupli_generated[2];
-  kobject.numkeys = (geom->type == Geometry::HAIR) ? static_cast<Hair *>(geom)->curve_keys.size() :
-                                                     0;
+  kobject.numkeys = (geom->type == Geometry::HAIR) ?
+                        static_cast<Hair *>(geom)->curve_keys.size() :
+                        (geom->type == Geometry::POINTCLOUD) ?
+                        static_cast<PointCloud *>(geom)->num_points() :
+                        0;
   kobject.dupli_uv[0] = ob->dupli_uv[0];
   kobject.dupli_uv[1] = ob->dupli_uv[1];
   int totalsteps = geom->motion_steps;
@@ -535,7 +545,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.cryptomatte_object = util_hash_to_float(hash_name);
   kobject.cryptomatte_asset = util_hash_to_float(hash_asset);
   kobject.shadow_terminator_offset = 1.0f / (1.0f - 0.5f * ob->shadow_terminator_offset);
-
+  kobject.velocity_scale = ob->velocity_scale;
+  /*kobject.up_axis = ob->up_axis;*/
+  kobject.use_motion_blur = geom->use_motion_blur;
+  
   /* Object flag. */
   if (ob->use_holdout) {
     flag |= SD_OBJECT_HOLDOUT_MASK;
@@ -727,6 +740,11 @@ void ObjectManager::device_update_flags(
        * of bounds not being up to date.
        */
       object_flag[object->index] |= SD_OBJECT_INTERSECTS_VOLUME;
+    }
+
+    /* Flagging the object to index normals by corner */
+    if (object->geometry->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+      object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
     }
   }
 

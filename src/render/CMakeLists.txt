@@ -20,7 +20,9 @@ set(INC
 
 set(INC_SYS
   ${GLEW_INCLUDE_DIR}
+  ${HBoost_INCLUDE_DIRS}
 )
+# TANGENT Added HBoost include dirs. This is because openvdb-7.1.0-houdini requires it...
 
 set(SRC
   attribute.cpp
@@ -31,6 +33,7 @@ set(SRC
   colorspace.cpp
   constant_fold.cpp
   coverage.cpp
+  curves.cpp
   denoising.cpp
   film.cpp
   geometry.cpp
@@ -52,7 +55,7 @@ set(SRC
   object.cpp
   osl.cpp
   particles.cpp
-  curves.cpp
+  pointcloud.cpp
   scene.cpp
   session.cpp
   shader.cpp
@@ -72,6 +75,7 @@ set(SRC_HEADERS
   colorspace.h
   constant_fold.h
   coverage.h
+  curves.h
   denoising.h
   film.h
   geometry.h
@@ -90,7 +94,7 @@ set(SRC_HEADERS
   object.h
   osl.h
   particles.h
-  curves.h
+  pointcloud.h
   scene.h
   session.h
   shader.h
@@ -140,6 +144,12 @@ if(WITH_OPENVDB)
   )
   list(APPEND LIB
     ${OPENVDB_LIBRARIES}
+  )
+endif()
+
+if(WITH_NANOVDB)
+  list(APPEND INC_SYS
+    ${NANOVDB_INCLUDE_DIRS}
   )
 endif()
 

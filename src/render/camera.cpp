@@ -153,7 +153,25 @@ NODE_DEFINE(Camera)
 
 Camera::Camera() : Node(node_type)
 {
+  shuttertime = 1.0f;
+  fps = 24.0f;
+  motion_position = MOTION_POSITION_CENTER;
+
   shutter_table_offset = TABLE_OFFSET_INVALID;
+
+  rolling_shutter_type = ROLLING_SHUTTER_NONE;
+  rolling_shutter_duration = 0.0f;
+
+  focaldistance = 0.0f;
+  aperturesize = 0.0f;
+  blades = 0;
+  bladesrotation = 0.0f;
+
+  type = CAMERA_PERSPECTIVE;
+  fov = 0.25f;
+
+  nearclip = 0.01f;
+  farclip = 100000.f;
 
   width = 1024;
   height = 512;
@@ -389,6 +407,8 @@ void Camera::update(Scene *scene)
 
   /* motion blur */
   kcam->shuttertime = (need_motion == Scene::MOTION_BLUR) ? shuttertime : -1.0f;
+  kcam->motion_position = motion_position;
+  kcam->inv_fps = 1.0f / (fps > 0.0f ? fps : 24.0f);
 
   /* type */
   kcam->type = type;

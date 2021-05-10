@@ -49,10 +49,7 @@ class Geometry : public Node {
  public:
   NODE_ABSTRACT_DECLARE
 
-  enum Type {
-    MESH,
-    HAIR,
-  };
+  enum Type { MESH, HAIR, POINTCLOUD };
 
   Type type;
 
@@ -136,6 +133,15 @@ class Geometry : public Node {
   bool has_motion_blur() const;
   bool has_voxel_attributes() const;
 
+  bool is_pointcloud() const
+  {
+    return type == POINTCLOUD;
+  }
+
+  size_t element_size(AttributeElement element, AttributePrimitive prim) const;
+  TypeDesc standard_type(AttributeStandard std) const;
+  AttributeElement standard_element(AttributeStandard std) const;
+
   /* Updates */
   void tag_update(Scene *scene, bool rebuild);
 };
@@ -167,6 +173,10 @@ class GeometryManager {
   bool displace(Device *device, DeviceScene *dscene, Scene *scene, Mesh *mesh, Progress &progress);
 
   void create_volume_mesh(Mesh *mesh, Progress &progress);
+
+  void create_motion_blur_geometry(
+      const Scene *scene, Geometry *geom, const float3 *P, const float *Pw, int num_points);
+  void create_motion_blur_geometry(const Scene *scene, Geometry *geom, Progress &progress);
 
   /* Attributes */
   void update_osl_attributes(Device *device,

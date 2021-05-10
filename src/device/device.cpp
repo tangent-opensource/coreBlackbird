@@ -24,7 +24,9 @@
 #include "util/util_half.h"
 #include "util/util_logging.h"
 #include "util/util_math.h"
+#ifdef USE_OPENGL
 #include "util/util_opengl.h"
+#endif
 #include "util/util_string.h"
 #include "util/util_system.h"
 #include "util/util_time.h"
@@ -52,6 +54,7 @@ std::ostream &operator<<(std::ostream &os, const DeviceRequestedFeatures &reques
   /* TODO(sergey): Decode bitflag into list of names. */
   os << "Nodes features: " << requested_features.nodes_features << std::endl;
   os << "Use Hair: " << string_from_bool(requested_features.use_hair) << std::endl;
+  os << "Use Pointclouds: " << string_from_bool(requested_features.use_pointcloud) << std::endl;
   os << "Use Object Motion: " << string_from_bool(requested_features.use_object_motion)
      << std::endl;
   os << "Use Camera Motion: " << string_from_bool(requested_features.use_camera_motion)
@@ -79,6 +82,7 @@ std::ostream &operator<<(std::ostream &os, const DeviceRequestedFeatures &reques
 
 Device::~Device() noexcept(false)
 {
+#ifdef USE_OPENGL
   if (!background) {
     if (vertex_buffer != 0) {
       glDeleteBuffers(1, &vertex_buffer);
@@ -87,6 +91,7 @@ Device::~Device() noexcept(false)
       glDeleteProgram(fallback_shader_program);
     }
   }
+#endif
 }
 
 /* TODO move shaders to standalone .glsl file. */
@@ -142,6 +147,7 @@ static void shader_print_errors(const char *task, const char *log, const char *c
 
 static int bind_fallback_shader(void)
 {
+#ifdef USE_OPENGL
   GLint status;
   GLchar log[5000];
   GLsizei length = 0;
@@ -190,10 +196,13 @@ static int bind_fallback_shader(void)
   }
 
   return program;
+#endif
+  return 0;
 }
 
 bool Device::bind_fallback_display_space_shader(const float width, const float height)
 {
+#ifdef USE_OPENGL
   if (fallback_status == FALLBACK_SHADER_STATUS_ERROR) {
     return false;
   }
@@ -227,6 +236,8 @@ bool Device::bind_fallback_display_space_shader(const float width, const float h
   glUniform1i(image_texture_location, 0);
   glUniform2f(fullscreen_location, width, height);
   return true;
+#endif
+  return false;
 }
 
 void Device::draw_pixels(device_memory &rgba,
@@ -242,6 +253,7 @@ void Device::draw_pixels(device_memory &rgba,
                          bool transparent,
                          const DeviceDrawParams &draw_params)
 {
+#ifdef USE_OPENGL
   const bool use_fallback_shader = (draw_params.bind_display_space_shader_cb == NULL);
 
   assert(rgba.type == MEM_PIXELS);
@@ -362,6 +374,7 @@ void Device::draw_pixels(device_memory &rgba,
   if (transparent) {
     glDisable(GL_BLEND);
   }
+#endif
 }
 
 Device *Device::create(DeviceInfo &info, Stats &stats, Profiler &profiler, bool background)
