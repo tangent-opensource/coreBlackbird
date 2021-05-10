@@ -252,11 +252,14 @@ set(SRC_GEOM_HEADERS
   geom/geom_curve.h
   geom/geom_curve_intersect.h
   geom/geom_motion_curve.h
+  geom/geom_motion_point.h
   geom/geom_motion_triangle.h
   geom/geom_motion_triangle_intersect.h
   geom/geom_motion_triangle_shader.h
   geom/geom_object.h
   geom/geom_patch.h
+  geom/geom_point.h
+  geom/geom_point_intersect.h
   geom/geom_primitive.h
   geom/geom_subd_triangle.h
   geom/geom_triangle.h

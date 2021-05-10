@@ -13,3 +13,7 @@ include_directories(
 
 add_library(extern_cuew ${SRC} ${SRC_HEADERS})
 install_external_library(extern_cuew)
+
+if(UNIX)
+	target_link_libraries(extern_cuew dl)
+endif()

@@ -101,8 +101,12 @@ mark_as_advanced(WITH_CUDA_DYNLOAD)
 
 # ====== Tangent Rez Deps
 option(BUILD_WITH_REZ "Build with rez" ON)
+option(BUILD_WITH_HOUDINI "Build with houdini" OFF)
+
 if(${BUILD_WITH_REZ})
-    include(${CMAKE_CURRENT_SOURCE_DIR}/rez_deps.cmake)
+    include(src/cmake/rez_deps.cmake)
+elseif(${BUILD_WITH_HOUDINI})
+	include(src/cmake/hou_deps.cmake)
 else()
     set(USE_OPENGL TRUE)
     add_definitions(-DUSE_OPENGL)

@@ -23,6 +23,7 @@
 #include "render/light.h"
 #include "render/mesh.h"
 #include "render/particles.h"
+#include "render/pointcloud.h"
 #include "render/scene.h"
 #include "render/volume.h"
 
@@ -528,8 +529,11 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.dupli_generated[0] = ob->dupli_generated[0];
   kobject.dupli_generated[1] = ob->dupli_generated[1];
   kobject.dupli_generated[2] = ob->dupli_generated[2];
-  kobject.numkeys = (geom->type == Geometry::HAIR) ? static_cast<Hair *>(geom)->curve_keys.size() :
-                                                     0;
+  kobject.numkeys = (geom->type == Geometry::HAIR) ?
+                        static_cast<Hair *>(geom)->curve_keys.size() :
+                        (geom->type == Geometry::POINTCLOUD) ?
+                        static_cast<PointCloud *>(geom)->num_points() :
+                        0;
   kobject.dupli_uv[0] = ob->dupli_uv[0];
   kobject.dupli_uv[1] = ob->dupli_uv[1];
   int totalsteps = geom->motion_steps;

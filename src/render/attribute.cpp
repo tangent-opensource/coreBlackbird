@@ -18,6 +18,7 @@
 #include "render/hair.h"
 #include "render/image.h"
 #include "render/mesh.h"
+#include "render/pointcloud.h"
 
 #include "util/util_foreach.h"
 #include "util/util_transform.h"
@@ -158,78 +159,7 @@ size_t Attribute::element_size(Geometry *geom, AttributePrimitive prim) const
     return buffer.size() / data_sizeof();
   }
 
-  size_t size = 0;
-
-  switch (element) {
-    case ATTR_ELEMENT_OBJECT:
-    case ATTR_ELEMENT_MESH:
-    case ATTR_ELEMENT_VOXEL:
-      size = 1;
-      break;
-    case ATTR_ELEMENT_VERTEX:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        size = mesh->verts.size() + mesh->num_ngons;
-        if (prim == ATTR_PRIM_SUBD) {
-          size -= mesh->num_subd_verts;
-        }
-      }
-      break;
-    case ATTR_ELEMENT_VERTEX_MOTION:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        size = (mesh->verts.size() + mesh->num_ngons) * (mesh->motion_steps - 1);
-        if (prim == ATTR_PRIM_SUBD) {
-          size -= mesh->num_subd_verts * (mesh->motion_steps - 1);
-        }
-      }
-      break;
-    case ATTR_ELEMENT_FACE:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        if (prim == ATTR_PRIM_GEOMETRY) {
-          size = mesh->num_triangles();
-        }
-        else {
-          size = mesh->subd_faces.size() + mesh->num_ngons;
-        }
-      }
-      break;
-    case ATTR_ELEMENT_CORNER:
-    case ATTR_ELEMENT_CORNER_BYTE:
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        if (prim == ATTR_PRIM_GEOMETRY) {
-          size = mesh->num_triangles() * 3;
-        }
-        else {
-          size = mesh->subd_face_corners.size() + mesh->num_ngons;
-        }
-      }
-      break;
-    case ATTR_ELEMENT_CURVE:
-      if (geom->type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(geom);
-        size = hair->num_curves();
-      }
-      break;
-    case ATTR_ELEMENT_CURVE_KEY:
-      if (geom->type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(geom);
-        size = hair->curve_keys.size();
-      }
-      break;
-    case ATTR_ELEMENT_CURVE_KEY_MOTION:
-      if (geom->type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(geom);
-        size = hair->curve_keys.size() * (hair->motion_steps - 1);
-      }
-      break;
-    default:
-      break;
-  }
-
-  return size;
+  return geom->element_size(element, prim);
 }
 
 size_t Attribute::buffer_size(Geometry *geom, AttributePrimitive prim) const
@@ -319,6 +249,8 @@ const char *Attribute::standard_name(AttributeStandard std)
       return "curve_intercept";
     case ATTR_STD_CURVE_RANDOM:
       return "curve_random";
+    case ATTR_STD_POINT_RANDOM:
+      return "point_random";
     case ATTR_STD_PTEX_FACE_ID:
       return "ptex_face_id";
     case ATTR_STD_PTEX_UV:
@@ -453,108 +385,13 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
   if (name == ustring())
     name = Attribute::standard_name(std);
 
-  if (geometry->type == Geometry::MESH) {
-    switch (std) {
-      case ATTR_STD_VERTEX_NORMAL:
-        attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_VERTEX);
-        break;
-      case ATTR_STD_FACE_NORMAL:
-        attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_FACE);
-        break;
-      case ATTR_STD_CORNER_NORMAL:
-        attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_CORNER);
-        break;
-      case ATTR_STD_UV:
-        attr = add(name, TypeFloat2, ATTR_ELEMENT_CORNER);
-        break;
-      case ATTR_STD_UV_TANGENT:
-        attr = add(name, TypeDesc::TypeVector, ATTR_ELEMENT_CORNER);
-        break;
-      case ATTR_STD_UV_TANGENT_SIGN:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_CORNER);
-        break;
-      case ATTR_STD_VERTEX_COLOR:
-        attr = add(name, TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);
-        break;
-      case ATTR_STD_GENERATED:
-      case ATTR_STD_POSITION_UNDEFORMED:
-      case ATTR_STD_POSITION_UNDISPLACED:
-        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX);
-        break;
-      case ATTR_STD_VERTEX_VELOCITY:
-        attr = add(name, TypeDesc::TypeVector, ATTR_ELEMENT_VERTEX);
-        break;
-      case ATTR_STD_MOTION_VERTEX_POSITION:
-        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX_MOTION);
-        break;
-      case ATTR_STD_MOTION_VERTEX_NORMAL:
-        attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_VERTEX_MOTION);
-        break;
-      case ATTR_STD_PTEX_FACE_ID:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_FACE);
-        break;
-      case ATTR_STD_PTEX_UV:
-        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX);
-        break;
-      case ATTR_STD_GENERATED_TRANSFORM:
-        attr = add(name, TypeDesc::TypeMatrix, ATTR_ELEMENT_MESH);
-        break;
-      case ATTR_STD_VOLUME_DENSITY:
-      case ATTR_STD_VOLUME_FLAME:
-      case ATTR_STD_VOLUME_HEAT:
-      case ATTR_STD_VOLUME_TEMPERATURE:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_VOXEL);
-        break;
-      case ATTR_STD_VOLUME_COLOR:
-        attr = add(name, TypeDesc::TypeColor, ATTR_ELEMENT_VOXEL);
-        break;
-      case ATTR_STD_VOLUME_VELOCITY:
-        attr = add(name, TypeDesc::TypeVector, ATTR_ELEMENT_VOXEL);
-        break;
-      case ATTR_STD_POINTINESS:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_VERTEX);
-        break;
-      case ATTR_STD_RANDOM_PER_ISLAND:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_FACE);
-        break;
-      default:
-        assert(0);
-        break;
-    }
-  }
-  else if (geometry->type == Geometry::HAIR) {
-    switch (std) {
-      case ATTR_STD_UV:
-        attr = add(name, TypeFloat2, ATTR_ELEMENT_CURVE);
-        break;
-      case ATTR_STD_GENERATED:
-        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_CURVE);
-        break;
-      case ATTR_STD_MOTION_VERTEX_POSITION:
-        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_CURVE_KEY_MOTION);
-        break;
-      case ATTR_STD_CURVE_INTERCEPT:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_CURVE_KEY);
-        break;
-      case ATTR_STD_CURVE_RANDOM:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_CURVE);
-        break;
-      case ATTR_STD_GENERATED_TRANSFORM:
-        attr = add(name, TypeDesc::TypeMatrix, ATTR_ELEMENT_MESH);
-        break;
-      case ATTR_STD_POINTINESS:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_VERTEX);
-        break;
-      case ATTR_STD_RANDOM_PER_ISLAND:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_FACE);
-        break;
-      default:
-        assert(0);
-        break;
-    }
-  }
+  TypeDesc type = geometry->standard_type(std);
+  AttributeElement element = geometry->standard_element(std);
 
-  attr->std = std;
+  if(type != TypeUnknown && element != ATTR_ELEMENT_NONE) {
+    attr = add(name, type, element);
+    attr->std = std;
+  }
 
   return attr;
 }

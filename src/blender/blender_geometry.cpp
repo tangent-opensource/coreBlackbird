@@ -19,6 +19,7 @@
 #include "render/hair.h"
 #include "render/mesh.h"
 #include "render/object.h"
+#include "render/pointcloud.h"
 
 #include "blender/blender_sync.h"
 #include "blender/blender_util.h"
@@ -26,6 +27,19 @@
 #include "util/util_foreach.h"
 
 CCL_NAMESPACE_BEGIN
+
+static Geometry::Type determine_geom_type(BL::Object &b_ob, bool use_particle_hair)
+{
+  if (b_ob.type() == BL::Object::type_HAIR || use_particle_hair) {
+    return Geometry::HAIR;
+  }
+
+  if (b_ob.type() == BL::Object::type_POINTCLOUD) {
+    return Geometry::POINTCLOUD;
+  }
+
+  return Geometry::MESH;
+}
 
 Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
                                      BL::Object &b_ob,
@@ -36,13 +50,11 @@ Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
   /* Test if we can instance or if the object is modified. */
   BL::ID b_ob_data = b_ob.data();
   BL::ID b_key_id = (BKE_object_is_modified(b_ob)) ? b_ob_instance : b_ob_data;
-  GeometryKey key(b_key_id.ptr.data, use_particle_hair);
   BL::Material material_override = view_layer.material_override;
   Shader *default_shader = (b_ob.type() == BL::Object::type_VOLUME) ? scene->default_volume :
                                                                       scene->default_surface;
-  Geometry::Type geom_type = (b_ob.type() == BL::Object::type_HAIR || use_particle_hair) ?
-                                 Geometry::HAIR :
-                                 Geometry::MESH;
+  Geometry::Type geom_type = determine_geom_type(b_ob, use_particle_hair);
+  GeometryKey key(b_key_id.ptr.data, geom_type);
 
   /* Find shader indices. */
   vector<Shader *> used_shaders;
@@ -67,11 +79,21 @@ Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
 
   /* Test if we need to sync. */
   Geometry *geom = geometry_map.find(key);
+  if (geom) {
+    if (geometry_synced.find(geom) != geometry_synced.end()) {
+      return geom;
+    }
+  }
+
+  /* Test if we need to sync. */
   bool sync = true;
   if (geom == NULL) {
     /* Add new geometry if it did not exist yet. */
     if (geom_type == Geometry::HAIR) {
       geom = new Hair();
+    }
+    else if (geom_type == Geometry::POINTCLOUD) {
+      geom = new PointCloud();
     }
     else {
       geom = new Mesh();
@@ -129,6 +151,10 @@ Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
     Mesh *mesh = static_cast<Mesh *>(geom);
     sync_volume(b_ob, mesh, used_shaders);
   }
+  else if (geom_type == Geometry::POINTCLOUD) {
+    PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+    sync_pointcloud(b_ob, pointcloud);
+  }
   else {
     Mesh *mesh = static_cast<Mesh *>(geom);
     sync_mesh(b_depsgraph, b_ob, mesh, used_shaders);
@@ -168,6 +194,10 @@ void BlenderSync::sync_geometry_motion(BL::Depsgraph &b_depsgraph,
   }
   else if (b_ob.type() == BL::Object::type_VOLUME || object_fluid_gas_domain_find(b_ob)) {
     /* No volume motion blur support yet. */
+  }
+  else if (b_ob.type() == BL::Object:type_POINTCLOUD) {
+    PointCloud* pointcloud = static_cast<PointCloud *>(geom);
+    sync_pointcloud_motion(b_ob, pointcloud, motion_step);
   }
   else {
     Mesh *mesh = static_cast<Mesh *>(geom);
