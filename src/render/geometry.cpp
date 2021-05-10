@@ -28,6 +28,7 @@
 #include "render/mesh.h"
 #include "render/nodes.h"
 #include "render/object.h"
+#include "render/pointcloud.h"
 #include "render/scene.h"
 #include "render/shader.h"
 #include "render/stats.h"
@@ -210,6 +211,7 @@ void Geometry::compute_bvh(
                                     params->use_bvh_unaligned_nodes;
       bparams.num_motion_triangle_steps = params->num_bvh_time_steps;
       bparams.num_motion_curve_steps = params->num_bvh_time_steps;
+      bparams.num_motion_point_steps = params->num_bvh_time_steps;
       bparams.bvh_type = params->bvh_type;
       bparams.curve_subdivisions = params->curve_subdivisions();
 
@@ -257,7 +259,8 @@ void Geometry::tag_update(Scene *scene, bool rebuild)
   scene->object_manager->need_update = true;
 }
 
-size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim) const {
+size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim) const
+{
   size_t size = 0;
 
   switch (element) {
@@ -274,6 +277,10 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
           size -= mesh->num_subd_verts;
         }
       }
+      else if (type == Geometry::POINTCLOUD) {
+        const PointCloud *pointcloud = static_cast<const PointCloud *>(this);
+        size = pointcloud->num_points();
+      }
       break;
     case ATTR_ELEMENT_VERTEX_MOTION:
       if (type == Geometry::MESH) {
@@ -282,6 +289,10 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
         if (prim == ATTR_PRIM_SUBD) {
           size -= mesh->num_subd_verts * (mesh->motion_steps - 1);
         }
+      }
+      else if (type == Geometry::POINTCLOUD) {
+        const PointCloud *pointcloud = static_cast<const PointCloud *>(this);
+        size = pointcloud->num_points() * (pointcloud->motion_steps - 1);
       }
       break;
     case ATTR_ELEMENT_FACE:
@@ -330,6 +341,213 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
   }
 
   return size;
+}
+
+TypeDesc Geometry::standard_type(AttributeStandard std) const {
+  if (type == Geometry::MESH) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_FACE_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_CORNER_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_UV:
+        return TypeFloat2;
+      case ATTR_STD_UV_TANGENT:
+        return TypeDesc::TypeVector;
+      case ATTR_STD_UV_TANGENT_SIGN:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_VERTEX_COLOR:
+        return TypeRGBA;
+        break;
+      case ATTR_STD_GENERATED:
+      case ATTR_STD_POSITION_UNDEFORMED:
+      case ATTR_STD_POSITION_UNDISPLACED:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return TypeDesc::TypeVector;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_PTEX_FACE_ID:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_PTEX_UV:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return TypeDesc::TypeMatrix;
+      case ATTR_STD_VOLUME_DENSITY:
+      case ATTR_STD_VOLUME_FLAME:
+      case ATTR_STD_VOLUME_HEAT:
+      case ATTR_STD_VOLUME_TEMPERATURE:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_VOLUME_COLOR:
+        return TypeDesc::TypeColor;
+      case ATTR_STD_VOLUME_VELOCITY:
+        return TypeDesc::TypeVector;
+      case ATTR_STD_POINTINESS:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return TypeDesc::TypeFloat;
+      default:
+        assert(0);
+        return TypeUnknown;
+    }
+  }
+  else if (type == Geometry::HAIR) {
+    switch (std) {
+      case ATTR_STD_UV:
+        return TypeFloat2;
+      case ATTR_STD_GENERATED:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_CURVE_INTERCEPT:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_CURVE_RANDOM:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return TypeDesc::TypeMatrix;
+      case ATTR_STD_POINTINESS:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return TypeDesc::TypeFloat;
+      default:
+        assert(0);
+        return TypeUnknown;
+    }
+  }
+  else if (type == Geometry::POINTCLOUD) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_UV:
+        return TypeFloat2;
+      case ATTR_STD_GENERATED:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_ACCELERATION:
+        return TypeDesc::TypePoint;
+      case ATTR_STD_VERTEX_COLOR:
+        return TypeDesc::TypeColor;
+      case ATTR_STD_POINT_RANDOM:
+        return TypeDesc::TypeFloat;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return TypeDesc::TypeMatrix;
+      default:
+        assert(0);
+        return TypeUnknown;
+    }
+  }
+
+  return TypeUnknown;
+}
+
+AttributeElement Geometry::standard_element(AttributeStandard std) const {
+  if (type == Geometry::MESH) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_FACE_NORMAL:
+        return ATTR_ELEMENT_FACE;
+      case ATTR_STD_CORNER_NORMAL:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_UV:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_UV_TANGENT:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_UV_TANGENT_SIGN:
+        return ATTR_ELEMENT_CORNER;
+      case ATTR_STD_VERTEX_COLOR:
+        return ATTR_ELEMENT_CORNER_BYTE;
+      case ATTR_STD_GENERATED:
+      case ATTR_STD_POSITION_UNDEFORMED:
+      case ATTR_STD_POSITION_UNDISPLACED:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_MOTION_VERTEX_NORMAL:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_PTEX_FACE_ID:
+        return ATTR_ELEMENT_FACE;
+      case ATTR_STD_PTEX_UV:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return ATTR_ELEMENT_MESH;
+      case ATTR_STD_VOLUME_DENSITY:
+      case ATTR_STD_VOLUME_FLAME:
+      case ATTR_STD_VOLUME_HEAT:
+      case ATTR_STD_VOLUME_TEMPERATURE:
+        return ATTR_ELEMENT_VOXEL;
+      case ATTR_STD_VOLUME_COLOR:
+        return ATTR_ELEMENT_VOXEL;
+      case ATTR_STD_VOLUME_VELOCITY:
+        return ATTR_ELEMENT_VOXEL;
+      case ATTR_STD_POINTINESS:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return ATTR_ELEMENT_FACE;
+      default:
+        assert(0);
+        return ATTR_ELEMENT_NONE;
+    }
+  }
+  else if (type == Geometry::HAIR) {
+    switch (std) {
+      case ATTR_STD_UV:
+        return ATTR_ELEMENT_CURVE;
+      case ATTR_STD_GENERATED:
+        return ATTR_ELEMENT_CURVE;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_CURVE_KEY_MOTION;
+      case ATTR_STD_CURVE_INTERCEPT:
+        return ATTR_ELEMENT_CURVE_KEY;
+      case ATTR_STD_CURVE_RANDOM:
+        return ATTR_ELEMENT_CURVE;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return ATTR_ELEMENT_MESH;
+      case ATTR_STD_POINTINESS:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_RANDOM_PER_ISLAND:
+        return ATTR_ELEMENT_FACE;
+      default:
+        assert(0);
+        return ATTR_ELEMENT_NONE;
+    }
+  }
+  else if (type == Geometry::POINTCLOUD) {
+    switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_UV:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED:
+        return  ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_VERTEX_VELOCITY:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_ACCELERATION:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_VERTEX_COLOR:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_POINT_RANDOM:
+        return ATTR_ELEMENT_VERTEX;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        return ATTR_ELEMENT_MESH;
+      default:
+        assert(0);
+        return ATTR_ELEMENT_NONE;
+    }
+  }
+
+  return ATTR_ELEMENT_NONE;
 }
 
 /* Geometry Manager */
@@ -696,6 +914,12 @@ static void update_attribute_element_offset(Geometry *geom,
       else if (element == ATTR_ELEMENT_CURVE_KEY_MOTION)
         offset -= hair->curvekey_offset;
     }
+    else if (geom->is_pointcloud()) {
+      if (element == ATTR_ELEMENT_VERTEX)
+        offset -= geom->prim_offset;
+      else if (element == ATTR_ELEMENT_VERTEX_MOTION)
+        offset -= geom->prim_offset;
+    }
   }
   else {
     /* attribute not found */
@@ -723,20 +947,19 @@ void GeometryManager::device_update_attributes(Device *device,
 
     foreach (Shader *shader, geom->used_shaders) {
       geom_attributes[i].add(shader->attributes);
-      
-      /* Add a request for volume velocity if a volume attribute is 
+
+      /* Add a request for volume velocity if a volume attribute is
       present and motion blur is on*/
       if (scene->need_motion() == Scene::MOTION_BLUR) {
         foreach (AttributeRequest &attr, geom_attributes[i].requests) {
-          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR
-          || attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT
-          || attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
+          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR ||
+              attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT ||
+              attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
             geom_attributes[i].add(ATTR_STD_VOLUME_VELOCITY);
             break;
           }
         }
       }
-
     }
   }
 
@@ -878,6 +1101,8 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
   size_t curve_key_size = 0;
   size_t curve_size = 0;
 
+  size_t point_size = 0;
+
   size_t patch_size = 0;
   size_t face_size = 0;
   size_t corner_size = 0;
@@ -916,7 +1141,8 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
 
       if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
-      } else {
+      }
+      else {
         normals_size += mesh->verts.size();
       }
 
@@ -935,6 +1161,16 @@ void GeometryManager::mesh_calc_offset(Scene *scene)
       hair->optix_prim_offset = optix_prim_size;
       optix_prim_size += hair->num_segments();
     }
+    else if (geom->is_pointcloud()) {
+      PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+
+      pointcloud->prim_offset = point_size;
+
+      point_size += pointcloud->num_points() * pointcloud->num_attributes();
+
+      pointcloud->optix_prim_offset = optix_prim_size;
+      optix_prim_size += pointcloud->num_points() * pointcloud->num_attributes();
+    }
   }
 }
 
@@ -949,6 +1185,8 @@ void GeometryManager::device_update_mesh(
   size_t curve_key_size = 0;
   size_t curve_size = 0;
 
+  size_t point_size = 0;
+
   size_t patch_size = 0;
 
   foreach (Geometry *geom, scene->geometry) {
@@ -961,7 +1199,8 @@ void GeometryManager::device_update_mesh(
       /* Making more space for normals if they are per-corner */
       if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
         normals_size += mesh->num_triangles() * 3;
-      } else {
+      }
+      else {
         normals_size += mesh->verts.size();
       }
 
@@ -981,6 +1220,10 @@ void GeometryManager::device_update_mesh(
 
       curve_key_size += hair->curve_keys.size();
       curve_size += hair->num_curves();
+    }
+    else if (geom->is_pointcloud()) {
+      PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+      point_size += pointcloud->num_points() * pointcloud->num_attributes();
     }
   }
 
@@ -1046,11 +1289,11 @@ void GeometryManager::device_update_mesh(
     dscene->tri_patch_uv.copy_to_device();
 
     /* Updating the normal buffer offset to be indexed by object */
-    int* vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
+    int *vnormal_offset = dscene->object_vnormal_offset.alloc(scene->objects.size());
     for (size_t i = 0; i < scene->objects.size(); ++i) {
-      const Geometry* geom = scene->objects[i]->geometry;
+      const Geometry *geom = scene->objects[i]->geometry;
       if (geom && geom->type == Geometry::MESH) {
-        const Mesh* mesh = static_cast<const Mesh *>(geom);
+        const Mesh *mesh = static_cast<const Mesh *>(geom);
 
         /* Start of the normal buffer or the geometry */
         vnormal_offset[i] = mesh->normals_offset;
@@ -1058,8 +1301,9 @@ void GeometryManager::device_update_mesh(
         /* Since the vertex/prim indices are global, we add the offset
          * correction here */
         if (mesh->attributes.find(ATTR_STD_CORNER_NORMAL)) {
-          vnormal_offset[i] -= 3* mesh->prim_offset; /* Corner attribute */
-        } else {
+          vnormal_offset[i] -= 3 * mesh->prim_offset; /* Corner attribute */
+        }
+        else {
           vnormal_offset[i] -= mesh->vert_offset; /* Vertex attribute*/
         }
       }
@@ -1069,7 +1313,7 @@ void GeometryManager::device_update_mesh(
   }
 
   if (curve_size != 0) {
-    progress.set_status("Updating Mesh", "Copying Strands to device");
+    progress.set_status("Updating Mesh", "Copying Hair to device");
 
     float4 *curve_keys = dscene->curve_keys.alloc(curve_key_size);
     float4 *curves = dscene->curves.alloc(curve_size);
@@ -1088,6 +1332,26 @@ void GeometryManager::device_update_mesh(
 
     dscene->curve_keys.copy_to_device();
     dscene->curves.copy_to_device();
+  }
+
+  if (point_size != 0) {
+    progress.set_status("Updating Mesh", "Copying Point clouds to device");
+
+    float4 *points = dscene->points.alloc(point_size);
+    uint *points_shader = dscene->points_shader.alloc(point_size);
+
+    foreach (Geometry *geom, scene->geometry) {
+      if (geom->is_pointcloud()) {
+        PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+        pointcloud->pack(
+            scene, &points[pointcloud->prim_offset], &points_shader[pointcloud->prim_offset]);
+        if (progress.get_cancel())
+          return;
+      }
+    }
+
+    dscene->points.copy_to_device();
+    dscene->points_shader.copy_to_device();
   }
 
   if (patch_size != 0) {
@@ -1151,6 +1415,7 @@ void GeometryManager::device_update_bvh(Device *device,
                                 scene->params.use_bvh_unaligned_nodes;
   bparams.num_motion_triangle_steps = scene->params.num_bvh_time_steps;
   bparams.num_motion_curve_steps = scene->params.num_bvh_time_steps;
+  bparams.num_motion_point_steps = scene->params.num_bvh_time_steps;
   bparams.bvh_type = scene->params.bvh_type;
   bparams.curve_subdivisions = scene->params.curve_subdivisions();
 
@@ -1270,9 +1535,9 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       // hair->curve_shape = scene->params.hair_shape;
     }
 
-    // Generating motion blur geometry for Meshes with no authored motion samples
-    if (geom->type == Geometry::MESH) {
-      create_motion_blur_geometry(scene, static_cast<Mesh *>(geom), progress);
+    /* Generating motion blur geometry if possible */
+    if (geom->use_motion_blur) {
+      create_motion_blur_geometry(scene, geom, progress);
     }
   }
 
@@ -1569,9 +1834,11 @@ void GeometryManager::device_free(Device *device, DeviceScene *dscene)
   dscene->tri_vindex.free();
   dscene->tri_patch.free();
   dscene->tri_patch_uv.free();
+  dscene->patches.free();
   dscene->curves.free();
   dscene->curve_keys.free();
-  dscene->patches.free();
+  dscene->points.free();
+  dscene->points_shader.free();
   dscene->attributes_map.free();
   dscene->attributes_float.free();
   dscene->attributes_float2.free();
@@ -1608,71 +1875,106 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
   }
 }
 
-/* Generates motion positions from velocity/acceleration attributes
- * only if no authored motion positions are available */
-void GeometryManager::create_motion_blur_geometry(const Scene *scene,
-                                                  Mesh *mesh,
-                                                  Progress &progress)
+void GeometryManager::create_motion_blur_geometry(
+    const Scene *scene, Geometry *geom, const float3 *P, const float *Pw, int num_points)
 {
-  if (!mesh->use_motion_blur) {
-    return;
-  }
-
-  Attribute *attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+  /* Skipping if motion positions already exit */
+  Attribute *attr_mP = geom->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
   if (attr_mP) {
     return;
   }
 
-  Attribute *attr_V = mesh->attributes.find(ATTR_STD_VERTEX_VELOCITY);
-  if (!attr_V) {
-    return;
+  /* Velocities are required */
+  Attribute *attr_V = geom->attributes.find(ATTR_STD_VERTEX_VELOCITY);
+  const float3 *V = nullptr;
+  if (attr_V) {
+    V = attr_V->data_float3();
   }
 
-  progress.set_status("Creating mesh motion blur geometry\n");
-
-  /* Rounding up to include center step */
-  mesh->motion_steps += (mesh->motion_steps % 2) ? 0 : 1;
-
-  /* Making space for motion vertices */
-  attr_mP = mesh->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
-  float3 *mP = attr_mP->data_float3();
-  const float3 *V = attr_V->data_float3();
-
   /* Use accelerations in the integration if they are available */
-  Attribute *attr_A = mesh->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
-  float3 *A = NULL;
+  Attribute *attr_A = geom->attributes.find(ATTR_STD_VERTEX_ACCELERATION);
+  const float3 *A = NULL;
   if (attr_A) {
     A = attr_A->data_float3();
   }
 
+  /* Rounding up to include center step */
+  geom->motion_steps += (geom->motion_steps % 2) ? 0 : 1;
+
+  /* Making space for motion vertices */
+  attr_mP = geom->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
+  float4 *mP = attr_mP->data_float4();
+
   /* Transformation from unit/second to frame time */
-  const float to_frame_time = (scene->camera->shuttertime * 0.5f) / scene->camera->fps;
+  const float inv_fps = 1.0f / (scene->camera->fps > 0.0f ? scene->camera->fps : 24);
+  const float to_frame_time = (scene->camera->shuttertime * 0.5f) * inv_fps;
 
   /* Sampling uniform intervals in [-1, 1] skipping the center */
-  const float step_time = 2.0f / (mesh->motion_steps - 1);
-  const int timestep_center = mesh->motion_steps / 2;
+  const float step_time = 2.0f / (geom->motion_steps - 1);
+  const int timestep_center = geom->motion_steps / 2;
 
-  for (int timestep = 0; timestep < mesh->motion_steps; ++timestep) {
+  for (int timestep = 0; timestep < geom->motion_steps; ++timestep) {
     if (timestep == timestep_center) {
       continue;
     }
 
     const float relative_time = (-1.0f + timestep * step_time) * to_frame_time;
 
-    if (A) { /* velocity + acceleration */
-      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-        mP[vert] = mesh->verts[vert] +
-                   relative_time * (V[vert] + (0.5f * relative_time * A[vert]));
+    if (V && A) { /* velocity + acceleration */
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        mP[vert] = float3_to_float4(P[vert] +
+                                    relative_time * (V[vert] + (0.5f * relative_time * A[vert])));
       }
     }
-    else { /* velocity */
-      for (size_t vert = 0; vert < mesh->verts.size(); ++vert) {
-        mP[vert] = mesh->verts[vert] + relative_time * V[vert];
+    else if (V) { /* velocity */
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        mP[vert] = float3_to_float4(P[vert] + relative_time * V[vert]);
+      }
+    }
+    else { /* acceleration */
+      const float relative_time2 = relative_time * relative_time;
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        mP[vert] = float3_to_float4(P[vert] + relative_time2 * A[vert] * 0.5f);
       }
     }
 
-    mP += mesh->verts.size();
+    if (Pw) {
+      for (size_t vert = 0; vert < num_points; ++vert) {
+        mP[vert].w = Pw[vert];
+      }
+    }
+
+    mP += num_points;
   }
+}
+
+/* Generates motion positions from velocity/acceleration attributes
+ * only if no authored motion positions are available */
+void GeometryManager::create_motion_blur_geometry(const Scene *scene,
+                                                  Geometry *geom,
+                                                  Progress &progress)
+{
+  const float3 *P = nullptr;
+  const float *Pw = nullptr;
+  int num_points = 0;
+
+  if (geom->type == Geometry::MESH) {
+    Mesh *mesh = static_cast<Mesh *>(geom);
+    P = mesh->verts.data();
+    num_points = mesh->verts.size();
+  }
+  else if (geom->type == Geometry::POINTCLOUD) {
+    PointCloud *pc = static_cast<PointCloud *>(geom);
+    P = pc->points.data();
+    Pw = pc->radius.data();
+    num_points = pc->points.size();
+  }
+  else {
+    return;
+  }
+
+  progress.set_status("Creating mesh motion blur geometry\n");
+  create_motion_blur_geometry(scene, geom, P, Pw, num_points);
 }
 
 CCL_NAMESPACE_END

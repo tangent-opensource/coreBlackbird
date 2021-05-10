@@ -69,12 +69,12 @@ class IntersectContext {
     rtcInitIntersectContext(&context);
     userRayExt = ctx;
   }
-  RTCIntersectContext context;
+  RTC_NAMESPACE::RTCIntersectContext context;
   CCLIntersectContext *userRayExt;
 };
 
 ccl_device_inline void kernel_embree_setup_ray(const Ray &ray,
-                                               RTCRay &rtc_ray,
+                                               RTC_NAMESPACE::RTCRay &rtc_ray,
                                                const uint visibility)
 {
   rtc_ray.org_x = ray.P.x;
@@ -90,7 +90,7 @@ ccl_device_inline void kernel_embree_setup_ray(const Ray &ray,
 }
 
 ccl_device_inline void kernel_embree_setup_rayhit(const Ray &ray,
-                                                  RTCRayHit &rayhit,
+                                                  RTC_NAMESPACE::RTCRayHit &rayhit,
                                                   const uint visibility)
 {
   kernel_embree_setup_ray(ray, rayhit.ray, visibility);
@@ -99,8 +99,8 @@ ccl_device_inline void kernel_embree_setup_rayhit(const Ray &ray,
 }
 
 ccl_device_inline void kernel_embree_convert_hit(KernelGlobals *kg,
-                                                 const RTCRay *ray,
-                                                 const RTCHit *hit,
+                                                 const RTC_NAMESPACE::RTCRay *ray,
+                                                 const RTC_NAMESPACE::RTCHit *hit,
                                                  Intersection *isect)
 {
   bool is_hair = hit->geomID & 1;
@@ -109,7 +109,7 @@ ccl_device_inline void kernel_embree_convert_hit(KernelGlobals *kg,
   isect->t = ray->tfar;
   isect->Ng = make_float3(hit->Ng_x, hit->Ng_y, hit->Ng_z);
   if (hit->instID[0] != RTC_INVALID_GEOMETRY_ID) {
-    RTCScene inst_scene = (RTCScene)rtcGetGeometryUserData(
+    RTC_NAMESPACE::RTCScene inst_scene = (RTC_NAMESPACE::RTCScene)rtcGetGeometryUserData(
         rtcGetGeometry(kernel_data.bvh.scene, hit->instID[0]));
     isect->prim = hit->primID +
                   (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(inst_scene, hit->geomID)) +
@@ -125,8 +125,8 @@ ccl_device_inline void kernel_embree_convert_hit(KernelGlobals *kg,
 }
 
 ccl_device_inline void kernel_embree_convert_sss_hit(KernelGlobals *kg,
-                                                     const RTCRay *ray,
-                                                     const RTCHit *hit,
+                                                     const RTC_NAMESPACE::RTCRay *ray,
+                                                     const RTC_NAMESPACE::RTCHit *hit,
                                                      Intersection *isect,
                                                      int local_object_id)
 {
@@ -134,7 +134,7 @@ ccl_device_inline void kernel_embree_convert_sss_hit(KernelGlobals *kg,
   isect->v = hit->u;
   isect->t = ray->tfar;
   isect->Ng = make_float3(hit->Ng_x, hit->Ng_y, hit->Ng_z);
-  RTCScene inst_scene = (RTCScene)rtcGetGeometryUserData(
+  RTC_NAMESPACE::RTCScene inst_scene = (RTC_NAMESPACE::RTCScene)rtcGetGeometryUserData(
       rtcGetGeometry(kernel_data.bvh.scene, local_object_id * 2));
   isect->prim = hit->primID +
                 (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(inst_scene, hit->geomID)) +

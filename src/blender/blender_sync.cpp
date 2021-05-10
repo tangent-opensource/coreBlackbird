@@ -153,7 +153,7 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
       if (is_geometry || is_light) {
         const bool updated_geometry = b_update->is_updated_geometry();
 
-        /* Geometry (mesh, hair, volume). */
+        /* Geometry (mesh, hair, volume, pointcloud). */
         if (is_geometry) {
           if (b_update->is_updated_transform() || b_update->is_updated_shading()) {
             object_map.set_recalc(b_ob);

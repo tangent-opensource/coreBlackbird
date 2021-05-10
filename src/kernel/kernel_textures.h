@@ -48,12 +48,16 @@ KERNEL_TEX(uint4, __tri_vindex)
 KERNEL_TEX(uint, __tri_patch)
 KERNEL_TEX(float2, __tri_patch_uv)
 
+/* patches */
+KERNEL_TEX(uint, __patches)
+
 /* curves */
 KERNEL_TEX(float4, __curves)
 KERNEL_TEX(float4, __curve_keys)
 
-/* patches */
-KERNEL_TEX(uint, __patches)
+/* curves */
+KERNEL_TEX(float4, __points)
+KERNEL_TEX(uint, __points_shader)
 
 /* attributes */
 KERNEL_TEX(uint4, __attributes_map)

@@ -26,6 +26,7 @@
 #include "render/hair.h"
 #include "render/mesh.h"
 #include "render/object.h"
+#include "render/pointcloud.h"
 #include "render/scene.h"
 
 #include "util/util_algorithm.h"
@@ -109,9 +110,9 @@ void BVHBuild::add_reference_triangles(BoundBox &root, BoundBox &center, Mesh *m
     else {
       /* Motion triangles, trace optimized case:  we split triangle
        * primitives into separate nodes for each of the time steps.
-       * This way we minimize overlap of neighbor curve primitives.
+       * This way we minimize overlap of neighbor triangle primitives.
        */
-      const int num_bvh_steps = params.num_motion_curve_steps * 2 + 1;
+      const int num_bvh_steps = params.num_motion_triangle_steps * 2 + 1;
       const float num_bvh_steps_inv_1 = 1.0f / (num_bvh_steps - 1);
       const size_t num_verts = mesh->verts.size();
       const size_t num_steps = mesh->motion_steps;
@@ -268,6 +269,118 @@ void BVHBuild::add_reference_curves(BoundBox &root, BoundBox &center, Hair *hair
   }
 }
 
+void BVHBuild::add_reference_points(BoundBox &root,
+                                    BoundBox &center,
+                                    PointCloud *pointcloud,
+                                    int i)
+{
+  const Attribute *point_attr_mP = NULL;
+  if (pointcloud->has_motion_blur()) {
+    point_attr_mP = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+  }
+
+  const float3 *points_data = pointcloud->points.data();
+  const float *radius_data = pointcloud->radius.data();
+  const size_t num_points = pointcloud->num_points();
+  const float3 *motion_data = (point_attr_mP) ? point_attr_mP->data_float3() : NULL;
+  const size_t num_steps = pointcloud->motion_steps;
+
+  PrimitiveType prim_type = PRIMITIVE_NONE;
+  switch (pointcloud->point_style) {
+    case POINT_CLOUD_POINT_SPHERE:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE :
+                                                  PRIMITIVE_POINT_SPHERE;
+      break;
+    case POINT_CLOUD_POINT_DISC:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC :
+                                                  PRIMITIVE_POINT_DISC;
+      break;
+    case POINT_CLOUD_POINT_DISC_ORIENTED:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED :
+                                                  PRIMITIVE_POINT_DISC_ORIENTED;
+      break;
+  }
+  assert(prim_type);
+
+  if (point_attr_mP == NULL) {
+    /* Really simple logic for static points. */
+    for (uint j = 0; j < num_points; j++) {
+      const PointCloud::Point point = pointcloud->get_point(j);
+      BoundBox bounds = BoundBox::empty;
+      point.bounds_grow(points_data, radius_data, bounds);
+      if (bounds.valid()) {
+        references.push_back(BVHReference(bounds, j, i, prim_type));
+        root.grow(bounds);
+        center.grow(bounds.center2());
+      }
+    }
+  }
+  else if (params.num_motion_point_steps == 0 || params.use_spatial_split) {
+    /* Simple case of motion points: single node for the whole
+     * shutter time. Lowest memory usage but less optimal
+     * rendering.
+     */
+    /* TODO(sergey): Support motion steps for spatially split BVH. */
+    for (uint j = 0; j < num_points; j++) {
+      const PointCloud::Point point = pointcloud->get_point(j);
+      BoundBox bounds = BoundBox::empty;
+      point.bounds_grow(points_data, radius_data, bounds);
+      for (size_t step = 0; step < num_steps - 1; step++) {
+        point.bounds_grow(motion_data + step * num_points, radius_data, bounds);
+      }
+
+      if (bounds.valid()) {
+        references.push_back(BVHReference(bounds, j, i, prim_type));
+        root.grow(bounds);
+        center.grow(bounds.center2());
+      }
+    }
+  }
+  else {
+    /* Motion points, trace optimized case:  we split point
+     * primitives into separate nodes for each of the time steps.
+     * This way we minimize overlap of neighbor point primitives.
+     */
+    const int num_bvh_steps = params.num_motion_point_steps * 2 + 1;
+    const float num_bvh_steps_inv_1 = 1.0f / (num_bvh_steps - 1);
+
+    for (uint j = 0; j < num_points; j++) {
+      const PointCloud::Point point = pointcloud->get_point(j);
+      const size_t num_steps = pointcloud->motion_steps;
+      const float3 *point_steps = point_attr_mP->data_float3();
+
+      /* Calculate bounding box of the previous time step.
+       * Will be reused later to avoid duplicated work on
+       * calculating BVH time step boundbox.
+       */
+      float4 prev_key = point.motion_key(
+          points_data, radius_data, point_steps, num_points, num_steps, 0.0f, j);
+      BoundBox prev_bounds = BoundBox::empty;
+      point.bounds_grow(prev_key, prev_bounds);
+      /* Create all primitive time steps, */
+      for (int bvh_step = 1; bvh_step < num_bvh_steps; ++bvh_step) {
+        const float curr_time = (float)(bvh_step)*num_bvh_steps_inv_1;
+        float4 curr_key = point.motion_key(
+            points_data, radius_data, point_steps, num_points, num_steps, curr_time, j);
+        BoundBox curr_bounds = BoundBox::empty;
+        point.bounds_grow(curr_key, curr_bounds);
+        BoundBox bounds = prev_bounds;
+        bounds.grow(curr_bounds);
+        if (bounds.valid()) {
+          const float prev_time = (float)(bvh_step - 1) * num_bvh_steps_inv_1;
+          references.push_back(BVHReference(bounds, j, i, prim_type, prev_time, curr_time));
+          root.grow(bounds);
+          center.grow(bounds.center2());
+        }
+        /* Current time boundbox becomes previous one for the
+         * next time step.
+         */
+        prev_bounds = curr_bounds;
+      }
+    }
+  }
+}
+
 void BVHBuild::add_reference_geometry(BoundBox &root, BoundBox &center, Geometry *geom, int i)
 {
   if (geom->type == Geometry::MESH) {
@@ -277,6 +390,10 @@ void BVHBuild::add_reference_geometry(BoundBox &root, BoundBox &center, Geometry
   else if (geom->type == Geometry::HAIR) {
     Hair *hair = static_cast<Hair *>(geom);
     add_reference_curves(root, center, hair, i);
+  }
+  else if (geom->type == Geometry::POINTCLOUD) {
+    PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+    add_reference_points(root, center, pointcloud, i);
   }
 }
 
@@ -306,6 +423,10 @@ static size_t count_primitives(Geometry *geom)
   else if (geom->type == Geometry::HAIR) {
     Hair *hair = static_cast<Hair *>(geom);
     return count_curve_segments(hair);
+  }
+  else if (geom->type == Geometry::POINTCLOUD) {
+    PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+    return pointcloud->num_points();
   }
 
   return 0;
@@ -390,7 +511,7 @@ BVHNode *BVHBuild::run()
   spatial_min_overlap = root.bounds().safe_area() * params.spatial_split_alpha;
   spatial_free_index = 0;
 
-  need_prim_time = params.num_motion_curve_steps > 0 || params.num_motion_triangle_steps > 0;
+  need_prim_time = params.use_motion_steps();
 
   /* init progress updates */
   double build_start_time;
@@ -531,7 +652,8 @@ bool BVHBuild::range_within_max_leaf_size(const BVHRange &range,
                                           const vector<BVHReference> &references) const
 {
   size_t size = range.size();
-  size_t max_leaf_size = max(params.max_triangle_leaf_size, params.max_curve_leaf_size);
+  size_t max_leaf_size = max(max(params.max_triangle_leaf_size, params.max_curve_leaf_size),
+                             params.max_point_leaf_size);
 
   if (size > max_leaf_size)
     return false;
@@ -540,6 +662,8 @@ bool BVHBuild::range_within_max_leaf_size(const BVHRange &range,
   size_t num_motion_triangles = 0;
   size_t num_curves = 0;
   size_t num_motion_curves = 0;
+  size_t num_points = 0;
+  size_t num_motion_points = 0;
 
   for (int i = 0; i < size; i++) {
     const BVHReference &ref = references[range.start() + i];
@@ -560,12 +684,22 @@ bool BVHBuild::range_within_max_leaf_size(const BVHRange &range,
         num_triangles++;
       }
     }
+    else if (ref.prim_type() & PRIMITIVE_ALL_POINT) {
+      if (ref.prim_type() & PRIMITIVE_ALL_MOTION) {
+        num_motion_points++;
+      }
+      else {
+        num_points++;
+      }
+    }
   }
 
   return (num_triangles <= params.max_triangle_leaf_size) &&
          (num_motion_triangles <= params.max_motion_triangle_leaf_size) &&
          (num_curves <= params.max_curve_leaf_size) &&
-         (num_motion_curves <= params.max_motion_curve_leaf_size);
+         (num_motion_curves <= params.max_motion_curve_leaf_size) &&
+         (num_points <= params.max_point_leaf_size) &&
+         (num_motion_points <= params.max_motion_point_leaf_size);
 }
 
 /* multithreaded binning builder */

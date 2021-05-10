@@ -109,6 +109,8 @@ ustring OSLRenderServices::u_is_curve("geom:is_curve");
 ustring OSLRenderServices::u_curve_thickness("geom:curve_thickness");
 ustring OSLRenderServices::u_curve_tangent_normal("geom:curve_tangent_normal");
 ustring OSLRenderServices::u_curve_random("geom:curve_random");
+ustring OSLRenderServices::u_is_point("geom:is_point");
+ustring OSLRenderServices::u_point_radius("geom:point_radius");
 ustring OSLRenderServices::u_path_ray_length("path:ray_length");
 ustring OSLRenderServices::u_path_ray_depth("path:ray_depth");
 ustring OSLRenderServices::u_path_diffuse_depth("path:diffuse_depth");
@@ -853,6 +855,14 @@ bool OSLRenderServices::get_object_standard_attribute(
   else if (name == u_curve_tangent_normal) {
     float3 f = curve_tangent_normal(kg, sd);
     return set_attribute_float3(f, type, derivatives, val);
+  }
+  else if (name == u_is_point) {
+    float f = (sd->type & PRIMITIVE_ALL_POINT) != 0;
+    return set_attribute_float(f, type, derivatives, val);
+  }
+  else if (name == u_point_radius) {
+    float f = point_radius(kg, sd);
+    return set_attribute_float(f, type, derivatives, val);
   }
   else
     return false;
