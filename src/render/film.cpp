@@ -38,7 +38,7 @@ static bool compare_pass_order(const Pass &a, const Pass &b)
   return (a.components > b.components);
 }
 
-void Pass::add(PassType type, vector<Pass> &passes, const char *name)
+void Pass::add(PassType type, vector<Pass> &passes, const char *name, bool filter)
 {
   for (size_t i = 0; i < passes.size(); i++) {
     if (passes[i].type != type) {
@@ -76,7 +76,7 @@ void Pass::add(PassType type, vector<Pass> &passes, const char *name)
   Pass pass;
 
   pass.type = type;
-  pass.filter = true;
+  pass.filter = filter;
   pass.exposure = false;
   pass.divide_type = PASS_NONE;
   if (name) {

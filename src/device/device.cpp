@@ -54,6 +54,7 @@ std::ostream &operator<<(std::ostream &os, const DeviceRequestedFeatures &reques
   /* TODO(sergey): Decode bitflag into list of names. */
   os << "Nodes features: " << requested_features.nodes_features << std::endl;
   os << "Use Hair: " << string_from_bool(requested_features.use_hair) << std::endl;
+  os << "Use Pointclouds: " << string_from_bool(requested_features.use_pointcloud) << std::endl;
   os << "Use Object Motion: " << string_from_bool(requested_features.use_object_motion)
      << std::endl;
   os << "Use Camera Motion: " << string_from_bool(requested_features.use_camera_motion)

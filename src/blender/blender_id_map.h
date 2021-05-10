@@ -247,9 +247,9 @@ struct ObjectKey {
 
 struct GeometryKey {
   void *id;
-  bool use_particle_hair;
+  Geometry::Type geometry_type;
 
-  GeometryKey(void *id, bool use_particle_hair) : id(id), use_particle_hair(use_particle_hair)
+  GeometryKey(void *id, Geometry::Type geometry_type) : id(id), geometry_type(geometry_type)
   {
   }
 
@@ -259,7 +259,7 @@ struct GeometryKey {
       return true;
     }
     else if (id == k.id) {
-      if (use_particle_hair < k.use_particle_hair) {
+      if (geometry_type < k.geometry_type) {
         return true;
       }
     }

@@ -47,7 +47,7 @@ class Pass {
   PassType divide_type;
   string name;
 
-  static void add(PassType type, vector<Pass> &passes, const char *name = NULL);
+  static void add(PassType type, vector<Pass> &passes, const char *name = NULL, bool filter = true);
   static bool equals(const vector<Pass> &A, const vector<Pass> &B);
   static bool contains(const vector<Pass> &passes, PassType);
 };

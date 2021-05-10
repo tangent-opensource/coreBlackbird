@@ -403,57 +403,53 @@ endif()
 # Top level Cycles interface with all definitions
 #
 
-add_library(Cycles INTERFACE)
+if(WITH_CYCLES_STANDALONE)
+  add_library(Cycles INTERFACE)
 
-target_include_directories(Cycles
-        INTERFACE
-        $<BUILD_INTERFACE:.>
-        $<INSTALL_INTERFACE:include>
-        )
+  target_include_directories(Cycles
+          INTERFACE
+          $<BUILD_INTERFACE:.>
+          $<INSTALL_INTERFACE:include>
+          )
 
-target_link_libraries(Cycles
-        INTERFACE
-        extern_sky
-        extern_cuew
-        extern_clew
-        cycles_bvh
-        cycles_render
-        cycles_util
-        cycles_device
-        cycles_subd
-        cycles_kernel
-        )
+  target_link_libraries(Cycles
+          INTERFACE
+          extern_sky
+          extern_cuew
+          extern_clew
+          cycles_bvh
+          cycles_render
+          cycles_util
+          cycles_device
+          cycles_subd
+          cycles_kernel
+          )
 
-if(${WITH_OPENVDB})
-    target_link_libraries(Cycles
-            INTERFACE
-            OpenVDB::openvdb
-            )
+  # create target export and install actual targets
+  install(TARGETS
+          extern_sky
+          extern_cuew
+          extern_clew
+          extern_numaapi
+          cycles_bvh
+          cycles_render
+          cycles_util
+          cycles_device
+          cycles_subd
+          cycles_kernel
+          cycles_graph
+          Cycles
+          EXPORT CyclesTargets
+          )
+
+  install(EXPORT CyclesTargets
+          FILE CyclesTargets.cmake
+          NAMESPACE Cycles::
+          DESTINATION lib/cmake/Cycles
+          )
+
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(cmake/CyclesConfig.cmake.in CyclesConfig.cmake INSTALL_DESTINATION lib/cmake/Cycles)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CyclesConfig.cmake DESTINATION lib/cmake/Cycles)
+
 endif()
-
-# create target export and install actual targets
-install(TARGETS
-        extern_sky
-        extern_cuew
-        extern_clew
-        extern_numaapi
-        cycles_bvh
-        cycles_render
-        cycles_util
-        cycles_device
-        cycles_subd
-        cycles_kernel
-        cycles_graph
-        Cycles
-        EXPORT CyclesTargets
-        )
-
-install(EXPORT CyclesTargets
-        FILE CyclesTargets.cmake
-        NAMESPACE Cycles::
-        DESTINATION lib/cmake
-        )
-
-include(CMakePackageConfigHelpers)
-configure_package_config_file(cmake/CyclesConfig.cmake.in CyclesConfig.cmake INSTALL_DESTINATION lib/cmake)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CyclesConfig.cmake DESTINATION lib/cmake)
