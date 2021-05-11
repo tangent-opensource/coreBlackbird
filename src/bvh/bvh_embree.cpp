@@ -340,7 +340,7 @@ void BVHEmbree::build(Progress &progress, Stats *stats, RTCDevice rtc_device_)
   rtcSetSceneFlags(scene, scene_flags);
   build_quality = dynamic ? RTC_BUILD_QUALITY_LOW :
                             (params.use_spatial_split ? RTC_BUILD_QUALITY_HIGH :
-                                                        RTC_BUILD_QUALITY_MEDIUM);
+                             RTC_BUILD_QUALITY_MEDIUM);
   rtcSetSceneBuildQuality(scene, build_quality);
 
   int i = 0;
