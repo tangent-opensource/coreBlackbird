@@ -200,7 +200,7 @@ extern "C" __global__ void __anyhit__kernel_optix_shadow_all_hit()
     isect->v = barycentrics.x;
   }
 #  ifdef __HAIR__
-  else {
+  else if (optixGetHitKind() & PRIMITIVE_ALL_CURVE) {
     const float u = __uint_as_float(optixGetAttribute_0());
     isect->u = u;
     isect->v = __uint_as_float(optixGetAttribute_1());
@@ -211,6 +211,10 @@ extern "C" __global__ void __anyhit__kernel_optix_shadow_all_hit()
     }
   }
 #  endif
+  else {
+    isect->u = 0.0f;
+    isect->v = 0.0f;
+  }
 
 #  ifdef __TRANSPARENT_SHADOWS__
   // Detect if this surface has a shader with transparent shadows
@@ -241,7 +245,7 @@ extern "C" __global__ void __anyhit__kernel_optix_visibility_test()
 #endif
 
 #ifdef __HAIR__
-  if (!optixIsTriangleHit()) {
+  if (optixGetHitKind() & PRIMITIVE_ALL_CURVE) {
     // Filter out curve endcaps
     const float u = __uint_as_float(optixGetAttribute_0());
     if (u == 0.0f || u == 1.0f) {
@@ -323,5 +327,38 @@ extern "C" __global__ void __intersection__curve_all()
   const uint prim = optixGetPrimitiveIndex();
   const uint type = kernel_tex_fetch(__prim_type, prim);
   optix_intersection_curve(prim, type);
+}
+#endif
+
+#ifdef __POINTCLOUD__
+extern "C" __global__ void __intersection__point()
+{
+  const uint prim = optixGetPrimitiveIndex();
+  const uint type = kernel_tex_fetch(__prim_type, prim);
+  const uint object = get_object_id<true>();
+  const uint visibility = optixGetPayload_4();
+
+  float3 P = optixGetObjectRayOrigin();
+  float3 dir = optixGetObjectRayDirection();
+
+  // The direction is not normalized by default, but the point intersection routine expects that
+  float len;
+  dir = normalize_len(dir, &len);
+
+#  ifdef __OBJECT_MOTION__
+  const float time = optixGetRayTime();
+#  else
+  const float time = 0.0f;
+#  endif
+
+  Intersection isect;
+  isect.t = optixGetRayTmax();
+  // Transform maximum distance into object space
+  if (isect.t != FLT_MAX)
+    isect.t *= len;
+
+  if (point_intersect(NULL, &isect, P, dir, visibility, object, prim, time, type)) {
+    optixReportIntersection(isect.t / len, type & PRIMITIVE_ALL);
+  }
 }
 #endif

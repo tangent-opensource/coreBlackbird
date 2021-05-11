@@ -142,6 +142,7 @@ class DeviceRequestedFeatures {
   /* BVH/sampling kernel features. */
   bool use_hair;
   bool use_hair_thick;
+  bool use_pointcloud;
   bool use_object_motion;
   bool use_camera_motion;
 
@@ -188,6 +189,7 @@ class DeviceRequestedFeatures {
     nodes_features = 0;
     use_hair = false;
     use_hair_thick = false;
+    use_pointcloud = false;
     use_object_motion = false;
     use_camera_motion = false;
     use_baking = false;
@@ -210,6 +212,7 @@ class DeviceRequestedFeatures {
              nodes_features == requested_features.nodes_features &&
              use_hair == requested_features.use_hair &&
              use_hair_thick == requested_features.use_hair_thick &&
+             use_pointcloud == requested_features.use_pointcloud &&
              use_object_motion == requested_features.use_object_motion &&
              use_camera_motion == requested_features.use_camera_motion &&
              use_baking == requested_features.use_baking &&
@@ -239,6 +242,9 @@ class DeviceRequestedFeatures {
     build_options += " -D__NODES_FEATURES__=" + string_printf("%d", nodes_features);
     if (!use_hair) {
       build_options += " -D__NO_HAIR__";
+    }
+    if (!use_pointcloud) {
+      build_options += " -D__NO_POINTS_";
     }
     if (!use_object_motion) {
       build_options += " -D__NO_OBJECT_MOTION__";

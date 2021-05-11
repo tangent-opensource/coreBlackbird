@@ -30,16 +30,17 @@ set(INC_SYS
 
 set(SRC
   blender_camera.cpp
+  blender_curves.cpp
   blender_device.cpp
   blender_image.cpp
   blender_geometry.cpp
   blender_light.cpp
+  blender_logging.cpp
   blender_mesh.cpp
   blender_object.cpp
   blender_object_cull.cpp
   blender_particles.cpp
-  blender_curves.cpp
-  blender_logging.cpp
+  blender_pointcloud.cpp
   blender_python.cpp
   blender_session.cpp
   blender_shader.cpp

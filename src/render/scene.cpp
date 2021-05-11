@@ -29,6 +29,7 @@
 #include "render/object.h"
 #include "render/osl.h"
 #include "render/particles.h"
+#include "render/pointcloud.h"
 #include "render/scene.h"
 #include "render/session.h"
 #include "render/shader.h"
@@ -60,9 +61,11 @@ DeviceScene::DeviceScene(Device *device)
       tri_vindex(device, "__tri_vindex", MEM_GLOBAL),
       tri_patch(device, "__tri_patch", MEM_GLOBAL),
       tri_patch_uv(device, "__tri_patch_uv", MEM_GLOBAL),
+      patches(device, "__patches", MEM_GLOBAL),
       curves(device, "__curves", MEM_GLOBAL),
       curve_keys(device, "__curve_keys", MEM_GLOBAL),
-      patches(device, "__patches", MEM_GLOBAL),
+      points(device, "__points", MEM_GLOBAL),
+      points_shader(device, "__points_shader", MEM_GLOBAL),
       objects(device, "__objects", MEM_GLOBAL),
       object_motion_pass(device, "__object_motion_pass", MEM_GLOBAL),
       object_motion(device, "__object_motion", MEM_GLOBAL),
@@ -469,6 +472,9 @@ DeviceRequestedFeatures Scene::get_requested_device_features()
     else if (geom->is_hair()) {
       requested_features.use_hair = true;
     }
+    else if (geom->is_pointcloud()) {
+      requested_features.use_pointcloud = true;
+    }
   }
 
   requested_features.use_background_light = light_manager->has_background_light(this);
@@ -628,6 +634,15 @@ template<> Volume *Scene::create_node<Volume>()
   return node;
 }
 
+template<> PointCloud *Scene::create_node<PointCloud>()
+{
+  PointCloud *node = new PointCloud();
+  node->set_owner(this);
+  geometry.push_back(node);
+  geometry_manager->tag_update(this);
+  return node;
+}
+
 template<> Object *Scene::create_node<Object>()
 {
   Object *node = new Object();
@@ -687,6 +702,12 @@ template<> void Scene::delete_node_impl(Hair *node)
 }
 
 template<> void Scene::delete_node_impl(Volume *node)
+{
+  delete_node_from_array(geometry, static_cast<Geometry *>(node));
+  geometry_manager->tag_update(this);
+}
+
+template<> void Scene::delete_node_impl(PointCloud *node)
 {
   delete_node_from_array(geometry, static_cast<Geometry *>(node));
   geometry_manager->tag_update(this);

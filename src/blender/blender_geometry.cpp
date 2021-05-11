@@ -19,6 +19,7 @@
 #include "render/hair.h"
 #include "render/mesh.h"
 #include "render/object.h"
+#include "render/pointcloud.h"
 #include "render/volume.h"
 
 #include "blender/blender_sync.h"
@@ -37,6 +38,10 @@ static Geometry::Type determine_geom_type(BL::Object &b_ob, bool use_particle_ha
 
   if (b_ob.type() == BL::Object::type_VOLUME || object_fluid_gas_domain_find(b_ob)) {
     return Geometry::VOLUME;
+  }
+
+  if (b_ob.type() == BL::Object::type_POINTCLOUD) {
+    return Geometry::POINTCLOUD;
   }
 
   return Geometry::MESH;
@@ -97,6 +102,9 @@ Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
     else if (geom_type == Geometry::VOLUME) {
       geom = scene->create_node<Volume>();
     }
+    else if (geom_type == Geometry::POINTCLOUD) {
+      geom = scene->create_node<PointCloud>();
+    }
     else {
       geom = scene->create_node<Mesh>();
     }
@@ -156,6 +164,10 @@ Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
       Volume *volume = static_cast<Volume *>(geom);
       sync_volume(b_ob, volume);
     }
+    else if (geom_type == Geometry::POINTCLOUD) {
+      PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+      sync_pointcloud(b_ob, pointcloud);
+    }
     else {
       Mesh *mesh = static_cast<Mesh *>(geom);
       sync_mesh(b_depsgraph, b_ob, mesh);
@@ -209,6 +221,10 @@ void BlenderSync::sync_geometry_motion(BL::Depsgraph &b_depsgraph,
     }
     else if (b_ob.type() == BL::Object::type_VOLUME || object_fluid_gas_domain_find(b_ob)) {
       /* No volume motion blur support yet. */
+    }
+    else if (b_ob.type() == BL::Object::type_POINTCLOUD) {
+      PointCloud *pointcloud = static_cast<PointCloud *>(geom);
+      sync_pointcloud_motion(b_ob, pointcloud, motion_step);
     }
     else {
       Mesh *mesh = static_cast<Mesh *>(geom);

@@ -53,6 +53,7 @@ class Object;
 class ObjectManager;
 class ParticleSystemManager;
 class ParticleSystem;
+class PointCloud;
 class CurveSystemManager;
 class Shader;
 class ShaderManager;
@@ -87,10 +88,15 @@ class DeviceScene {
   device_vector<uint> tri_patch;
   device_vector<float2> tri_patch_uv;
 
+  device_vector<uint> patches;
+
+  /* hair */
   device_vector<float4> curves;
   device_vector<float4> curve_keys;
 
-  device_vector<uint> patches;
+  /* pointcloud */
+  device_vector<float4> points;
+  device_vector<uint> points_shader;
 
   /* objects */
   device_vector<KernelObject> objects;
@@ -376,6 +382,8 @@ template<> Hair *Scene::create_node<Hair>();
 
 template<> Volume *Scene::create_node<Volume>();
 
+template<> PointCloud *Scene::create_node<PointCloud>();
+
 template<> ParticleSystem *Scene::create_node<ParticleSystem>();
 
 template<> Shader *Scene::create_node<Shader>();
@@ -385,6 +393,8 @@ template<> void Scene::delete_node_impl(Light *node);
 template<> void Scene::delete_node_impl(Mesh *node);
 
 template<> void Scene::delete_node_impl(Volume *node);
+
+template<> void Scene::delete_node_impl(PointCloud *node);
 
 template<> void Scene::delete_node_impl(Hair *node);
 

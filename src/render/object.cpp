@@ -23,6 +23,7 @@
 #include "render/light.h"
 #include "render/mesh.h"
 #include "render/particles.h"
+#include "render/pointcloud.h"
 #include "render/scene.h"
 #include "render/stats.h"
 #include "render/volume.h"
@@ -470,6 +471,8 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.dupli_generated[2] = ob->dupli_generated[2];
   kobject.numkeys = (geom->geometry_type == Geometry::HAIR) ?
                         static_cast<Hair *>(geom)->get_curve_keys().size() :
+                        (geom->geometry_type == Geometry::POINTCLOUD) ?
+                        static_cast<PointCloud *>(geom)->num_points() :
                         0;
   kobject.dupli_uv[0] = ob->dupli_uv[0];
   kobject.dupli_uv[1] = ob->dupli_uv[1];

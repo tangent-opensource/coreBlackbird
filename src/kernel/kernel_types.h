@@ -104,6 +104,7 @@ CCL_NAMESPACE_BEGIN
 #define __AO__
 #define __PASSES__
 #define __HAIR__
+#define __POINTCLOUD__
 
 /* Without these we get an AO render, used by OpenCL preview kernel. */
 #ifndef __KERNEL_AO_PREVIEW__
@@ -158,6 +159,9 @@ CCL_NAMESPACE_BEGIN
 #endif
 #ifdef __NO_HAIR__
 #  undef __HAIR__
+#endif
+#ifdef __NO_POINTCLOUD__
+#  undef __POINTCLOUD__
 #endif
 #ifdef __NO_VOLUME__
 #  undef __VOLUME__
@@ -710,22 +714,25 @@ typedef enum PrimitiveType {
   PRIMITIVE_MOTION_CURVE_THICK = (1 << 3),
   PRIMITIVE_CURVE_RIBBON = (1 << 4),
   PRIMITIVE_MOTION_CURVE_RIBBON = (1 << 5),
+  PRIMITIVE_POINT = (1 << 6),
+  PRIMITIVE_MOTION_POINT = (1 << 7),
   /* Lamp primitive is not included below on purpose,
    * since it is no real traceable primitive.
    */
-  PRIMITIVE_LAMP = (1 << 6),
+  PRIMITIVE_LAMP = (1 << 8),
 
   PRIMITIVE_ALL_TRIANGLE = (PRIMITIVE_TRIANGLE | PRIMITIVE_MOTION_TRIANGLE),
   PRIMITIVE_ALL_CURVE = (PRIMITIVE_CURVE_THICK | PRIMITIVE_MOTION_CURVE_THICK |
                          PRIMITIVE_CURVE_RIBBON | PRIMITIVE_MOTION_CURVE_RIBBON),
+  PRIMITIVE_ALL_POINT = (PRIMITIVE_POINT | PRIMITIVE_MOTION_POINT),
   PRIMITIVE_ALL_MOTION = (PRIMITIVE_MOTION_TRIANGLE | PRIMITIVE_MOTION_CURVE_THICK |
-                          PRIMITIVE_MOTION_CURVE_RIBBON),
-  PRIMITIVE_ALL = (PRIMITIVE_ALL_TRIANGLE | PRIMITIVE_ALL_CURVE),
+                          PRIMITIVE_MOTION_CURVE_RIBBON | PRIMITIVE_MOTION_POINT),
+  PRIMITIVE_ALL = (PRIMITIVE_ALL_TRIANGLE | PRIMITIVE_ALL_CURVE | PRIMITIVE_ALL_POINT),
 
   /* Total number of different traceable primitives.
    * NOTE: This is an actual value, not a bitflag.
    */
-  PRIMITIVE_NUM_TOTAL = 6,
+  PRIMITIVE_NUM_TOTAL = 8,
 } PrimitiveType;
 
 #define PRIMITIVE_PACK_SEGMENT(type, segment) ((segment << PRIMITIVE_NUM_TOTAL) | (type))
@@ -782,6 +789,7 @@ typedef enum AttributeStandard {
   ATTR_STD_PARTICLE,
   ATTR_STD_CURVE_INTERCEPT,
   ATTR_STD_CURVE_RANDOM,
+  ATTR_STD_POINT_RANDOM,
   ATTR_STD_PTEX_FACE_ID,
   ATTR_STD_PTEX_UV,
   ATTR_STD_VOLUME_DENSITY,

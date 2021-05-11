@@ -18,6 +18,7 @@
 #include "render/hair.h"
 #include "render/image.h"
 #include "render/mesh.h"
+#include "render/pointcloud.h"
 
 #include "util/util_foreach.h"
 #include "util/util_transform.h"
@@ -248,6 +249,8 @@ const char *Attribute::standard_name(AttributeStandard std)
       return "curve_intercept";
     case ATTR_STD_CURVE_RANDOM:
       return "curve_random";
+    case ATTR_STD_POINT_RANDOM:
+      return "point_random";
     case ATTR_STD_PTEX_FACE_ID:
       return "ptex_face_id";
     case ATTR_STD_PTEX_UV:
@@ -489,6 +492,28 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
         break;
       case ATTR_STD_RANDOM_PER_ISLAND:
         attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_FACE);
+        break;
+      default:
+        assert(0);
+        break;
+    }
+  }
+  else if (geometry->geometry_type == Geometry::POINTCLOUD) {
+    switch (std) {
+      case ATTR_STD_UV:
+        attr = add(name, TypeFloat2, ATTR_ELEMENT_VERTEX);
+        break;
+      case ATTR_STD_GENERATED:
+        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX);
+        break;
+      case ATTR_STD_MOTION_VERTEX_POSITION:
+        attr = add(name, TypeDesc::TypePoint, ATTR_ELEMENT_VERTEX_MOTION);
+        break;
+      case ATTR_STD_POINT_RANDOM:
+        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_VERTEX);
+        break;
+      case ATTR_STD_GENERATED_TRANSFORM:
+        attr = add(name, TypeDesc::TypeMatrix, ATTR_ELEMENT_MESH);
         break;
       default:
         assert(0);

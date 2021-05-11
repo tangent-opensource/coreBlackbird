@@ -166,12 +166,16 @@ class BlenderSync {
       Hair *hair, BL::Mesh &b_mesh, BL::Object &b_ob, bool motion, int motion_step = 0);
   bool object_has_particle_hair(BL::Object b_ob);
 
+  /* Point Cloud */
+  void sync_pointcloud(BL::Object b_ob, PointCloud *pointcloud);
+  void sync_pointcloud_motion(BL::Object b_ob, PointCloud *pointcloud, int motion_step);
+
   /* Camera */
   void sync_camera_motion(
       BL::RenderSettings &b_render, BL::Object &b_ob, int width, int height, float motion_time);
 
   /* Geometry */
-  Geometry *sync_geometry(BL::Depsgraph &b_depsgrpah,
+  Geometry *sync_geometry(BL::Depsgraph &b_depsgraph,
                           BL::Object &b_ob,
                           BL::Object &b_ob_instance,
                           bool object_updated,

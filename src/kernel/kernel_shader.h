@@ -90,6 +90,13 @@ ccl_device_noinline
   }
   else
 #endif
+#ifdef __POINTCLOUD__
+      if (sd->type & PRIMITIVE_ALL_POINT) {
+    /* point */
+    point_shader_setup(kg, sd, isect, ray);
+  }
+  else
+#endif
       if (sd->type & PRIMITIVE_TRIANGLE) {
     /* static triangle */
     float3 Ng = triangle_normal(kg, sd);
@@ -1400,16 +1407,22 @@ ccl_device bool shader_transparent_shadow(KernelGlobals *kg, Intersection *isect
   int shader = 0;
 
 #  ifdef __HAIR__
-  if (isect->type & PRIMITIVE_ALL_TRIANGLE) {
-#  endif
-    shader = kernel_tex_fetch(__tri_shader, prim);
-#  ifdef __HAIR__
-  }
-  else {
+  if (isect->type & PRIMITIVE_ALL_CURVE) {
     float4 str = kernel_tex_fetch(__curves, prim);
     shader = __float_as_int(str.z);
   }
+  else
 #  endif
+#  ifdef __POINTCLOUD__
+      if (isect->type & PRIMITIVE_ALL_POINT) {
+    shader = kernel_tex_fetch(__points_shader, prim);
+  }
+  else
+#  endif
+  {
+    shader = kernel_tex_fetch(__tri_shader, prim);
+  }
+
   int flag = kernel_tex_fetch(__shaders, (shader & SHADER_MASK)).flags;
 
   return (flag & SD_HAS_TRANSPARENT_SHADOW) != 0;

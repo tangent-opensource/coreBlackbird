@@ -55,6 +55,7 @@ class Geometry : public Node {
     MESH,
     HAIR,
     VOLUME,
+    POINTCLOUD,
   };
 
   Type geometry_type;
@@ -156,6 +157,11 @@ class Geometry : public Node {
     return geometry_type == HAIR;
   }
   
+  bool is_pointcloud() const
+  {
+    return geometry_type == POINTCLOUD;
+  }
+
   size_t element_size(AttributeElement element, AttributePrimitive prim);
 
   /* Updates */

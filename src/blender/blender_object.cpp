@@ -70,7 +70,8 @@ bool BlenderSync::object_is_geometry(BL::Object &b_ob)
 
   BL::Object::type_enum type = b_ob.type();
 
-  if (type == BL::Object::type_VOLUME || type == BL::Object::type_HAIR) {
+  if (type == BL::Object::type_VOLUME || type == BL::Object::type_HAIR ||
+      type == BL::Object::type_POINTCLOUD) {
     /* Will be exported attached to mesh. */
     return true;
   }
@@ -144,7 +145,7 @@ Object *BlenderSync::sync_object(BL::Depsgraph &b_depsgraph,
     return NULL;
   }
 
-  /* only interested in object that we can create meshes from */
+  /* only interested in object that we can create geometry from */
   if (!object_is_geometry(b_ob)) {
     return NULL;
   }
