@@ -349,8 +349,6 @@ class Progress {
     update_cb = function;
   }
 
-  uint64_t get_pixel_samples() const { return pixel_samples; }
-
  protected:
   thread_mutex progress_mutex;
   thread_mutex update_mutex;
