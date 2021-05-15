@@ -248,8 +248,8 @@ NODE_DEFINE(ImageTextureNode)
   SOCKET_FLOAT(projection_blend, "Projection Blend", 0.0f);
 
   SOCKET_IN_POINT(vector, "Vector", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_UV);
-  SOCKET_IN_POINT(vector, "Vector_dx", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_UV);
-  SOCKET_IN_POINT(vector, "Vector_dy", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_UV);
+  SOCKET_IN_POINT(vector_dx, "Vector_dx", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(vector_dy, "Vector_dy", make_float3(0.0f, 0.0f, 0.0f));
 
   SOCKET_OUT_COLOR(color, "Color");
   SOCKET_OUT_FLOAT(alpha, "Alpha");
