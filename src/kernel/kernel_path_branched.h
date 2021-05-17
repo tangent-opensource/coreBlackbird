@@ -237,13 +237,23 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
 
 #        ifdef __VOLUME_SCATTER__
     if (result == VOLUME_PATH_SCATTERED) {
-      kernel_path_volume_connect_light(kg, sd, emission_sd, tp, state, L);
+      
+      ShaderData light_sd = *sd;
+      light_sd.prim = PRIM_NONE;
 
-      // TODO indirect bounce
-      /* for render passes, sum and reset indirect light pass variables
-       * for the next samples */
-      path_radiance_sum_indirect(L);
-      path_radiance_reset_indirect(L);
+      kernel_path_volume_connect_light(kg, &light_sd, emission_sd, tp, state, L);
+
+      if (kernel_path_volume_bounce(kg, &light_sd, &tp, &ps, &L->state, &pray)) {
+        
+        /* TODO 
+        kernel_path_indirect(kg, indirect_sd, emission_sd, &pray, tp, &ps, L);
+        */
+
+        /* for render passes, sum and reset indirect light pass variables
+         * for the next samples */
+        path_radiance_sum_indirect(L);
+        path_radiance_reset_indirect(L);
+      }
     }
 #        endif /* __VOLUME_SCATTER__ */
   }
