@@ -1259,29 +1259,27 @@ void Session::render(bool need_denoise)
 
 void Session::copy_to_display_buffer(int sample)
 {
-  {
-    /* add film conversion task */
-    DeviceTask task(DeviceTask::FILM_CONVERT);
+  /* add film conversion task */
+  DeviceTask task(DeviceTask::FILM_CONVERT);
 
-    task.x = tile_manager.state.buffer.full_x;
-    task.y = tile_manager.state.buffer.full_y;
-    task.w = tile_manager.state.buffer.width;
-    task.h = tile_manager.state.buffer.height;
-    task.rgba_byte = display->rgba_byte.device_pointer;
-    task.rgba_half = display->rgba_half.device_pointer;
-    task.buffer = buffers->buffer.device_pointer;
-    task.sample = sample;
-    tile_manager.state.buffer.get_offset_stride(task.offset, task.stride);
+  task.x = tile_manager.state.buffer.full_x;
+  task.y = tile_manager.state.buffer.full_y;
+  task.w = tile_manager.state.buffer.width;
+  task.h = tile_manager.state.buffer.height;
+  task.rgba_byte = display->rgba_byte.device_pointer;
+  task.rgba_half = display->rgba_half.device_pointer;
+  task.buffer = buffers->buffer.device_pointer;
+  task.sample = sample;
+  tile_manager.state.buffer.get_offset_stride(task.offset, task.stride);
 
-    if (task.w > 0 && task.h > 0) {
-      device->task_add(task);
-      device->task_wait();
+  if (task.w > 0 && task.h > 0) {
+    device->task_add(task);
+    device->task_wait();
 
-      /* set display to new size */
-      display->draw_set(task.w, task.h);
+    /* set display to new size */
+    display->draw_set(task.w, task.h);
 
-      last_display_time = time_dt();
-    }
+    last_display_time = time_dt();
   }
 
   display_outdated = false;

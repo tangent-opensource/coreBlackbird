@@ -272,7 +272,7 @@ ccl_device_inline void store_pass_pixel1(uint8_t *pixels,
       return;
     }
     case RenderBuffers::ComponentType::Int32: {
-      ((int32_t*)pixels)[0] = (int32_t)val;
+      ((int32_t *)pixels)[0] = (int32_t)val;
       return;
     }
     default:
