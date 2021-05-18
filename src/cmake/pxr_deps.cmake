@@ -9,7 +9,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 
 # VFX platform requirements
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
 # Pixar USD
 message(STATUS "USD_ROOT: ${USD_ROOT}")
