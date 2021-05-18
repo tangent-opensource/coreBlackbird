@@ -807,7 +807,7 @@ void ShaderManager::texture_system_init()
 
 void ShaderManager::texture_system_free()
 {
-  std::cout << ts->getstats(2) << std::endl;
+  VLOG(1) << ts->getstats(2) << std::endl;
   ts->reset_stats();
   ts->invalidate_all(true);
   TextureSystem::destroy(ts);
