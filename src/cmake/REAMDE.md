@@ -7,6 +7,20 @@ Cycles can be build against _USD_ that has been build using `build_usd.py` scrip
 and replacing version to at least version 9. Next we can run the building script:
 
 ```
+EMBREE_URL = "https://github.com/embree/embree/archive/v3.9.0.tar.gz"
+```
+
+And extra flags required by Cycles:
+
+```
+'-DEMBREE_RAY_MASK=ON',
+'-DEMBREE_FILTER_FUNCTION=ON',
+'-DEMBREE_GEOMETRY_CURVE=ON',
+'-DEMBREE_GEOMETRY_TRIANGLE=ON',
+'-DEMBREE_BACKFACE_CULLING=OFF'
+```
+
+```
 python build_usd.py --verbose \ 
     --openvdb --opencolorio --openimageio --embree \
     --no-tutorials --no-examples <install_path>
