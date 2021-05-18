@@ -428,6 +428,8 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const {
         return TypeDesc::TypePoint;
       case ATTR_STD_MOTION_VERTEX_POSITION:
         return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_NORMAL:
+        return TypeDesc::TypePoint;
       case ATTR_STD_VERTEX_VELOCITY:
         return TypeDesc::TypePoint;
       case ATTR_STD_VERTEX_ACCELERATION:
