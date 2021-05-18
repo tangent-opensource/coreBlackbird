@@ -142,15 +142,15 @@ class TextureCacheParams {
  public:
   TextureCacheParams()
       : use_cache(false),
-        cache_size(1024),
+        cache_size(4096),
         tile_size(64),
         diffuse_blur(1.0f / 64.f),
         glossy_blur(0.0f),
-        auto_convert(true),
-        accept_unmipped(true),
-        accept_untiled(true),
-        auto_tile(true),
-        auto_mip(true),
+        auto_convert(false),
+        accept_unmipped(false),
+        accept_untiled(false),
+        auto_tile(false),
+        auto_mip(false),
         use_custom_cache_path(false)
   {
   }
