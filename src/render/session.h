@@ -137,6 +137,7 @@ class Session {
   TileManager tile_manager;
   Stats stats;
   Profiler profiler;
+  std::function<void(int samples)> display_copy_cb;
 
   function<void(RenderTile &)> write_render_tile_cb;
   function<void(RenderTile &, bool)> update_render_tile_cb;
@@ -168,6 +169,7 @@ class Session {
   void collect_statistics(RenderStats *stats);
 
   thread_scoped_lock acquire_display_lock();
+  thread_scoped_lock acquire_buffers_lock();
 
  protected:
   struct DelayedReset {
