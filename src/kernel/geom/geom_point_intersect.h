@@ -256,7 +256,7 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
     }
     else {
       sd->Ng = float4_to_float3(motion_point_attribute(
-          kg, sd->object, sd->prim, sd->time, n_attrs, ATTR_STD_MOTION_VERTEX_POSITION, 1));
+          kg, sd->object, sd->prim, sd->time, n_attrs, ATTR_STD_MOTION_VERTEX_NORMAL, 1));
     }
   }
   if (isect->object != OBJECT_NONE) {
