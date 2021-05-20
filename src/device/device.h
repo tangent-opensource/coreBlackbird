@@ -77,6 +77,7 @@ class DeviceInfo {
   int num;
   bool display_device;               /* GPU is used as a display device. */
   bool has_half_images;              /* Support half-float textures. */
+  bool has_nanovdb;                  /* Support NanoVDB volumes. */
   bool has_volume_decoupled;         /* Decoupled volume shading. */
   bool has_adaptive_stop_per_sample; /* Per-sample adaptive sampling stopping. */
   bool has_osl;                      /* Support Open Shading Language. */
@@ -96,6 +97,7 @@ class DeviceInfo {
     cpu_threads = 0;
     display_device = false;
     has_half_images = false;
+    has_nanovdb = false;
     has_volume_decoupled = false;
     has_adaptive_stop_per_sample = false;
     has_osl = false;
@@ -375,6 +377,12 @@ class Device {
 
   /* open shading language, only for CPU device */
   virtual void *osl_memory()
+  {
+    return NULL;
+  }
+
+  /* open image io, only for CPU device */
+  virtual void *oiio_memory()
   {
     return NULL;
   }

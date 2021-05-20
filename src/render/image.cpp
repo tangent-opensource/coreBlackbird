@@ -36,6 +36,8 @@
 #  include <OSL/oslexec.h>
 #endif
 
+#include "kernel/kernel_oiio_globals.h"
+
 CCL_NAMESPACE_BEGIN
 
 namespace {
@@ -77,6 +79,8 @@ const char *name_from_type(ImageDataType type)
       return "nanovdb_float";
     case IMAGE_DATA_TYPE_NANOVDB_FLOAT3:
       return "nanovdb_float3";
+    case IMAGE_DATA_TYPE_OIIO:
+      return "openimageio";
     case IMAGE_DATA_NUM_TYPES:
       assert(!"System enumerator type, should never be used");
       return "";
@@ -151,13 +155,13 @@ ImageMetaData ImageHandle::metadata()
   return img->metadata;
 }
 
-int ImageHandle::svm_slot(const int tile_index) const
+int ImageHandle::svm_slot(bool osl, const int tile_index) const
 {
   if (tile_index >= tile_slots.size()) {
     return -1;
   }
 
-  if (manager->osl_texture_system) {
+  if (osl) {
     ImageManager::Image *img = manager->images[tile_slots[tile_index]];
     if (!img->loader->osl_filepath().empty()) {
       return -1;
@@ -239,6 +243,11 @@ bool ImageMetaData::is_float() const
 
 void ImageMetaData::detect_colorspace()
 {
+  if (type == IMAGE_DATA_TYPE_OIIO) {
+    compress_as_srgb = false;
+    return;
+  }
+
   /* Convert used specified color spaces to one we know how to handle. */
   colorspace = ColorSpaceManager::detect_known_colorspace(
       colorspace, colorspace_file_format, is_float());
@@ -299,11 +308,13 @@ bool ImageLoader::is_vdb_loader() const
 ImageManager::ImageManager(const DeviceInfo &info)
 {
   need_update = true;
-  osl_texture_system = NULL;
+  oiio_texture_system = NULL;
   animation_frame = 0;
 
   /* Set image limits */
-  has_half_images = info.has_half_images;
+  features.has_half_float = info.has_half_images;
+  features.has_nanovdb = info.has_nanovdb;
+  features.has_texture_cache = false;
 }
 
 ImageManager::~ImageManager()
@@ -312,9 +323,10 @@ ImageManager::~ImageManager()
     assert(!images[slot]);
 }
 
-void ImageManager::set_osl_texture_system(void *texture_system)
+void ImageManager::set_oiio_texture_system(void *texture_system)
 {
-  osl_texture_system = texture_system;
+  oiio_texture_system = texture_system;
+  features.has_texture_cache = texture_system != NULL;
 }
 
 bool ImageManager::set_animation_frame_update(int frame)
@@ -347,7 +359,7 @@ void ImageManager::load_image_metadata(Image *img)
   metadata = ImageMetaData();
   metadata.colorspace = img->params.colorspace;
 
-  if (img->loader->load_metadata(metadata)) {
+  if (img->loader->load_metadata(features, metadata)) {
     assert(metadata.type != IMAGE_DATA_NUM_TYPES);
   }
   else {
@@ -356,15 +368,10 @@ void ImageManager::load_image_metadata(Image *img)
 
   metadata.detect_colorspace();
 
-  /* No half textures on OpenCL, use full float instead. */
-  if (!has_half_images) {
-    if (metadata.type == IMAGE_DATA_TYPE_HALF4) {
-      metadata.type = IMAGE_DATA_TYPE_FLOAT4;
-    }
-    else if (metadata.type == IMAGE_DATA_TYPE_HALF) {
-      metadata.type = IMAGE_DATA_TYPE_FLOAT;
-    }
-  }
+  assert(features.has_half_float ||
+         (metadata.type != IMAGE_DATA_TYPE_HALF4 && metadata.type != IMAGE_DATA_TYPE_HALF));
+  assert(features.has_nanovdb || (metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT ||
+                                  metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT3));
 
   img->need_metadata = false;
 }
@@ -396,6 +403,28 @@ ImageHandle ImageManager::add_image(const string &filename,
   }
 
   return handle;
+}
+
+const string ImageManager::get_mip_map_path(const string &filename)
+{
+  if (!path_exists(filename)) {
+    return "";
+  }
+
+  string::size_type idx = filename.rfind('.');
+  if (idx != string::npos) {
+    std::string extension = filename.substr(idx + 1);
+    if (extension == "tx") {
+      return filename;
+    }
+  }
+
+  string tx_name = filename.substr(0, idx) + ".tx";
+  if (path_exists(tx_name)) {
+    return tx_name;
+  }
+
+  return "";
 }
 
 ImageHandle ImageManager::add_image(ImageLoader *loader,
@@ -444,7 +473,7 @@ int ImageManager::add_image_slot(ImageLoader *loader,
   img->params = params;
   img->loader = loader;
   img->need_metadata = true;
-  img->need_load = !(osl_texture_system && !img->loader->osl_filepath().empty());
+  img->need_load = !(oiio_texture_system && !img->loader->osl_filepath().empty());
   img->builtin = builtin;
   img->users = 1;
   img->mem = NULL;
@@ -654,6 +683,23 @@ void ImageManager::device_load_image(Device *device, Scene *scene, int slot, Pro
 
   Image *img = images[slot];
 
+  if (features.has_texture_cache && !img->builtin) {
+    /* Get or generate a mip mapped tile image file.
+     * If we have a mip map, assume it's linear, not sRGB. */
+    const char *cache_path = scene->params.texture.use_custom_cache_path ?
+                                 scene->params.texture.custom_cache_path.c_str() :
+                                 NULL;
+    bool have_mip = ((OIIOImageLoader *)img->loader)
+                        ->get_tx(img->metadata.colorspace,
+                                 img->params.extension,
+                                 progress,
+                                 scene->params.texture.auto_convert,
+                                 cache_path);
+    if (have_mip) {
+      img->need_metadata = true;
+    }
+  }
+
   progress->set_status("Updating Images", "Loading " + img->loader->name());
 
   const int texture_limit = scene->params.texture_limit;
@@ -675,6 +721,7 @@ void ImageManager::device_load_image(Device *device, Scene *scene, int slot, Pro
       device, img->mem_name.c_str(), slot, type, img->params.interpolation, img->params.extension);
   img->mem->info.use_transform_3d = img->metadata.use_transform_3d;
   img->mem->info.transform_3d = img->metadata.transform_3d;
+  img->mem->info.compress_as_srgb = img->metadata.compress_as_srgb;
 
   /* Create new texture. */
   if (type == IMAGE_DATA_TYPE_FLOAT4) {
@@ -771,7 +818,17 @@ void ImageManager::device_load_image(Device *device, Scene *scene, int slot, Pro
     }
   }
 #endif
+  else if (type == IMAGE_DATA_TYPE_OIIO) {
+    thread_scoped_lock device_lock(device_mutex);
+    void *pixels = img->mem->alloc(1, 1);
 
+    if (pixels != NULL) {
+      OIIO::TextureSystem *tex_sys = (OIIO::TextureSystem *)oiio_texture_system;
+      OIIO::TextureSystem::TextureHandle *handle = tex_sys->get_texture_handle(
+          OIIO::ustring(img->loader->osl_filepath()));
+      *((OIIO::TextureSystem::TextureHandle **)pixels) = tex_sys->good(handle) ? handle : NULL;
+    }
+  }
   {
     thread_scoped_lock device_lock(device_mutex);
     img->mem->copy_to_device();
@@ -789,11 +846,11 @@ void ImageManager::device_free_image(Device *, int slot)
     return;
   }
 
-  if (osl_texture_system) {
+  if (oiio_texture_system) {
 #ifdef WITH_OSL
     ustring filepath = img->loader->osl_filepath();
     if (!filepath.empty()) {
-      ((OSL::TextureSystem *)osl_texture_system)->invalidate(filepath);
+      ((OIIO::TextureSystem *)oiio_texture_system)->invalidate(filepath);
     }
 #endif
   }
