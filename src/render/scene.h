@@ -143,6 +143,50 @@ class DeviceScene {
   DeviceScene(Device *device);
 };
 
+/* Texture Cache Params */
+class TextureCacheParams {
+ public:
+  TextureCacheParams()
+      : use_cache(false),
+        cache_size(4096),
+        tile_size(64),
+        diffuse_blur(1.0f / 64.f),
+        glossy_blur(0.0f),
+        auto_convert(false),
+        accept_unmipped(false),
+        accept_untiled(false),
+        auto_tile(false),
+        auto_mip(false),
+        use_custom_cache_path(false)
+  {
+  }
+
+  bool modified(const TextureCacheParams &params)
+  {
+    return !(use_cache == params.use_cache && cache_size == params.cache_size &&
+             tile_size == params.tile_size && diffuse_blur == params.diffuse_blur &&
+             glossy_blur == params.glossy_blur && auto_convert == params.auto_convert &&
+             accept_unmipped == params.accept_unmipped &&
+             accept_untiled == params.accept_untiled && auto_tile == params.auto_tile &&
+             auto_mip == params.auto_mip &&
+             use_custom_cache_path == params.use_custom_cache_path &&
+             custom_cache_path == params.custom_cache_path);
+  }
+
+  bool use_cache;
+  int cache_size;
+  int tile_size;
+  float diffuse_blur;
+  float glossy_blur;
+  bool auto_convert;
+  bool accept_unmipped;
+  bool accept_untiled;
+  bool auto_tile;
+  bool auto_mip;
+  bool use_custom_cache_path;
+  string custom_cache_path;
+};
+
 /* Scene Parameters */
 
 class SceneParams {
@@ -185,6 +229,7 @@ class SceneParams {
   CurveShapeType hair_shape;
   bool persistent_data;
   int texture_limit;
+  TextureCacheParams texture;
 
   bool background;
 

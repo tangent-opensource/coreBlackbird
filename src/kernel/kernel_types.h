@@ -139,6 +139,8 @@ CCL_NAMESPACE_BEGIN
 #  endif
 #  define __VOLUME_DECOUPLED__
 #  define __VOLUME_RECORD_ALL__
+#  define __DNDU__
+#  define __OIIO__
 #endif /* __KERNEL_CPU__ */
 
 #ifdef __KERNEL_CUDA__
@@ -1038,6 +1040,11 @@ typedef ccl_addr_space struct ccl_align(16) ShaderData
    * not readily suitable as a tangent for shading on triangles. */
   float3 dPdu;
   float3 dPdv;
+#endif
+#ifdef __DNDU__
+  /* differential of N w.r.t. x and y. */
+  float3 dNdx;
+  float3 dNdy;
 #endif
 
 #ifdef __OBJECT_MOTION__

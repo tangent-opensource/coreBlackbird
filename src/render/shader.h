@@ -23,11 +23,14 @@
 #  include <OSL/oslexec.h>
 #endif
 
+#include <OpenImageIO/texture.h>
+
 #include "kernel/kernel_types.h"
 #include "render/attribute.h"
 
 #include "graph/node.h"
 
+#include "kernel/kernel_oiio_globals.h"
 #include "util/util_map.h"
 #include "util/util_param.h"
 #include "util/util_string.h"
@@ -220,6 +223,11 @@ class ShaderManager {
                                     DeviceRequestedFeatures *requested_features);
 
   thread_spin_lock attribute_lock_;
+
+  void texture_system_init();
+  void texture_system_free();
+
+  OIIO::TextureSystem *ts;
 
   float3 xyz_to_r;
   float3 xyz_to_g;

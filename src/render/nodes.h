@@ -117,6 +117,8 @@ class ImageTextureNode : public ImageSlotTextureNode {
   float projection_blend;
   bool animated;
   float3 vector;
+  float3 vector_dx;
+  float3 vector_dy;
   ccl::vector<int> tiles;
 
  protected:

@@ -107,6 +107,14 @@ class ImageMetaData {
   void detect_colorspace();
 };
 
+/* Information about supported features that Image loaders can use. */
+class ImageDeviceFeatures {
+ public:
+  bool has_half_float;
+  bool has_nanovdb;
+  bool has_texture_cache;
+};
+
 /* Image loader base class, that can be subclassed to load image data
  * from custom sources (file, memory, procedurally generated, etc). */
 class ImageLoader {
@@ -115,7 +123,7 @@ class ImageLoader {
   virtual ~ImageLoader(){};
 
   /* Load metadata without actual image yet, should be fast. */
-  virtual bool load_metadata(ImageMetaData &metadata) = 0;
+  virtual bool load_metadata(const ImageDeviceFeatures &features, ImageMetaData &metadata) = 0;
 
   /* Load actual image contents. */
   virtual bool load_pixels(const ImageMetaData &metadata,
@@ -160,8 +168,11 @@ class ImageHandle {
   int num_tiles();
 
   ImageMetaData metadata();
+
   void update_world_bbox(const Transform& transform);
-  int svm_slot(const int tile_index = 0) const;
+
+  int svm_slot(bool osl = false, const int tile_index = 0) const;
+
   device_texture *image_memory(const int tile_index = 0) const;
 
   VDBImageLoader *vdb_loader(const int tile_index = 0) const;
@@ -195,7 +206,9 @@ class ImageManager {
   void device_load_builtin(Device *device, Scene *scene, Progress &progress);
   void device_free_builtin(Device *device);
 
-  void set_osl_texture_system(void *texture_system);
+  void set_oiio_texture_system(void *texture_system);
+  const string get_mip_map_path(const string &filename);
+  void set_pack_images(bool pack_images_);
   bool set_animation_frame_update(int frame);
 
   void collect_statistics(RenderStats *stats);
@@ -220,14 +233,14 @@ class ImageManager {
   };
 
  private:
-  bool has_half_images;
+  ImageDeviceFeatures features;
 
   thread_mutex device_mutex;
   thread_mutex images_mutex;
   int animation_frame;
 
   vector<Image *> images;
-  void *osl_texture_system;
+  void *oiio_texture_system;
 
   int add_image_slot(ImageLoader *loader, const ImageParams &params, const bool builtin);
   void add_image_user(int slot);

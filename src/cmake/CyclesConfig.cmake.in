@@ -59,7 +59,7 @@ target_link_libraries(Cycles::Cycles
     "@OPENIMAGEDENOISE_LIBRARIES@" # OpenImageIO Denoise
     "@OPENEXR_LIBRARIES@" # OpenEXR
     "@OSL_LIBRARIES@" # Osl
-    "@OPENCOLORIO_LIBRARY@" # OpenColorIO
+    "@OPENCOLORIO_LIBRARIES@" # OpenColorIO
     "@Boost_LIBRARIES@" # Boost
     "@EMBREE_LIBRARIES@" # Embree
     "@OPENSUBDIV_LIBRARIES@" # Osd
