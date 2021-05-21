@@ -44,17 +44,18 @@ ccl_device_inline int find_attribute_point_motion(KernelGlobals *kg,
   return (attr_map.y == ATTR_ELEMENT_NONE) ? (int)ATTR_STD_NOT_FOUND : (int)attr_map.z;
 }
 
-ccl_device_inline float4 motion_point_for_step(KernelGlobals *kg,
-                                               int offset,
-                                               int numkeys,
-                                               int numsteps,
-                                               int step,
-                                               int prim,
-                                               int n_points_attrs)
+ccl_device_inline float4 motion_point_attribute_for_step(KernelGlobals *kg,
+                                                         int offset,
+                                                         int numkeys,
+                                                         int numsteps,
+                                                         int step,
+                                                         int prim,
+                                                         int n_points_attrs,
+                                                         int attr)
 {
   if (step == numsteps) {
     /* center step: regular key location */
-    return kernel_tex_fetch(__points, prim * n_points_attrs);
+    return kernel_tex_fetch(__points, prim * n_points_attrs + attr);
   }
   else {
     /* center step is not stored in this array */
@@ -68,8 +69,13 @@ ccl_device_inline float4 motion_point_for_step(KernelGlobals *kg,
 }
 
 /* return 2 point key locations */
-ccl_device_inline float4
-motion_point(KernelGlobals *kg, int object, int prim, float time, int n_points_attrs)
+ccl_device_inline float4 motion_point_attribute(KernelGlobals *kg,
+                                                int object,
+                                                int prim,
+                                                float time,
+                                                int n_points_attrs,
+                                                uint id_attr,
+                                                int attr)
 {
   /* get motion info */
   int numsteps, numkeys;
@@ -82,16 +88,17 @@ motion_point(KernelGlobals *kg, int object, int prim, float time, int n_points_a
 
   /* find attribute */
   AttributeElement elem;
-  int offset = find_attribute_point_motion(kg, object, ATTR_STD_MOTION_VERTEX_POSITION, &elem);
+  int offset = find_attribute_point_motion(kg, object, id_attr, &elem);
   kernel_assert(offset != ATTR_STD_NOT_FOUND);
 
   /* fetch key coordinates */
-  float4 point = motion_point_for_step(kg, offset, numkeys, numsteps, step, prim, n_points_attrs);
-  float4 next_point = motion_point_for_step(
-      kg, offset, numkeys, numsteps, step + 1, prim, n_points_attrs);
+  float4 point_attr = motion_point_attribute_for_step(
+      kg, offset, numkeys, numsteps, step, prim, n_points_attrs, attr);
+  float4 next_point_attr = motion_point_attribute_for_step(
+      kg, offset, numkeys, numsteps, step + 1, prim, n_points_attrs, attr);
 
   /* interpolate between steps */
-  return (1.0f - t) * point + t * next_point;
+  return (1.0f - t) * point_attr + t * next_point_attr;
 }
 
 #endif

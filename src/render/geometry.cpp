@@ -343,7 +343,8 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
   return size;
 }
 
-TypeDesc Geometry::standard_type(AttributeStandard std) const {
+TypeDesc Geometry::standard_type(AttributeStandard std) const
+{
   if (type == Geometry::MESH) {
     switch (std) {
       case ATTR_STD_VERTEX_NORMAL:
@@ -428,6 +429,8 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const {
         return TypeDesc::TypePoint;
       case ATTR_STD_MOTION_VERTEX_POSITION:
         return TypeDesc::TypePoint;
+      case ATTR_STD_MOTION_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
       case ATTR_STD_VERTEX_VELOCITY:
         return TypeDesc::TypePoint;
       case ATTR_STD_VERTEX_ACCELERATION:
@@ -447,7 +450,8 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const {
   return TypeUnknown;
 }
 
-AttributeElement Geometry::standard_element(AttributeStandard std) const {
+AttributeElement Geometry::standard_element(AttributeStandard std) const
+{
   if (type == Geometry::MESH) {
     switch (std) {
       case ATTR_STD_VERTEX_NORMAL:
@@ -528,8 +532,10 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const {
       case ATTR_STD_UV:
         return ATTR_ELEMENT_VERTEX;
       case ATTR_STD_GENERATED:
-        return  ATTR_ELEMENT_VERTEX;
+        return ATTR_ELEMENT_VERTEX;
       case ATTR_STD_MOTION_VERTEX_POSITION:
+        return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_MOTION_VERTEX_NORMAL:
         return ATTR_ELEMENT_VERTEX_MOTION;
       case ATTR_STD_VERTEX_VELOCITY:
         return ATTR_ELEMENT_VERTEX;
