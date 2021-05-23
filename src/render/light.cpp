@@ -415,7 +415,7 @@ void LightManager::device_update_distribution(Device *,
       /* Light group. */
       auto it = scene->lightgroups.find(light->lightgroup);
       if (it != scene->lightgroups.end()) {
-        lightgroup = (1 << distance(scene->lightgroups.begin(), it));
+        lightgroup = distance(scene->lightgroups.begin(), it) + 1;
       }
     }
 
@@ -919,7 +919,7 @@ void LightManager::device_update_points(Device *, DeviceScene *dscene, Scene *sc
 
     auto it = scene->lightgroups.find(light->lightgroup);
     if (it != scene->lightgroups.end()) {
-      klights[light_index].lightgroup = (1 << distance(scene->lightgroups.begin(), it));
+      klights[light_index].lightgroup = distance(scene->lightgroups.begin(), it) + 1;
     }
     else {
       klights[light_index].lightgroup = 0;

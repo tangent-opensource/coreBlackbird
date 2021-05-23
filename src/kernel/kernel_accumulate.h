@@ -330,12 +330,8 @@ ccl_device_inline void path_radiance_accum_emission(KernelGlobals *kg,
       L->indirect += contribution;
 
     if (lightgroups && buffer) {
-      for (int i = 0; i < kernel_data.film.num_lightgroups; i++) {
-        if (lightgroups & (1 << i)) {
-          kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * i,
-                                   contribution);
-        }
-      }
+      kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * (lightgroups - 1),
+                                contribution);
     }
   }
   else
@@ -463,12 +459,8 @@ ccl_device_inline void path_radiance_accum_light(KernelGlobals *kg,
     }
 
     if (lightgroups && buffer) {
-      for (int i = 0; i < kernel_data.film.num_lightgroups; i++) {
-        if (lightgroups & (1 << i)) {
-          kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * i,
-                                   full_contribution);
-        }
-      }
+      kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * (lightgroups - 1),
+                                full_contribution);
     }
   }
   else
@@ -532,12 +524,8 @@ ccl_device_inline void path_radiance_accum_background(KernelGlobals *kg,
 
     uint lightgroup = kernel_data.background.lightgroup;
     if (lightgroup && buffer) {
-      for (int i = 0; i < kernel_data.film.num_lightgroups; i++) {
-        if (lightgroup & (1 << i)) {
-          kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * i,
-                                   contribution);
-        }
-      }
+      kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * (lightgroup - 1),
+                                contribution);
     }
   }
   else
