@@ -530,10 +530,10 @@ ccl_device_inline void path_radiance_accum_background(KernelGlobals *kg,
     else
       L->indirect += contribution;
 
-    uint lightgroups = kernel_data.integrator.background_lightgroups;
-    if (lightgroups && buffer) {
+    uint lightgroup = kernel_data.background.lightgroup;
+    if (lightgroup && buffer) {
       for (int i = 0; i < kernel_data.film.num_lightgroups; i++) {
-        if (lightgroups & (1 << i)) {
+        if (lightgroup & (1 << i)) {
           kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * i,
                                    contribution);
         }

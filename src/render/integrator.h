@@ -78,8 +78,6 @@ class Integrator : public Node {
   int adaptive_min_samples;
   float adaptive_threshold;
 
-  uint background_lightgroups;
-
   enum Method {
     BRANCHED_PATH = 0,
     PATH = 1,

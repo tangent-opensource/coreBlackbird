@@ -249,7 +249,7 @@ ccl_device_inline uint lamp_lightgroups(KernelGlobals *kg, int lamp)
   if (lamp == LAMP_NONE)
     return LIGHTGROUPS_NONE;
 
-  return kernel_tex_fetch(__lights, lamp).lightgroups;
+  return kernel_tex_fetch(__lights, lamp).lightgroup;
 }
 
 /* Lightgroup bitfield of object */
@@ -259,7 +259,7 @@ ccl_device_inline uint object_lightgroups(KernelGlobals *kg, int object)
   if (object == OBJECT_NONE)
     return LIGHTGROUPS_NONE;
 
-  return kernel_tex_fetch(__objects, object).lightgroups;
+  return kernel_tex_fetch(__objects, object).lightgroup;
 }
 
 /* Per lamp random number for shader variation */

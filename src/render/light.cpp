@@ -147,10 +147,10 @@ NODE_DEFINE(Light)
   SOCKET_INT(max_bounces, "Max Bounces", 1024);
   SOCKET_UINT(random_id, "Random ID", 0);
 
-  SOCKET_UINT(lightgroups, "Lightgroups", 0);
-
   SOCKET_BOOLEAN(is_portal, "Is Portal", false);
   SOCKET_BOOLEAN(is_enabled, "Is Enabled", true);
+
+  SOCKET_STRING(lightgroup, "Light Group", ustring());
 
   SOCKET_NODE(shader, "Shader", &Shader::node_type);
 
@@ -290,6 +290,7 @@ void LightManager::device_update_distribution(Device *,
   size_t num_triangles = 0;
 
   bool background_mis = false;
+  uint lightgroup = 0;
 
   foreach (Light *light, scene->lights) {
     if (light->is_enabled) {
@@ -409,6 +410,15 @@ void LightManager::device_update_distribution(Device *,
 
   int light_index = 0;
   foreach (Light *light, scene->lights) {
+
+    if (light->type == LIGHT_BACKGROUND) {
+      /* Light group. */
+      auto it = scene->lightgroups.find(light->lightgroup);
+      if (it != scene->lightgroups.end()) {
+        lightgroup = (1 << distance(scene->lightgroups.begin(), it));
+      }
+    }
+
     if (!light->is_enabled)
       continue;
 
@@ -509,6 +519,8 @@ void LightManager::device_update_distribution(Device *,
 
     /* Map */
     kbackground->map_weight = background_mis ? 1.0f : 0.0f;
+
+    kbackground->lightgroup = lightgroup;
   }
   else {
     dscene->light_distribution.free();
@@ -905,7 +917,13 @@ void LightManager::device_update_points(Device *, DeviceScene *dscene, Scene *sc
     klights[light_index].tfm = light->tfm;
     klights[light_index].itfm = transform_inverse(light->tfm);
 
-    klights[light_index].lightgroups = light->lightgroups;
+    auto it = scene->lightgroups.find(light->lightgroup);
+    if (it != scene->lightgroups.end()) {
+      klights[light_index].lightgroup = (1 << distance(scene->lightgroups.begin(), it));
+    }
+    else {
+      klights[light_index].lightgroup = 0;
+    }
 
     light_index++;
   }

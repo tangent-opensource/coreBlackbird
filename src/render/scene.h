@@ -267,6 +267,9 @@ class Scene {
   /* Optional name. Is used for logging and reporting. */
   string name;
 
+  /* Light group set. */
+  set<ustring> lightgroups;
+
   /* data */
   Camera *camera;
   Camera *dicing_camera;

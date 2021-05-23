@@ -1372,6 +1372,10 @@ typedef struct KernelBackground {
   int map_res_y;
 
   int use_mis;
+
+  int lightgroup;
+
+  int pad1, pad2, pad3;
 } KernelBackground;
 static_assert_align(KernelBackground, 16);
 
@@ -1446,9 +1450,7 @@ typedef struct KernelIntegrator {
 
   int max_closures;
 
-  uint background_lightgroups;
-
-  int pad1;
+  int pad1, pad2;
 } KernelIntegrator;
 static_assert_align(KernelIntegrator, 16);
 
@@ -1525,7 +1527,7 @@ typedef struct KernelObject {
   float random_number;
   float color[3];
   int particle_index;
-  uint lightgroups;
+  uint lightgroup;
 
   float dupli_generated[3];
   float dupli_uv[2];
@@ -1584,7 +1586,7 @@ typedef struct KernelLight {
   float max_bounces;
   float random;
   float strength[3];
-  uint lightgroups;
+  uint lightgroup;
   Transform tfm;
   Transform itfm;
   union {
