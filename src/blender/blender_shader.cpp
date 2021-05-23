@@ -779,6 +779,27 @@ static ShaderNode *add_node(Scene *scene,
     get_tex_mapping(&brick->tex_mapping, b_texture_mapping);
     node = brick;
   }
+  else if (b_node.is_a(&RNA_ShaderNodeSdfPrimitives)) {
+    BL::ShaderNodeSdfPrimitives b_sdf_primitives_node(b_node);
+    SdfPrimitivesNode *sdf_primitives = new SdfPrimitivesNode();
+    sdf_primitives->mode = (NodeSdfMode)b_sdf_primitives_node.mode();
+    sdf_primitives->invert = b_sdf_primitives_node.invert();
+    BL::TexMapping b_texture_mapping(b_sdf_primitives_node.texture_mapping());
+    get_tex_mapping(sdf_primitives, b_texture_mapping);
+    node = sdf_primitives;
+  }
+  else if (b_node.is_a(&RNA_ShaderNodeSdfOps)) {
+    BL::ShaderNodeSdfOps b_sdf_ops(b_node);
+    SdfOpsNode *sdf_ops = new SdfOpsNode();
+    sdf_ops->type = (NodeSdfOps)b_sdf_ops.operation();
+    node = sdf_ops;
+  }
+  else if (b_node.is_a(&RNA_ShaderNodeSdfMod)) {
+    BL::ShaderNodeSdfMod b_sdf_mod_node(b_node);
+    SdfModNode *sdf_mod = new SdfModNode();
+    sdf_mod->type = (NodeSdfModType)b_sdf_mod_node.type();
+    node = sdf_mod;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeTexNoise)) {
     BL::ShaderNodeTexNoise b_noise_node(b_node);
     NoiseTextureNode *noise = new NoiseTextureNode();

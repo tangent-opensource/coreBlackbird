@@ -238,6 +238,9 @@ set(SRC_SVM_HEADERS
   svm/svm_types.h
   svm/svm_value.h
   svm/svm_vector_rotate.h
+  svm/svm_sdf_util.h
+  svm/svm_sdf.h
+  svm/svm_sdf_mod.h
   svm/svm_vector_transform.h
   svm/svm_voronoi.h
   svm/svm_voxel.h

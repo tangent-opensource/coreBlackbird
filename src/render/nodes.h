@@ -280,6 +280,54 @@ class VoronoiTextureNode : public TextureNode {
   float3 vector;
 };
 
+class SdfPrimitivesNode : public TextureNode {
+ public:
+  SHADER_NODE_CLASS(SdfPrimitivesNode)
+
+  virtual int get_group()
+  {
+    return NODE_GROUP_LEVEL_2;
+  }
+  float3 vector;
+  float size, thickness;
+  float value1, value2, value3, value4;
+  float3 point1, point2, point3;
+  float angle1, angle2;
+  int sides;
+  NodeSdfMode mode;
+  bool invert;
+};
+
+class SdfOpsNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(SdfOpsNode)
+  virtual int get_group()
+  {
+    return NODE_GROUP_LEVEL_2;
+  }
+  float value1, value2;
+  float radius1, radius2;
+  float count;
+  NodeSdfOps type;
+};
+
+class SdfModNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(SdfModNode)
+
+  virtual int get_group()
+  {
+    return NODE_GROUP_LEVEL_3;
+  }
+  NodeSdfModType type;
+  float3 vector;
+  float3 center;
+  float3 axis;
+  float angle;
+  float3 rotation;
+  int count;
+};
+
 class MusgraveTextureNode : public TextureNode {
  public:
   SHADER_NODE_CLASS(MusgraveTextureNode)

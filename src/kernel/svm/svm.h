@@ -194,6 +194,9 @@ CCL_NAMESPACE_END
 #include "kernel/svm/svm_noisetex.h"
 #include "kernel/svm/svm_normal.h"
 #include "kernel/svm/svm_ramp.h"
+#include "kernel/svm/svm_sdf_util.h"
+#include "kernel/svm/svm_sdf_mod.h"
+#include "kernel/svm/svm_sdf.h"
 #include "kernel/svm/svm_sepcomb_hsv.h"
 #include "kernel/svm/svm_sepcomb_vector.h"
 #include "kernel/svm/svm_sky.h"
@@ -539,6 +542,15 @@ ccl_device_noinline void svm_eval_nodes(KernelGlobals *kg,
         break;
       case NODE_AOV_VALUE:
         svm_node_aov_value(kg, sd, stack, node, buffer);
+        break;
+      case NODE_SDF_PRIMITIVES:
+        svm_node_sdf_primitives(kg, sd, stack, node, &offset);
+        break;
+      case NODE_SDF_OPS:
+        svm_node_sdf_ops(kg, sd, stack, node, &offset);
+        break;
+      case NODE_SDF_MOD:
+        svm_node_sdf_mod(sd, stack, node.y, node.z, node.w);
         break;
 #endif /* NODES_GROUP(NODE_GROUP_LEVEL_4) */
       default:

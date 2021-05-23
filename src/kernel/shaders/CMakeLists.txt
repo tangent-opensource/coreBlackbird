@@ -92,6 +92,9 @@ set(SRC_OSL
   node_vector_curves.osl
   node_vector_math.osl
   node_vector_rotate.osl
+  node_sdf_primitives.osl
+  node_sdf_ops.osl
+  node_sdf_mod.osl
   node_vector_transform.osl
   node_velvet_bsdf.osl
   node_vertex_color.osl
@@ -120,6 +123,7 @@ set(SRC_OSL_HEADERS
   node_math.h
   node_noise.h
   node_ramp_util.h
+  node_sdf_util.h
   stdcycles.h
   ${SRC_OSL_HEADER_DIST}
 )
