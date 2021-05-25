@@ -669,10 +669,14 @@ int Film::get_aov_offset(string name, bool &is_color)
 
 bool Film::update_lightgroups(Scene *scene)
 {
-  std::set<ustring> lightgroups;
+  map<ustring, uint> lightgroups;
+  uint i = 0;
   foreach (Pass &pass, passes) {
     if (pass.type == PASS_LIGHTGROUP) {
-      lightgroups.insert(ustring(pass.name));
+      if (lightgroups.find(ustring(pass.name)) == lightgroups.end()) {
+        i += 1;
+        lightgroups[ustring(pass.name)] = i;
+      }
     }
   }
   if (scene->lightgroups != lightgroups) {

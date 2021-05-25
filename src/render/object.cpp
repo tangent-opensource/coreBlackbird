@@ -565,7 +565,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   /* Light group. */
   auto it = scene->lightgroups.find(ob->lightgroup);
   if (it != scene->lightgroups.end()) {
-    kobject.lightgroup = distance(scene->lightgroups.begin(), it) + 1;
+    kobject.lightgroup = it->second;
   }
 }
 

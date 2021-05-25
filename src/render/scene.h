@@ -268,7 +268,7 @@ class Scene {
   string name;
 
   /* Light group set. */
-  set<ustring> lightgroups;
+  map<ustring, uint> lightgroups;
 
   /* data */
   Camera *camera;
