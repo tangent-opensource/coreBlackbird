@@ -112,6 +112,8 @@ class RenderBuffers {
                         ComponentType type,
                         int src_width,
                         int src_height,
+                        int dst_width,
+                        int dst_height,
                         int pixels_stride);
 
   bool get_pass_rect(
