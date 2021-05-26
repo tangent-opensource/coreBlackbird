@@ -673,10 +673,8 @@ bool Film::update_lightgroups(Scene *scene)
   uint i = 0;
   foreach (Pass &pass, passes) {
     if (pass.type == PASS_LIGHTGROUP) {
-      if (lightgroups.find(ustring(pass.name)) == lightgroups.end()) {
-        i += 1;
-        lightgroups[ustring(pass.name)] = i;
-      }
+      i += 1;
+      lightgroups[ustring(pass.name)] = i;
     }
   }
   if (scene->lightgroups != lightgroups) {
