@@ -324,16 +324,6 @@ ccl_device_inline void store_pass_pixel4(
 }
 
 ccl_device_inline int get_nearest_point_index(
-    int dst_idx, float scalex, float scaley, int dst_width, int src_width)
-{
-  const int dst_x = dst_idx % dst_width;
-  const int dst_y = dst_idx / dst_width;  // If only dst_width was a power of two..
-  const int src_x = (int)(dst_x * scalex);
-  const int src_y = (int)(dst_y * scaley);
-  return src_y * src_width + src_x;
-}
-
-ccl_device_inline int get_nearest_point_index(
     int dst_x, int dst_y, float scalex, float scaley, int dst_width, int src_width)
 {
   const int src_x = (int)(dst_x * scalex);
