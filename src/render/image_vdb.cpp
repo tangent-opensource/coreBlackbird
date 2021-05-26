@@ -59,6 +59,12 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
 #  ifdef WITH_NANOVDB
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(*openvdb::gridConstPtrCast<openvdb::FloatGrid>(grid));
+      
+      float min = 0.0f, max = 0.0f;
+      nanogrid.grid<float>()->tree().extrema(min, max);
+
+      metadata.min = make_float3(min);
+      metadata.max = make_float3(max);
     }
 #  endif
   }
@@ -67,6 +73,13 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
 #  ifdef WITH_NANOVDB
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(*openvdb::gridConstPtrCast<openvdb::Vec3fGrid>(grid));
+
+      nanovdb::Vec3f min;
+      nanovdb::Vec3f max;
+      nanogrid.grid<nanovdb::Vec3f>()->tree().extrema(min, max);
+
+      metadata.min = make_float3(min[0], min[1], min[2]);
+      metadata.max = make_float3(max[0], max[1], max[2]);
     }
 #  endif
   }
@@ -76,6 +89,12 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(
           openvdb::FloatGrid(*openvdb::gridConstPtrCast<openvdb::BoolGrid>(grid)));
+
+      bool min = false, max = false;
+      nanogrid.grid<bool>()->tree().extrema(min, max);
+
+      metadata.min = make_float3(min);
+      metadata.max = make_float3(max);
     }
 #  endif
   }
@@ -85,6 +104,12 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(
           openvdb::FloatGrid(*openvdb::gridConstPtrCast<openvdb::DoubleGrid>(grid)));
+
+      double min = 0.0, max = 0.0;
+      nanogrid.grid<double>()->tree().extrema(min, max);
+
+      metadata.min = make_float3(min);
+      metadata.max = make_float3(max);
     }
 #  endif
   }
@@ -94,6 +119,12 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(
           openvdb::FloatGrid(*openvdb::gridConstPtrCast<openvdb::Int32Grid>(grid)));
+
+      int32_t min = 0, max = 0;
+      nanogrid.grid<int32_t>()->tree().extrema(min, max);
+
+      metadata.min = make_float3((float)min);
+      metadata.max = make_float3((float)max);
     }
 #  endif
   }
@@ -103,6 +134,12 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(
           openvdb::FloatGrid(*openvdb::gridConstPtrCast<openvdb::Int64Grid>(grid)));
+
+      int64_t min = 0, max = 0;
+      nanogrid.grid<int64_t>()->tree().extrema(min, max);
+
+      metadata.min = make_float3((float)min);
+      metadata.max = make_float3((float)max);
     }
 #  endif
   }
@@ -112,6 +149,13 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(
           openvdb::Vec3fGrid(*openvdb::gridConstPtrCast<openvdb::Vec3IGrid>(grid)));
+
+      nanovdb::Vec3i min;
+      nanovdb::Vec3i max;
+      nanogrid.grid<nanovdb::Vec3i>()->tree().extrema(min, max);
+
+      metadata.min = make_float3(min[0], min[1], min[2]);
+      metadata.max = make_float3(max[0], max[1], max[2]);
     }
 #  endif
   }
@@ -121,11 +165,20 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
     if (features.has_nanovdb) {
       nanogrid = nanovdb::openToNanoVDB(
           openvdb::Vec3fGrid(*openvdb::gridConstPtrCast<openvdb::Vec3dGrid>(grid)));
+
+      nanovdb::Vec3d min;
+      nanovdb::Vec3d max;
+      nanogrid.grid<nanovdb::Vec3d>()->tree().extrema(min, max);
+
+      metadata.min = make_float3(min[0], min[1], min[2]);
+      metadata.max = make_float3(max[0], max[1], max[2]);
     }
 #  endif
   }
   else if (grid->isType<openvdb::MaskGrid>()) {
     metadata.channels = 1;
+    metadata.min = make_float3(0.0f);
+    metadata.max = make_float3(0.0f);
 #  ifdef WITH_NANOVDB
     return false;  // Unsupported
 #  endif
@@ -168,6 +221,10 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
 #  ifdef WITH_NANOVDB
   if (nanogrid) {
     texture_to_index = transform_identity();
+    nanovdb::BBox world_bbox = nanogrid.gridMetaData()->worldBBox();
+    metadata.object_bounds = BoundBox(
+        make_float3(world_bbox.min()[0], world_bbox.min()[1], world_bbox.min()[2]),
+        make_float3(world_bbox.max()[0], world_bbox.max()[1], world_bbox.max()[2]));
   }
   else
 #  endif
