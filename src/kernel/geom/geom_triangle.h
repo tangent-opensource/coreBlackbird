@@ -309,7 +309,7 @@ ccl_device float3 triangle_attribute_float3(KernelGlobals *kg,
 
     return sd->u * f0 + sd->v * f1 + (1.0f - sd->u - sd->v) * f2;
   }
-  else if (desc.element == ATTR_ELEMENT_CORNER) {
+  else if (desc.element == ATTR_ELEMENT_CORNER || desc.element == ATTR_ELEMENT_CORNER_MOTION) {
     int tri = desc.offset + sd->prim * 3;
     float3 f0, f1, f2;
 
