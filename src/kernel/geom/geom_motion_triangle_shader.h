@@ -87,27 +87,41 @@ ccl_device_noinline void motion_triangle_shader_setup(
 #endif
 
   /* Compute smooth normal. */
-  if (sd->shader & SHADER_SMOOTH_NORMAL) {
+  float3 normals[3], next_normals[3];
+  if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS) {
+    /* Find attribute. */
+    AttributeElement elem;
+    int offset = find_attribute_motion(kg, sd->object, ATTR_STD_MOTION_CORNER_NORMAL, &elem);
+    kernel_assert(offset != ATTR_STD_NOT_FOUND);
+    /* Fetch corner coordinates. */
+    motion_triangle_corner_normals_for_step(
+      kg, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step, normals);
+    motion_triangle_corner_normals_for_step(
+      kg, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step + 1, next_normals);    
+  }
+  else if (sd->shader & SHADER_SMOOTH_NORMAL) {
     /* Find attribute. */
     AttributeElement elem;
     int offset = find_attribute_motion(kg, sd->object, ATTR_STD_MOTION_VERTEX_NORMAL, &elem);
     kernel_assert(offset != ATTR_STD_NOT_FOUND);
     /* Fetch vertex coordinates. */
-    float3 normals[3], next_normals[3];
-    motion_triangle_normals_for_step(
-      kg, tri_vindex, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step, normals);
-    motion_triangle_normals_for_step(
-      kg, tri_vindex, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step + 1, next_normals);
-    /* Interpolate between steps. */
-    normals[0] = (1.0f - t) * normals[0] + t * next_normals[0];
-    normals[1] = (1.0f - t) * normals[1] + t * next_normals[1];
-    normals[2] = (1.0f - t) * normals[2] + t * next_normals[2];
-    /* Interpolate between vertices. */
-    float u = sd->u;
-    float v = sd->v;
-    float w = 1.0f - u - v;
-    sd->N = (u * normals[0] + v * normals[1] + w * normals[2]);
+    motion_triangle_vertex_normals_for_step(
+      kg, tri_vindex, sd->object, sd->object_flag, offset, numverts, numsteps, step, normals);
+    motion_triangle_vertex_normals_for_step(
+      kg, tri_vindex, sd->object, sd->object_flag, offset, numverts, numsteps, step + 1, next_normals);
+  } else {
+    return;
   }
+
+  /* Interpolate between steps. */
+  normals[0] = (1.0f - t) * normals[0] + t * next_normals[0];
+  normals[1] = (1.0f - t) * normals[1] + t * next_normals[1];
+  normals[2] = (1.0f - t) * normals[2] + t * next_normals[2];
+  /* Interpolate between vertices. */
+  float u = sd->u;
+  float v = sd->v;
+  float w = 1.0f - u - v;
+  sd->N = (u * normals[0] + v * normals[1] + w * normals[2]);
 }
 
 CCL_NAMESPACE_END
