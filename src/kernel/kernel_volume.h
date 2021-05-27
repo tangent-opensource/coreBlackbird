@@ -303,10 +303,10 @@ ccl_device_noinline void kernel_volume_shadow(KernelGlobals *kg,
  between lower and upper bound of volume density. When sigma_c == 0, it is the same as ratio
  tracking. */
 ccl_device_inline void kernel_volume_shadow_octree_rr(KernelGlobals *kg,
-                                                     ShaderData *shadow_sd,
-                                                     ccl_addr_space PathState *state,
-                                                     Ray *ray,
-                                                     float3 *throughput)
+                                                      ShaderData *shadow_sd,
+                                                      ccl_addr_space PathState *state,
+                                                      Ray *ray,
+                                                      float3 *throughput)
 {
   shader_setup_from_volume(kg, shadow_sd, ray);
 
@@ -399,10 +399,10 @@ ccl_device_inline void kernel_volume_shadow_octree_rr(KernelGlobals *kg,
  * Assumes the root bbox intersection has been done and ray has been pushed to
  * be contained in the bbox */
 ccl_device_noinline void kernel_volume_shadow_octree_delta(KernelGlobals *kg,
-                                                     ShaderData *shadow_sd,
-                                                     ccl_addr_space PathState *state,
-                                                     Ray *ray,
-                                                     float3 *throughput)
+                                                           ShaderData *shadow_sd,
+                                                           ccl_addr_space PathState *state,
+                                                           Ray *ray,
+                                                           float3 *throughput)
 {
   shader_setup_from_volume(kg, shadow_sd, ray);
 
@@ -428,9 +428,9 @@ ccl_device_noinline void kernel_volume_shadow_octree_delta(KernelGlobals *kg,
   uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
 
   do {
-    
+
     float xi = lcg_step_float_addrspace(&lcg_state);
-    
+
     t -= logf(1 - xi) * inv_max_extinction;
 
     if (t > ray->t) {
@@ -1633,8 +1633,6 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
   float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
   float3 pos = ray->P;
 
-  float3 accum_transmittance = make_float3(1.0f);
-
   uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
 
   do {
@@ -1650,7 +1648,6 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
 
     if (pos.x < root.bmin.x || pos.x > root.bmax.x || pos.y < root.bmin.y || pos.y > root.bmax.y ||
         pos.z < root.bmin.z || pos.z > root.bmax.z) {
-
       /* Ray ended up outside root bbox */
       return result;
     }
@@ -1661,6 +1658,9 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
     float extinction_sample = 0.0f;
 
     float3 albedo = make_float3(0.0f);
+
+    sd->num_closure = 0;
+    sd->num_closure_left = kernel_data.integrator.max_closures;
 
     for (int i = 0; i < root.num_objects; i++) {
       KernelObject ob = kernel_tex_fetch(__objects, root.obj_indices[i]);
@@ -1680,9 +1680,9 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
         albedo += safe_divide_color(coeff.sigma_s, coeff.sigma_t);
       }
     }
-
+    
     float zeta = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
-    if (extinction_sample * inv_max_extinction > zeta) {
+    if (scattering_sample * inv_max_extinction > zeta) {
       *throughput *= albedo;
       result = VOLUME_PATH_SCATTERED;
       return result;

@@ -1483,25 +1483,9 @@ ccl_device_inline void shader_eval_volume(KernelGlobals *kg,
 ccl_device_inline void shader_eval_volume_shader(
     KernelGlobals *kg, ShaderData *sd, ccl_addr_space PathState *state, int path_flag)
 {
-  /* If path is being terminated, we are tracing a shadow ray or evaluating
-   * emission, then we don't need to store closures. The emission and shadow
-   * shader data also do not have a closure array to save GPU memory. */
-  int max_closures;
-  if (path_flag & (PATH_RAY_TERMINATE | PATH_RAY_SHADOW | PATH_RAY_EMISSION)) {
-    max_closures = 0;
-  }
-  else {
-    max_closures = kernel_data.integrator.max_closures;
-  }
-
-  /* reset closures once at the start, we will be accumulating the closures
-   * for all volumes in the stack into a single array of closures */
-  sd->num_closure = 0;
-  sd->num_closure_left = max_closures;
   sd->flag = 0;
   sd->object_flag = 0;
 
-  sd->num_closure = 0;
   sd->lamp = LAMP_NONE;
 
   sd->flag &= ~SD_SHADER_FLAGS;
