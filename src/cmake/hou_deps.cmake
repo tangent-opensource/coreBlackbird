@@ -13,8 +13,13 @@ add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
 # Houdini
 message(STATUS "HOUDINI_ROOT: ${HOUDINI_ROOT}")
-set(HOUDINI_DSOLIB ${HOUDINI_ROOT}/dsolib/)
-set(HOUDINI_INCLUDE ${HOUDINI_ROOT}/toolkit/include)
+if(APPLE)
+        set(HOUDINI_DSOLIB ${HOUDINI_ROOT}/Libraries)
+        set(HOUDINI_INCLUDE ${HOUDINI_ROOT}/Resources/toolkit/include)
+else()
+        set(HOUDINI_DSOLIB ${HOUDINI_ROOT}/dsolib/)
+        set(HOUDINI_INCLUDE ${HOUDINI_ROOT}/toolkit/include)
+endif()
 
 # not every library is being linked
 set(CMAKE_BUILD_RPATH ${HOUDINI_ROOT}/dsolib)
