@@ -2132,13 +2132,13 @@ void CUDADevice::unmap_pixels(device_ptr mem)
 
 void CUDADevice::pixels_alloc(device_memory &mem)
 {
+#ifdef USE_OPENGL
   PixelMem pmem;
 
   pmem.w = mem.data_width;
   pmem.h = mem.data_height;
 
   CUDAContextScope scope(this);
-#ifdef USE_OPENGL
   glGenBuffers(1, &pmem.cuPBO);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pmem.cuPBO);
   if (mem.data_type == TYPE_HALF)

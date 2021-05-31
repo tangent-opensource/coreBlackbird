@@ -573,8 +573,8 @@ void EnvironmentTextureNode::compile(SVMCompiler &compiler)
   ShaderInput *vector_in = input("Vector");
   ShaderOutput *color_out = output("Color");
   ShaderOutput *alpha_out = output("Alpha");
-  ShaderInput *vector_dx = input("Vector_dx");
-  ShaderInput *vector_dy = input("Vector_dy");
+//  ShaderInput *vector_dx = input("Vector_dx");
+//  ShaderInput *vector_dy = input("Vector_dy");
 
   if (handle.empty()) {
     ImageManager *image_manager = compiler.scene->image_manager;

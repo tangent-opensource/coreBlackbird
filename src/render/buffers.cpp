@@ -304,6 +304,10 @@ ccl_device_inline void store_pass_pixel3(
       ((half *)pixels)[3] = float_to_half(1.0f);
       return;
     }
+    default: {
+      assert(0);
+      return;
+    }
   }
 }
 
@@ -318,6 +322,10 @@ ccl_device_inline void store_pass_pixel4(
     case RenderBuffers::ComponentType::Float16x4: {
       float4 f4 = make_float4(x, y, z, w);
       float4_store_half((half *)pixels, f4, 1.0f);
+      return;
+    }
+    default: {
+      assert(0);
       return;
     }
   }
