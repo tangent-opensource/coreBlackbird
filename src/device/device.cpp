@@ -124,6 +124,7 @@ const char *FALLBACK_FRAGMENT_SHADER =
     "   fragColor = texture(image_texture, texCoord_interp);\n"
     "}\n\0";
 
+#ifdef USE_OPENGL
 static void shader_print_errors(const char *task, const char *log, const char *code)
 {
   LOG(ERROR) << "Shader: " << task << " error:";
@@ -144,10 +145,8 @@ static void shader_print_errors(const char *task, const char *log, const char *c
   }
   LOG(ERROR) << log;
 }
-
 static int bind_fallback_shader(void)
 {
-#ifdef USE_OPENGL
   GLint status;
   GLchar log[5000];
   GLsizei length = 0;
@@ -196,9 +195,8 @@ static int bind_fallback_shader(void)
   }
 
   return program;
-#endif
-  return 0;
 }
+#endif
 
 bool Device::bind_fallback_display_space_shader(const float width, const float height)
 {

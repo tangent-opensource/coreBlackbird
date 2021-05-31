@@ -48,7 +48,6 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
 
   /* Set dimensions. */
   openvdb::Coord dim = bbox.dim();
-  openvdb::Coord min = bbox.min();
   metadata.width = dim.x();
   metadata.height = dim.y();
   metadata.depth = dim.z();
