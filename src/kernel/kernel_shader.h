@@ -113,6 +113,7 @@ ccl_device_noinline
     else if (sd->shader & SHADER_SMOOTH_NORMAL)
       sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
+
 #ifdef __DPDU__
     /* dPdu/dPdv */
     triangle_dPdudv(kg, sd->prim, &sd->dPdu, &sd->dPdv);
@@ -156,11 +157,17 @@ ccl_device_noinline
   differential_incoming(&sd->dI, ray->dD);
   differential_dudv(&sd->du, &sd->dv, sd->dPdu, sd->dPdv, sd->dP, sd->Ng);
 #  ifdef __DNDU__
-  if (sd->shader & SHADER_SMOOTH_NORMAL && sd->type & PRIMITIVE_TRIANGLE) {
+  const bool has_smooth_normals = sd->shader & SHADER_SMOOTH_NORMAL;
+  const bool has_corner_normals = sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS;
+  if (sd->type & PRIMITIVE_TRIANGLE && (has_smooth_normals || has_corner_normals)) {
     // TODO stefan curves
     /* dNdu/dNdv */
     float3 dNdu, dNdv;
-    triangle_dNdudv(kg, sd->prim, &dNdu, &dNdv);
+    if (has_corner_normals) {
+      triangle_corner_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
+    } else {
+      triangle_smooth_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
+    }
     sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
     sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
 
@@ -232,9 +239,11 @@ ccl_device_inline
     sd->N = Ng;
 
     /* load corner or smooth normal */
-    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS)
+    const bool has_corner_normals = sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS;
+    const bool has_smooth_normals = sd->shader & SHADER_SMOOTH_NORMAL;
+    if (has_corner_normals)
       sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
-    else if (sd->shader & SHADER_SMOOTH_NORMAL)
+    else if (has_smooth_normals)
       sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
 #  ifdef __DPDU__
@@ -243,12 +252,17 @@ ccl_device_inline
 #  endif
 #  ifdef __DNDU__
     /* dNdu/dNdv */
-    if (sd->shader & SHADER_SMOOTH_NORMAL && sd->type & PRIMITIVE_TRIANGLE) {
+    if (has_corner_normals || has_smooth_normals) {
       float3 dNdu, dNdv;
-      triangle_dNdudv(kg, sd->prim, &dNdu, &dNdv);
+      if (has_corner_normals)
+        triangle_corner_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
+      else
+        triangle_smooth_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
+
       sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
       sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
     }
+
 #  endif
   }
   else {
@@ -372,8 +386,10 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
   }
 
   if (sd->type & PRIMITIVE_TRIANGLE) {
+    const bool has_corner_normals = sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS;
+    const bool has_smooth_normals = sd->shader & SHADER_SMOOTH_NORMAL;
     /* corner normal */
-    if (sd->object_flag & SD_OBJECT_HAS_CORNER_NORMALS) {
+    if (has_corner_normals) {
       sd->N = triangle_corner_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
       if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
@@ -381,7 +397,7 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
       }
     }
     /* smooth normal */
-    else if (sd->shader & SHADER_SMOOTH_NORMAL) {
+    else if (has_smooth_normals) {
       sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->object, sd->u, sd->v);
 
       if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
@@ -400,10 +416,21 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
 #endif
 #ifdef __DNDU__
 
-    float3 dNdu, dNdv;
-    triangle_dNdudv(kg, sd->prim, &dNdu, &dNdv);
-    sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
-    sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
+    if (has_corner_normals) {
+      float3 dNdu, dNdv;
+      triangle_corner_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
+      sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
+      sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
+    } else if (has_smooth_normals) {
+      float3 dNdu, dNdv;
+      triangle_smooth_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
+      sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
+      sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
+    } else {
+      sd->dNdx = make_float3(0.f, 0.f, 0.f);
+      sd->dNdy = make_float3(0.f, 0.f, 0.f);
+    }
+
 
 #  ifdef __INSTANCING__
     if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {

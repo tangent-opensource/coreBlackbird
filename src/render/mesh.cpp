@@ -591,6 +591,7 @@ void Mesh::pack_normals(float4 *vnormal)
     return;
   }
 
+
   bool do_transform = transform_applied;
   Transform ntfm = transform_normal;
 
