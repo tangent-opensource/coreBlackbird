@@ -93,6 +93,7 @@ ccl_device_noinline void motion_triangle_shader_setup(
     AttributeElement elem;
     int offset = find_attribute_motion(kg, sd->object, ATTR_STD_MOTION_CORNER_NORMAL, &elem);
     kernel_assert(offset != ATTR_STD_NOT_FOUND);
+
     /* Fetch corner coordinates. */
     motion_triangle_corner_normals_for_step(
       kg, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step, normals);

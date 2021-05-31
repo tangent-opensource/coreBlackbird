@@ -322,7 +322,7 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
       if (type == Geometry::MESH) {
         const Mesh *mesh = static_cast<const Mesh *>(this);
         if (prim == ATTR_PRIM_GEOMETRY) {
-          size = mesh->num_triangles() * 3;
+          size = (mesh->num_triangles() * 3) * (mesh->motion_steps - 1);
         } else {
           // todo: Throw a warning 
         }

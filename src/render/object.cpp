@@ -744,17 +744,8 @@ void ObjectManager::device_update_flags(
 
     /* Flagging the object to index normals by corner */
     if (object->geometry->attributes.find(ATTR_STD_CORNER_NORMAL)) {
-      /* In the case of motion blur, we need to explicitly check if
-       * the corner normals have been authored, otherwise  */
-      if (object->geometry->has_motion_blur()) {
-        if (object->geometry->attributes.find(ATTR_STD_MOTION_CORNER_NORMAL)) {
-          object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
-        } else {
-          printf("Cycles error, corner normals exist but motion ones haven't been authored. Reverting to vertex normals\n");
-        }
-      } else {
-        object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
-      }
+      /* Assuming that ATTR_STD_MOTION_CORNER_NORMAL has been authored */
+      object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
     }
   }
 
