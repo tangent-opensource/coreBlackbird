@@ -342,6 +342,8 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
                                      ComponentType pixels_type,
                                      int src_width,
                                      int src_height,
+                                     int dst_width,
+                                     int dst_height,
                                      int pixels_stride)
 {
   if (buffer.data() == NULL) {
@@ -383,13 +385,13 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
     float scale = (pass.filter) ? 1.0f / (float)sample : 1.0f;
     float scale_exposure = (pass.exposure) ? scale * exposure : scale;
 
-    int size = params.width * params.height;
-    const float scalex = (float)src_width / params.width;
-    const float scaley = (float)src_height / params.height;
+    int size = dst_width * dst_height;
+    const float scalex = (float)src_width / dst_width;
+    const float scaley = (float)src_height / dst_height;
 
     if (components == 1 && type == PASS_RENDER_TIME) {
       /* Render time is not stored by kernel, but measured per tile. */
-      const float val = (float)(1000.0 * render_time / (params.width * params.height * sample));
+      const float val = (float)(1000.0 * render_time / (dst_width * dst_height * sample));
       for (int i = 0; i < size; i++) {
         store_pass_pixel1(pixels, pixels_type, val);
         pixels += pixels_stride;
@@ -401,7 +403,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       /* Scalar */
       if (type == PASS_DEPTH) {
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float f = *src;
@@ -411,7 +413,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       }
       else if (type == PASS_MIST) {
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float f = *src;
@@ -423,7 +425,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       else if (type == PASS_BVH_TRAVERSED_NODES || type == PASS_BVH_TRAVERSED_INSTANCES ||
                type == PASS_BVH_INTERSECTIONS || type == PASS_RAY_BOUNCES) {
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float f = *src;
@@ -434,7 +436,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 #endif
       else {
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float f = *src;
@@ -449,7 +451,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       /* RGBA */
       if (type == PASS_SHADOW) {
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           const float4 f = make_float4(src[0], src[1], src[2], src[3]);
@@ -469,7 +471,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
         }
 
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
           const float *src_divide = buffer.data() + pass_offset_divide + src_idx * pass_stride;
 
@@ -485,7 +487,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       else {
         /* RGB/vector */
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float3 f = make_float3(src[0], src[1], src[2]);
@@ -504,7 +506,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       /* RGBA */
       if (type == PASS_SHADOW) {
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float4 f = make_float4(src[0], src[1], src[2], src[3]);
@@ -524,7 +526,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
         }
 
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
           const float *src_weight = buffer.data() + pass_offset_weight + src_idx * pass_stride;
 
@@ -538,7 +540,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       }
       else if (type == PASS_CRYPTOMATTE) {
         for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float4 f = make_float4(src[0], src[1], src[2], src[3]);
@@ -555,7 +557,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
             scale_exposure = (pass.exposure) ? scale * exposure : scale;
           }
 
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
           const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
           float4 f = make_float4(src[0], src[1], src[2], src[3]);
