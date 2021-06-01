@@ -105,7 +105,8 @@ NODE_DEFINE(PointCloud)
   return type;
 }
 
-PointCloud::PointCloud() : Geometry(node_type, Geometry::POINTCLOUD)
+PointCloud::PointCloud()
+    : Geometry(node_type, Geometry::POINTCLOUD), point_style(POINT_CLOUD_POINT_SPHERE)
 {
 }
 
@@ -276,9 +277,22 @@ void PointCloud::pack(Scene *scene, float4 *packed_points, uint *packed_shader)
   float *radius_data = radius.data();
   int *shader_data = shader.data();
 
-  for (size_t i = 0; i < numpoints; i++) {
-    packed_points[i] = make_float4(
-        points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+  if (point_style == POINT_CLOUD_POINT_DISC_ORIENTED) {
+    Attribute *N_attr = attributes.find(ATTR_STD_VERTEX_NORMAL);
+    assert(N_attr);
+    float3 *N = N_attr->data_float3();
+
+    for (size_t i = 0; i < numpoints; i++) {
+      packed_points[i * 2 + 0] = make_float4(
+          points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+      packed_points[i * 2 + 1] = float3_to_float4(N[i]);
+    }
+  }
+  else {
+    for (size_t i = 0; i < numpoints; i++) {
+      packed_points[i] = make_float4(
+          points_data[i].x, points_data[i].y, points_data[i].z, radius_data[i]);
+    }
   }
 
   uint shader_id = 0;
@@ -309,11 +323,24 @@ void PointCloud::pack_primitives(PackedBVH &pack, int object, uint visibility)
   pack.prim_object.reserve(pack.prim_object.size() + num_prims);
   // 'pack.prim_time' is unused by Embree and OptiX
 
-  const uint type = has_motion_blur() ? PRIMITIVE_MOTION_POINT : PRIMITIVE_POINT;
+  uint prim_type = PRIMITIVE_NONE;
+  switch (point_style) {
+    case POINT_CLOUD_POINT_SPHERE:
+      prim_type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE : PRIMITIVE_POINT_SPHERE;
+      break;
+    case POINT_CLOUD_POINT_DISC:
+      prim_type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC : PRIMITIVE_POINT_DISC;
+      break;
+    case POINT_CLOUD_POINT_DISC_ORIENTED:
+      prim_type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED : PRIMITIVE_POINT_DISC_ORIENTED;
+      break;
+    default:
+      assert(false);
+  }
 
   for (size_t j = 0; j < num_prims; ++j) {
     pack.prim_tri_index.push_back_reserved(-1);
-    pack.prim_type.push_back_reserved(type);
+    pack.prim_type.push_back_reserved(geometry_type);
     pack.prim_visibility.push_back_reserved(visibility);
     pack.prim_index.push_back_reserved(j + prim_offset);
     pack.prim_object.push_back_reserved(object);

@@ -70,7 +70,10 @@ bool TaskPool::canceled()
 thread_mutex TaskScheduler::mutex;
 int TaskScheduler::users = 0;
 int TaskScheduler::active_num_threads = 0;
+
+#ifdef WITH_TBB_GLOBAL_CONTROL
 tbb::global_control *TaskScheduler::global_control = nullptr;
+#endif
 
 void TaskScheduler::init(int num_threads)
 {
@@ -84,8 +87,10 @@ void TaskScheduler::init(int num_threads)
   if (num_threads > 0) {
     /* Automatic number of threads. */
     VLOG(1) << "Overriding number of TBB threads to " << num_threads << ".";
+#ifdef WITH_TBB_GLOBAL_CONTROL
     global_control = new tbb::global_control(tbb::global_control::max_allowed_parallelism,
                                              num_threads);
+#endif
     active_num_threads = num_threads;
   }
   else {
@@ -98,8 +103,10 @@ void TaskScheduler::exit()
   thread_scoped_lock lock(mutex);
   users--;
   if (users == 0) {
+#ifdef WITH_TBB_GLOBAL_CONTROL
     delete global_control;
     global_control = nullptr;
+#endif
     active_num_threads = 0;
   }
 }

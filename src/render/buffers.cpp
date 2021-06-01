@@ -20,6 +20,7 @@
 #include "render/buffers.h"
 
 #include "util/util_foreach.h"
+#include "util/util_half.h"
 #include "util/util_hash.h"
 #include "util/util_math.h"
 #include "util/util_opengl.h"
@@ -252,6 +253,331 @@ bool RenderBuffers::get_denoising_pass_rect(
   }
 
   return true;
+}
+
+namespace {
+/* Separating the functions by component which should help reduce bloating
+ * since get_pass_rect already switches on the number of components and
+ * the remaining combinations of != components are limited  */
+ccl_device_inline void store_pass_pixel1(uint8_t *pixels,
+                                         RenderBuffers::ComponentType pixels_type,
+                                         float val)
+{
+  switch (pixels_type) {
+    case RenderBuffers::ComponentType::Float32: {
+      ((float *)pixels)[0] = val;
+      return;
+    }
+    case RenderBuffers::ComponentType::Float16: {
+      ((half *)pixels)[0] = float_to_half(val);
+      return;
+    }
+    case RenderBuffers::ComponentType::Int32: {
+      ((int32_t *)pixels)[0] = (int32_t)val;
+      return;
+    }
+    default:
+      assert(false);
+      return;
+  }
+}
+
+ccl_device_inline void store_pass_pixel3(
+    uint8_t *pixels, RenderBuffers::ComponentType pixels_type, float x, float y, float z)
+{
+  switch (pixels_type) {
+    case RenderBuffers::ComponentType::Float32x3: {
+      ((float *)pixels)[0] = x;
+      ((float *)pixels)[1] = y;
+      ((float *)pixels)[2] = z;
+      return;
+    }
+    case RenderBuffers::ComponentType::Float16x3: {
+      ((half *)pixels)[0] = float_to_half(x);
+      ((half *)pixels)[1] = float_to_half(y);
+      ((half *)pixels)[2] = float_to_half(z);
+      return;
+    }
+    case RenderBuffers::ComponentType::Float16x4: {
+      ((half *)pixels)[0] = float_to_half(x);
+      ((half *)pixels)[1] = float_to_half(y);
+      ((half *)pixels)[2] = float_to_half(z);
+      ((half *)pixels)[3] = float_to_half(1.0f);
+      return;
+    }
+  }
+}
+
+ccl_device_inline void store_pass_pixel4(
+    uint8_t *pixels, RenderBuffers::ComponentType pixels_type, float x, float y, float z, float w)
+{
+  switch (pixels_type) {
+    case RenderBuffers::ComponentType::Float32x4: {
+      ((float4 *)pixels)[0] = make_float4(x, y, z, w);
+      return;
+    }
+    case RenderBuffers::ComponentType::Float16x4: {
+      float4 f4 = make_float4(x, y, z, w);
+      float4_store_half((half *)pixels, f4, 1.0f);
+      return;
+    }
+  }
+}
+
+ccl_device_inline int get_nearest_point_index(
+    int dst_idx, float scalex, float scaley, int dst_width, int src_width)
+{
+  const int dst_x = dst_idx % dst_width;
+  const int dst_y = dst_idx / dst_width;  // If only dst_width was a power of two..
+  const int src_x = (int)(dst_x * scalex);
+  const int src_y = (int)(dst_y * scaley);
+  return src_y * src_width + src_x;
+}
+}  // namespace
+
+bool RenderBuffers::get_pass_rect_as(const string &name,
+                                     float exposure,
+                                     int sample,
+                                     int components,
+                                     uint8_t *pixels,
+                                     ComponentType pixels_type,
+                                     int src_width,
+                                     int src_height,
+                                     int pixels_stride)
+{
+  if (buffer.data() == NULL) {
+    return false;
+  }
+
+  float *sample_count = NULL;
+  if (name == "Combined") {
+    int sample_offset = 0;
+    for (size_t j = 0; j < params.passes.size(); j++) {
+      Pass &pass = params.passes[j];
+      if (pass.type != PASS_SAMPLE_COUNT) {
+        sample_offset += pass.components;
+        continue;
+      }
+      else {
+        sample_count = buffer.data() + sample_offset;
+        break;
+      }
+    }
+  }
+
+  int pass_offset = 0;
+
+  for (size_t j = 0; j < params.passes.size(); j++) {
+    Pass &pass = params.passes[j];
+
+    /* Pass is identified by both type and name, multiple of the same type
+     * may exist with a different name. */
+    if (pass.name != name) {
+      pass_offset += pass.components;
+      continue;
+    }
+
+    PassType type = pass.type;
+
+    int pass_stride = params.get_passes_size();
+
+    float scale = (pass.filter) ? 1.0f / (float)sample : 1.0f;
+    float scale_exposure = (pass.exposure) ? scale * exposure : scale;
+
+    int size = params.width * params.height;
+    const float scalex = (float)src_width / params.width;
+    const float scaley = (float)src_height / params.height;
+
+    if (components == 1 && type == PASS_RENDER_TIME) {
+      /* Render time is not stored by kernel, but measured per tile. */
+      const float val = (float)(1000.0 * render_time / (params.width * params.height * sample));
+      for (int i = 0; i < size; i++) {
+        store_pass_pixel1(pixels, pixels_type, val);
+        pixels += pixels_stride;
+      }
+    }
+    else if (components == 1) {
+      assert(pass.components == components);
+
+      /* Scalar */
+      if (type == PASS_DEPTH) {
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float f = *src;
+          store_pass_pixel1(pixels, pixels_type, (f == 0.0f) ? 1e10f : f * scale_exposure);
+          pixels += pixels_stride;
+        }
+      }
+      else if (type == PASS_MIST) {
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float f = *src;
+          store_pass_pixel1(pixels, pixels_type, saturate(f * scale_exposure));
+          pixels += pixels_stride;
+        }
+      }
+#ifdef WITH_CYCLES_DEBUG
+      else if (type == PASS_BVH_TRAVERSED_NODES || type == PASS_BVH_TRAVERSED_INSTANCES ||
+               type == PASS_BVH_INTERSECTIONS || type == PASS_RAY_BOUNCES) {
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float f = *src;
+          store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
+          pixels += pixels_stride;
+        }
+      }
+#endif
+      else {
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float f = *src;
+          store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
+          pixels += pixels_stride;
+        }
+      }
+    }
+    else if (components == 3) {
+      assert(pass.components == 4);
+
+      /* RGBA */
+      if (type == PASS_SHADOW) {
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          const float4 f = make_float4(src[0], src[1], src[2], src[3]);
+          const float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
+          store_pass_pixel3(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw);
+          pixels += pixels_stride;
+        }
+      }
+      else if (pass.divide_type != PASS_NONE) {
+        /* RGB lighting passes that need to divide out color */
+        int pass_offset_divide = 0;
+        for (size_t k = 0; k < params.passes.size(); k++) {
+          Pass &color_pass = params.passes[k];
+          if (color_pass.type == pass.divide_type)
+            break;
+          pass_offset_divide += color_pass.components;
+        }
+
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+          const float *src_divide = buffer.data() + pass_offset_divide + src_idx * pass_stride;
+
+          float3 f = make_float3(src[0], src[1], src[2]);
+          const float3 f_divide = make_float3(src_divide[0], src_divide[1], src_divide[2]);
+
+          f = safe_divide_even_color(f * exposure, f_divide);
+
+          store_pass_pixel3(pixels, pixels_type, f.x, f.y, f.z);
+          pixels += pixels_stride;
+        }
+      }
+      else {
+        /* RGB/vector */
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float3 f = make_float3(src[0], src[1], src[2]);
+          store_pass_pixel3(pixels,
+                            pixels_type,
+                            f.x * scale_exposure,
+                            f.y * scale_exposure,
+                            f.z * scale_exposure);
+          pixels += pixels_stride;
+        }
+      }
+    }
+    else if (components == 4) {
+      assert(pass.components == components);
+
+      /* RGBA */
+      if (type == PASS_SHADOW) {
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float4 f = make_float4(src[0], src[1], src[2], src[3]);
+          float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
+          store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, 1.0f);
+          pixels += pixels_stride;
+        }
+      }
+      else if (type == PASS_MOTION) {
+        /* need to normalize by number of samples accumulated for motion */
+        int pass_offset_weight = 0;
+        for (size_t k = 0; k < params.passes.size(); k++) {
+          Pass &color_pass = params.passes[k];
+          if (color_pass.type == PASS_MOTION_WEIGHT)
+            break;
+          pass_offset_weight += color_pass.components;
+        }
+
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+          const float *src_weight = buffer.data() + pass_offset_weight + src_idx * pass_stride;
+
+          float4 f = make_float4(src[0], src[1], src[2], src[3]);
+          float w = src_weight[0];
+          float invw = (w > 0.0f) ? 1.0f / w : 0.0f;
+
+          store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, f.w * invw);
+          pixels += pixels_stride;
+        }
+      }
+      else if (type == PASS_CRYPTOMATTE) {
+        for (int i = 0; i < size; i++) {
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float4 f = make_float4(src[0], src[1], src[2], src[3]);
+          /* x and z contain integer IDs, don't rescale them.
+             y and w contain matte weights, they get scaled. */
+          store_pass_pixel4(pixels, pixels_type, f.x, f.y * scale, f.z, f.w * scale);
+          pixels += pixels_stride;
+        }
+      }
+      else {
+        for (int i = 0; i < size; i++) {
+          if (sample_count && sample_count[i * pass_stride] < 0.0f) {
+            scale = (pass.filter) ? -1.0f / (sample_count[i * pass_stride]) : 1.0f;
+            scale_exposure = (pass.exposure) ? scale * exposure : scale;
+          }
+
+          const int src_idx = get_nearest_point_index(i, scalex, scaley, params.width, src_width);
+          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+
+          float4 f = make_float4(src[0], src[1], src[2], src[3]);
+
+          store_pass_pixel4(pixels,
+                            pixels_type,
+                            f.x * scale_exposure,
+                            f.y * scale_exposure,
+                            f.z * scale_exposure,
+                            /* clamp since alpha might be > 1.0 due to russian roulette */
+                            saturate(f.w * scale));
+
+          pixels += pixels_stride;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 bool RenderBuffers::get_pass_rect(

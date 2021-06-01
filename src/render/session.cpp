@@ -859,7 +859,17 @@ void Session::run_cpu()
       else if (need_copy_to_display_buffer) {
         /* Only copy to display_buffer if we do not reset, we don't
          * want to show the result of an incomplete sample */
-        copy_to_display_buffer(tile_manager.state.sample);
+        if (display_copy_cb) {
+          display_copy_cb(tile_manager.state.sample);
+          if (tile_manager.state.buffer.width > 0 && tile_manager.state.buffer.height > 0) {
+            display->draw_set(tile_manager.state.buffer.width, tile_manager.state.buffer.height);
+            last_display_time = time_dt();
+            display_outdated = false;
+          }
+        }
+        else {
+          copy_to_display_buffer(tile_manager.state.sample);
+        }
       }
 
       if (!device->error_message().empty())
@@ -1322,8 +1332,14 @@ void Session::collect_statistics(RenderStats *render_stats)
   }
 }
 
-thread_scoped_lock Session::acquire_display_lock() {
+thread_scoped_lock Session::acquire_display_lock()
+{
   return thread_scoped_lock(display_mutex);
+}
+
+thread_scoped_lock Session::acquire_buffers_lock()
+{
+  return thread_scoped_lock(buffers_mutex);
 }
 
 CCL_NAMESPACE_END

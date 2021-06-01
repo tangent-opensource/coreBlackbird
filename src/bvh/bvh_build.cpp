@@ -285,6 +285,23 @@ void BVHBuild::add_reference_points(BoundBox &root,
   const float3 *motion_data = (point_attr_mP) ? point_attr_mP->data_float3() : NULL;
   const size_t num_steps = pointcloud->get_motion_steps();
 
+  PrimitiveType prim_type = PRIMITIVE_NONE;
+  switch (pointcloud->get_point_style()) {
+    case POINT_CLOUD_POINT_SPHERE:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE :
+                                                  PRIMITIVE_POINT_SPHERE;
+      break;
+    case POINT_CLOUD_POINT_DISC:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC :
+                                                  PRIMITIVE_POINT_DISC;
+      break;
+    case POINT_CLOUD_POINT_DISC_ORIENTED:
+      prim_type = pointcloud->has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED :
+                                                  PRIMITIVE_POINT_DISC_ORIENTED;
+      break;
+  }
+  assert(prim_type);
+
   if (point_attr_mP == NULL) {
     /* Really simple logic for static points. */
     for (uint j = 0; j < num_points; j++) {
@@ -292,7 +309,7 @@ void BVHBuild::add_reference_points(BoundBox &root,
       BoundBox bounds = BoundBox::empty;
       point.bounds_grow(points_data, radius_data, bounds);
       if (bounds.valid()) {
-        references.push_back(BVHReference(bounds, j, i, PRIMITIVE_POINT));
+        references.push_back(BVHReference(bounds, j, i, prim_type));
         root.grow(bounds);
         center.grow(bounds.center2());
       }
@@ -311,8 +328,9 @@ void BVHBuild::add_reference_points(BoundBox &root,
       for (size_t step = 0; step < num_steps - 1; step++) {
         point.bounds_grow(motion_data + step * num_points, radius_data, bounds);
       }
+
       if (bounds.valid()) {
-        references.push_back(BVHReference(bounds, j, i, PRIMITIVE_MOTION_POINT));
+        references.push_back(BVHReference(bounds, j, i, prim_type));
         root.grow(bounds);
         center.grow(bounds.center2());
       }
@@ -350,8 +368,7 @@ void BVHBuild::add_reference_points(BoundBox &root,
         bounds.grow(curr_bounds);
         if (bounds.valid()) {
           const float prev_time = (float)(bvh_step - 1) * num_bvh_steps_inv_1;
-          references.push_back(
-              BVHReference(bounds, j, i, PRIMITIVE_MOTION_POINT, prev_time, curr_time));
+          references.push_back(BVHReference(bounds, j, i, prim_type, prev_time, curr_time));
           root.grow(bounds);
           center.grow(bounds.center2());
         }

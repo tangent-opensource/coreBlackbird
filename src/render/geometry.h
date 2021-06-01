@@ -163,6 +163,8 @@ class Geometry : public Node {
   }
 
   size_t element_size(AttributeElement element, AttributePrimitive prim);
+  TypeDesc standard_type(AttributeStandard std) const;
+  AttributeElement standard_element(AttributeStandard std) const;
 
   /* Updates */
   void tag_update(Scene *scene, bool rebuild);
@@ -198,7 +200,9 @@ class GeometryManager {
 
   void create_volume_mesh(Volume *volume, Progress &progress);
 
-  void create_motion_blur_geometry(const Scene* scene, Mesh *mesh, Progress &progress);
+  void create_motion_blur_geometry(
+      const Scene *scene, Geometry *geom, const float3 *P, const float *Pw, int num_points);
+  void create_motion_blur_geometry(const Scene *scene, Geometry *geom, Progress &progress);
 
   /* Attributes */
   void update_osl_attributes(Device *device,

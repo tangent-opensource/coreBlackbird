@@ -128,6 +128,8 @@ class ImageTextureNode : public ImageSlotTextureNode {
   NODE_SOCKET_API(float, projection_blend)
   NODE_SOCKET_API(bool, animated)
   NODE_SOCKET_API(float3, vector)
+  NODE_SOCKET_API(float3, vector_dx)
+  NODE_SOCKET_API(float3, vector_dy)
   NODE_SOCKET_API(array<int>, tiles)
 
  protected:

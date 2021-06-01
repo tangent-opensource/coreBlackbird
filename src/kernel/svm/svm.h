@@ -327,10 +327,10 @@ ccl_device_noinline void svm_eval_nodes(
         break;
 #  endif /* NODES_FEATURE(NODE_FEATURE_BUMP) */
       case NODE_TEX_IMAGE:
-        svm_node_tex_image(kg, sd, stack, node, &offset);
+        svm_node_tex_image(kg, sd, path_flag, stack, node, &offset);
         break;
       case NODE_TEX_IMAGE_BOX:
-        svm_node_tex_image_box(kg, sd, stack, node);
+        svm_node_tex_image_box(kg, sd, path_flag, stack, node);
         break;
       case NODE_TEX_NOISE:
         svm_node_tex_noise(kg, sd, stack, node.y, node.z, node.w, &offset);
@@ -437,7 +437,7 @@ ccl_device_noinline void svm_eval_nodes(
         svm_node_camera(kg, sd, stack, node.y, node.z, node.w);
         break;
       case NODE_TEX_ENVIRONMENT:
-        svm_node_tex_environment(kg, sd, stack, node);
+        svm_node_tex_environment(kg, sd, path_flag, stack, node);
         break;
       case NODE_TEX_SKY:
         svm_node_tex_sky(kg, sd, stack, node, &offset);

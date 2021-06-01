@@ -281,6 +281,7 @@ ccl_device void kernel_bake_evaluate(
       P,
       Ng,
       Ng,
+      NULL,
       shader,
       object,
       prim,

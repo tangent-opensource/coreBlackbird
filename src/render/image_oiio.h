@@ -26,7 +26,7 @@ class OIIOImageLoader : public ImageLoader {
   OIIOImageLoader(const string &filepath);
   ~OIIOImageLoader();
 
-  bool load_metadata(ImageMetaData &metadata) override;
+  bool load_metadata(const ImageDeviceFeatures &features, ImageMetaData &metadata) override;
 
   bool load_pixels(const ImageMetaData &metadata,
                    void *pixels,
@@ -38,6 +38,17 @@ class OIIOImageLoader : public ImageLoader {
   ustring osl_filepath() const override;
 
   bool equals(const ImageLoader &other) const override;
+
+  bool get_tx(const ustring &colorspace,
+              const ExtensionType &extension,
+              Progress *progress,
+              bool auto_convert,
+              const char *cache_path);
+
+  static bool make_tx(const string &filename,
+                      const string &outputfilename,
+                      const ustring &colorspace,
+                      ExtensionType extension);
 
  protected:
   ustring filepath;

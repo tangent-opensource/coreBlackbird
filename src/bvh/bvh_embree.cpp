@@ -678,14 +678,15 @@ void BVHEmbree::add_curves(const Object *ob, const Hair *hair, int i)
   rtcReleaseGeometry(geom_id);
 }
 
-void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
+void BVHEmbree::set_point_vertex_buffer(RTC_NAMESPACE::RTCGeometry geom_id,
                                         const PointCloud *pointcloud,
                                         const bool update)
 {
-  const Attribute *attr_mP = NULL;
+  const Attribute *attr_mP = NULL, *attr_mN = NULL;
   size_t num_motion_steps = 1;
   if (pointcloud->has_motion_blur()) {
     attr_mP = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+    attr_mN = pointcloud->attributes.find(ATTR_STD_MOTION_VERTEX_NORMAL);
     if (attr_mP) {
       num_motion_steps = pointcloud->get_motion_steps();
     }
@@ -693,16 +694,19 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
 
   const size_t num_points = pointcloud->num_points();
 
+  const Attribute *attr_N = pointcloud->attributes.find(ATTR_STD_VERTEX_NORMAL);
+
   /* Copy the point data to Embree */
   const int t_mid = (num_motion_steps - 1) / 2;
   const float *radius = pointcloud->get_radius().data();
   for (int t = 0; t < num_motion_steps; ++t) {
     const float3 *verts;
+    int t_;
     if (t == t_mid || attr_mP == NULL) {
       verts = pointcloud->get_points().data();
     }
     else {
-      int t_ = (t > t_mid) ? (t - 1) : t;
+      t_ = (t > t_mid) ? (t - 1) : t;
       verts = &attr_mP->data_float3()[t_ * num_points];
     }
 
@@ -724,7 +728,38 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
     }
 
     if (update) {
-      rtcUpdateGeometryBuffer(geom_id, RTC_BUFFER_TYPE_VERTEX, t);
+      rtcUpdateGeometryBuffer(geom_id, RTC_NAMESPACE::RTC_BUFFER_TYPE_VERTEX, t);
+    }
+
+    if (pointcloud->get_point_style() == POINT_CLOUD_POINT_DISC_ORIENTED && attr_N) {
+      const float3 *normals;
+      if (t == t_mid || attr_mN == NULL) {
+        normals = attr_N->data_float3();
+      }
+      else {
+        normals = &attr_mN->data_float3()[t_ * num_points];
+      }
+
+      float *rtc_normals = (update) ? (float *)rtcGetGeometryBufferData(
+                                          geom_id, RTC_NAMESPACE::RTC_BUFFER_TYPE_NORMAL, t) :
+                                      (float *)rtcSetNewGeometryBuffer(geom_id,
+                                                                       RTC_NAMESPACE::RTC_BUFFER_TYPE_NORMAL,
+                                                                       t,
+                                                                       RTC_NAMESPACE::RTC_FORMAT_FLOAT3,
+                                                                       sizeof(float) * 3,
+                                                                       num_points);
+      assert(rtc_normals);
+      if (rtc_normals) {
+        for (size_t j = 0; j < num_points; ++j) {
+          for (int k = 0; k < 3; ++k) {
+            rtc_normals[j * 3 + k] = normals[j][k];
+          }
+        }
+      }
+
+      if (update) {
+        rtcUpdateGeometryBuffer(geom_id, RTC_NAMESPACE::RTC_BUFFER_TYPE_NORMAL, t);
+      }
     }
   }
 }
@@ -742,7 +777,16 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
     }
   }
 
-  enum RTCGeometryType type = RTC_GEOMETRY_TYPE_SPHERE_POINT;
+  enum RTC_NAMESPACE::RTCGeometryType type;
+  if (pointcloud->get_point_style() == POINT_CLOUD_POINT_DISC_ORIENTED) {
+    type = RTC_NAMESPACE::RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT;
+  }
+  else if (pointcloud->get_point_style() == POINT_CLOUD_POINT_DISC) {
+    type = RTC_NAMESPACE::RTC_GEOMETRY_TYPE_DISC_POINT;
+  }
+  else {
+    type = RTC_NAMESPACE::RTC_GEOMETRY_TYPE_SPHERE_POINT;
+  }
 
   RTCGeometry geom_id = rtcNewGeometry(rtc_device, type);
 
@@ -791,7 +835,7 @@ void BVHEmbree::refit(Progress &progress)
       else if (geom->geometry_type == Geometry::POINTCLOUD) {
         PointCloud *pointcloud = static_cast<PointCloud *>(geom);
         if (pointcloud->num_points() > 0) {
-          RTCGeometry geom = rtcGetGeometry(scene, geom_id);
+          RTC_NAMESPACE::RTCGeometry geom = rtcGetGeometry(scene, geom_id);
           set_point_vertex_buffer(geom, pointcloud, true);
           rtcCommitGeometry(geom);
         }

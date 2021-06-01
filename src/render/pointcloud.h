@@ -21,6 +21,12 @@
 
 CCL_NAMESPACE_BEGIN
 
+enum PointCloudPointStyle {
+  POINT_CLOUD_POINT_SPHERE,
+  POINT_CLOUD_POINT_DISC,
+  POINT_CLOUD_POINT_DISC_ORIENTED
+};
+
 class PointCloud : public Geometry {
  public:
   NODE_DECLARE
@@ -52,6 +58,7 @@ class PointCloud : public Geometry {
                           size_t p) const;
   };
 
+  NODE_SOCKET_API(PointCloudPointStyle, point_style);
   NODE_SOCKET_API(array<float3>, points);
   NODE_SOCKET_API(array<float>, radius);
   NODE_SOCKET_API(array<int>, shader);
@@ -82,6 +89,11 @@ class PointCloud : public Geometry {
   size_t num_points() const
   {
     return points.size();
+  }
+
+  size_t num_attributes() const
+  {
+    return point_style == POINT_CLOUD_POINT_DISC_ORIENTED ? 2 : 1;
   }
 
   /* UDIM */
