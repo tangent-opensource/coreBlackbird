@@ -252,7 +252,7 @@ class Mesh : public Geometry {
     num_subd_faces = num_subd_faces_;
   }
 
-  size_t get_num_subd_verts()
+  size_t get_num_subd_verts() const
   {
     return num_subd_verts;
   }

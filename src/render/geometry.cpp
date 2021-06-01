@@ -293,7 +293,7 @@ void Geometry::tag_bvh_update(bool rebuild)
   }
 }
 
-size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
+size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim) const
 {
   //if (flags & ATTR_FINAL_SIZE) {
   //  return buffer.size() / data_sizeof();
@@ -309,33 +309,33 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
       break;
     case ATTR_ELEMENT_VERTEX:
       if (geometry_type == Geometry::MESH || geometry_type == Geometry::VOLUME) {
-        Mesh *mesh = static_cast<Mesh *>(this);
+        const Mesh *mesh = static_cast<const Mesh *>(this);
         size = mesh->get_verts().size() + mesh->get_num_ngons();
         if (prim == ATTR_PRIM_SUBD) {
           size -= mesh->get_num_subd_verts();
         }
       }
       else if (geometry_type == Geometry::POINTCLOUD) {
-        PointCloud *pointcloud = static_cast<PointCloud *>(this);
+        const PointCloud *pointcloud = static_cast<const PointCloud *>(this);
         size = pointcloud->num_points();
       }
       break;
     case ATTR_ELEMENT_VERTEX_MOTION:
       if (geometry_type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(this);
+        const Mesh *mesh = static_cast<const Mesh *>(this);
         size = (mesh->get_verts().size() + mesh->get_num_ngons()) * (mesh->motion_steps - 1);
         if (prim == ATTR_PRIM_SUBD) {
           size -= mesh->get_num_subd_verts() * (mesh->get_motion_steps() - 1);
         }
       }
       else if (geometry_type == Geometry::POINTCLOUD) {
-        PointCloud *pointcloud = static_cast<PointCloud *>(this);
+        const PointCloud *pointcloud = static_cast<const PointCloud *>(this);
         size = pointcloud->num_points() * (pointcloud->get_motion_steps() - 1);
       }
       break;
     case ATTR_ELEMENT_FACE:
       if (geometry_type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(this);
+        const Mesh *mesh = static_cast<const Mesh *>(this);
         if (prim == ATTR_PRIM_GEOMETRY) {
           size = mesh->num_triangles();
         }
@@ -347,7 +347,7 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
     case ATTR_ELEMENT_CORNER:
     case ATTR_ELEMENT_CORNER_BYTE:
       if (geometry_type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(this);
+        const Mesh *mesh = static_cast<const Mesh *>(this);
         if (prim == ATTR_PRIM_GEOMETRY) {
           size = mesh->num_triangles() * 3;
         }
@@ -358,19 +358,19 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
       break;
     case ATTR_ELEMENT_CURVE:
       if (geometry_type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(this);
+        const Hair *hair = static_cast<const Hair *>(this);
         size = hair->num_curves();
       }
       break;
     case ATTR_ELEMENT_CURVE_KEY:
       if (geometry_type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(this);
+        const Hair *hair = static_cast<const Hair *>(this);
         size = hair->get_curve_keys().size();
       }
       break;
     case ATTR_ELEMENT_CURVE_KEY_MOTION:
       if (geometry_type == Geometry::HAIR) {
-        Hair *hair = static_cast<Hair *>(this);
+        const Hair *hair = static_cast<const Hair *>(this);
         size = hair->get_curve_keys().size() * (hair->get_motion_steps() - 1);
       }
       break;

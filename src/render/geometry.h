@@ -162,7 +162,7 @@ class Geometry : public Node {
     return geometry_type == POINTCLOUD;
   }
 
-  size_t element_size(AttributeElement element, AttributePrimitive prim);
+  size_t element_size(AttributeElement element, AttributePrimitive prim) const;
   TypeDesc standard_type(AttributeStandard std) const;
   AttributeElement standard_element(AttributeStandard std) const;
 
