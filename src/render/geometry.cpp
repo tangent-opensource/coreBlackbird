@@ -323,8 +323,6 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
         const Mesh *mesh = static_cast<const Mesh *>(this);
         if (prim == ATTR_PRIM_GEOMETRY) {
           size = (mesh->num_triangles() * 3) * (mesh->motion_steps - 1);
-        } else {
-          // todo: Throw a warning 
         }
       }
       break;
@@ -353,7 +351,8 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
   return size;
 }
 
-TypeDesc Geometry::standard_type(AttributeStandard std) const {
+TypeDesc Geometry::standard_type(AttributeStandard std) const
+{
   if (type == Geometry::MESH) {
     switch (std) {
       case ATTR_STD_VERTEX_NORMAL:
@@ -459,7 +458,8 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const {
   return TypeUnknown;
 }
 
-AttributeElement Geometry::standard_element(AttributeStandard std) const {
+AttributeElement Geometry::standard_element(AttributeStandard std) const
+{
   if (type == Geometry::MESH) {
     switch (std) {
       case ATTR_STD_VERTEX_NORMAL:
@@ -542,7 +542,7 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const {
       case ATTR_STD_UV:
         return ATTR_ELEMENT_VERTEX;
       case ATTR_STD_GENERATED:
-        return  ATTR_ELEMENT_VERTEX;
+        return ATTR_ELEMENT_VERTEX;
       case ATTR_STD_MOTION_VERTEX_POSITION:
         return ATTR_ELEMENT_VERTEX_MOTION;
       case ATTR_STD_VERTEX_VELOCITY:
@@ -912,7 +912,8 @@ static void update_attribute_element_offset(Geometry *geom,
         else
           offset -= mesh->face_offset;
       }
-      else if (element == ATTR_ELEMENT_CORNER || element == ATTR_ELEMENT_CORNER_BYTE || element == ATTR_ELEMENT_CORNER_MOTION) {
+      else if (element == ATTR_ELEMENT_CORNER || element == ATTR_ELEMENT_CORNER_BYTE ||
+               element == ATTR_ELEMENT_CORNER_MOTION) {
         if (prim == ATTR_PRIM_GEOMETRY)
           offset -= 3 * mesh->prim_offset;
         else
