@@ -101,24 +101,6 @@ class RenderBuffers {
     Int32
   };
 
-  bool get_pass_rects_as(
-    const string *names,
-    float exposure,
-    /* Current number of samples comes from the session */
-    int sample,
-    const int* components,
-    /* Can be null */
-    uint8_t** pixels,
-    int* type,
-    /* Control the size of the renderbuffer rect that is valid
-     * which is essentially the display draw size */
-    int src_width,
-    int src_height,
-    const int* pixels_stride,
-    /* extra memory used for blitting */
-    std::vector<float>* aux_mem,
-    int n_aovs);
-
   /* Copies one of the render passes rect bounded by src_width, src_height
    * to a user specified buffer of the full size (buffer params) with
    * nearest point sampling. */
@@ -130,6 +112,8 @@ class RenderBuffers {
                         ComponentType type,
                         int src_width,
                         int src_height,
+                        int dst_width,
+                        int dst_height,
                         int pixels_stride);
 
   bool get_pass_rect(
