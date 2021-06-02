@@ -131,7 +131,7 @@ ccl_device_inline void triangle_dPdudv(KernelGlobals *kg,
   *dPdv = (p1 - p2);
 }
 
-ccl_device_inline void triangle_smooth_dNdudv(KernelGlobals *kg,
+ccl_device_inline void triangle_dNdudv(KernelGlobals *kg,
                                        int prim,
                                        int obj,
                                        ccl_addr_space float3 *dNdu,
@@ -141,35 +141,16 @@ ccl_device_inline void triangle_smooth_dNdudv(KernelGlobals *kg,
   const uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
 
   /* base pointer for the geometry's normal buffer - base primitive offset */
-  int vert_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
+  int normal_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
 
-  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.x));
-  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.y));
-  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, vert_offset + tri_vindex.z));
-
-  /* compute derivatives of N w.r.t. uv */
-  *dNdu = (n0 - n2);
-  *dNdv = (n1 - n2);
-}
-
-ccl_device_inline void triangle_corner_dNdudv(KernelGlobals *kg,
-                                       int prim,
-                                       int obj,
-                                       ccl_addr_space float3 *dNdu,
-                                       ccl_addr_space float3 *dNdv)
-{
-  /* base pointer for the geometry's normal buffer - base primitive offset */
-  int prim_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
-
-  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 0));
-  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 1));
-  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 2));
+  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.x));
+  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.y));
+  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.z));
 
   /* compute derivatives of N w.r.t. uv */
   *dNdu = (n0 - n2);
   *dNdv = (n1 - n2);
 }
-
 
 /* Reading attributes on various triangle elements */
 
@@ -200,7 +181,7 @@ ccl_device float triangle_attribute_float(
 
     return sd->u * f0 + sd->v * f1 + (1.0f - sd->u - sd->v) * f2;
   }
-  else if (desc.element == ATTR_ELEMENT_CORNER) {
+  else if (desc.element == ATTR_ELEMENT_CORNER || desc.element == ATTR_ELEMENT_CORNER_MOTION) {
     int tri = desc.offset + sd->prim * 3;
     float f0 = kernel_tex_fetch(__attributes_float, tri + 0);
     float f1 = kernel_tex_fetch(__attributes_float, tri + 1);
@@ -333,7 +314,7 @@ ccl_device float3 triangle_attribute_float3(KernelGlobals *kg,
 
     return sd->u * f0 + sd->v * f1 + (1.0f - sd->u - sd->v) * f2;
   }
-  else if (desc.element == ATTR_ELEMENT_CORNER || desc.element == ATTR_ELEMENT_CORNER_MOTION) {
+  else if (desc.element == ATTR_ELEMENT_CORNER) {
     int tri = desc.offset + sd->prim * 3;
     float3 f0, f1, f2;
 
