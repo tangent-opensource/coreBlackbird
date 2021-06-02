@@ -65,6 +65,7 @@ NODE_DEFINE(Camera)
 {
   NodeType *type = NodeType::add("camera", create);
 
+  SOCKET_FLOAT(fps, "FPS", 20);
   SOCKET_FLOAT(shuttertime, "Shutter Time", 1.0f);
 
   static NodeEnum motion_position_enum;
