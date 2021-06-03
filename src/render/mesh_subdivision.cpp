@@ -174,6 +174,10 @@ class OsdData {
     delete patch_map;
   }
 
+  const Far::PatchTable* get_patch_table() const {
+    return patch_table;
+  }
+
   void build_from_mesh(Mesh *mesh_)
   {
     mesh = mesh_;
@@ -311,7 +315,6 @@ class OsdData {
   }
 
   friend struct OsdPatch;
-  friend class Mesh;
 };
 
 /* ccl::Patch implementation that uses OpenSubdiv for eval */
@@ -633,7 +636,7 @@ void Mesh::tessellate(DiagSplit *split)
   if (need_packed_patch_table) {
     delete patch_table;
     patch_table = new PackedPatchTable;
-    patch_table->pack(osd_data.patch_table);
+    patch_table->pack(osd_data.get_patch_table());
   }
 #endif
 }
