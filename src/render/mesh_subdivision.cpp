@@ -178,6 +178,14 @@ class OsdData {
     return patch_table;
   }
 
+  const Far::PatchMap* get_patch_map() const {
+    return patch_map;
+  }
+
+  const vector<OsdValue<float3>>& get_vertices() const {
+    return verts;
+  }
+
   void build_from_mesh(Mesh *mesh_)
   {
     mesh = mesh_;
@@ -313,8 +321,6 @@ class OsdData {
 
     return min(isolation, 10);
   }
-
-  friend struct OsdPatch;
 };
 
 /* ccl::Patch implementation that uses OpenSubdiv for eval */
@@ -331,13 +337,16 @@ struct OsdPatch : Patch {
 
   void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override
   {
-    const Far::PatchTable::PatchHandle *handle = osd_data->patch_map->FindPatch(patch_index, u, v);
+    const Far::PatchTable* patch_table = osd_data->get_patch_table();
+    const Far::PatchMap* patch_map = osd_data->get_patch_map();
+
+    const Far::PatchTable::PatchHandle *handle = patch_map->FindPatch(patch_index, u, v);
     assert(handle);
 
     float p_weights[20], du_weights[20], dv_weights[20];
-    osd_data->patch_table->EvaluateBasis(*handle, u, v, p_weights, du_weights, dv_weights);
+    patch_table->EvaluateBasis(*handle, u, v, p_weights, du_weights, dv_weights);
 
-    Far::ConstIndexArray cv = osd_data->patch_table->GetPatchVertices(*handle);
+    Far::ConstIndexArray cv = patch_table->GetPatchVertices(*handle);
 
     float3 du, dv;
     if (P)
@@ -346,7 +355,7 @@ struct OsdPatch : Patch {
     dv = make_float3(0.0f, 0.0f, 0.0f);
 
     for (int i = 0; i < cv.size(); i++) {
-      float3 p = osd_data->verts[cv[i]].value;
+      float3 p = osd_data->get_vertices()[cv[i]].value;
 
       if (P)
         *P += p * p_weights[i];
