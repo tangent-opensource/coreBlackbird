@@ -343,6 +343,8 @@ bool Scene::need_global_attribute(AttributeStandard std)
     return need_motion() != MOTION_NONE;
   else if (std == ATTR_STD_MOTION_VERTEX_NORMAL)
     return need_motion() == MOTION_BLUR;
+  else if (std == ATTR_STD_MOTION_CORNER_NORMAL)
+    return need_motion() == MOTION_BLUR;
 
   return false;
 }
