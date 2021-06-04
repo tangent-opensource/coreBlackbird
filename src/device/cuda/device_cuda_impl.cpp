@@ -186,7 +186,7 @@ CUDADevice::CUDADevice(DeviceInfo &info, Stats &stats, Profiler &profiler, bool 
 
   functions.loaded = false;
 
-  /* Intialize CUDA. */
+  /* Initialize CUDA. */
   CUresult result = cuInit(0);
   if (result != CUDA_SUCCESS) {
     set_error(string_printf("Failed to initialize CUDA runtime (%s)", cuewErrorString(result)));
@@ -856,7 +856,7 @@ CUDADevice::CUDAMem *CUDADevice::generic_alloc(device_memory &mem, size_t pitch_
 
   void *shared_pointer = 0;
 
-  if (mem_alloc_result != CUDA_SUCCESS && can_map_host) {
+  if (mem_alloc_result != CUDA_SUCCESS && can_map_host && mem.type != MEM_DEVICE_ONLY) {
     if (mem.shared_pointer) {
       /* Another device already allocated host memory. */
       mem_alloc_result = CUDA_SUCCESS;
@@ -879,8 +879,14 @@ CUDADevice::CUDAMem *CUDADevice::generic_alloc(device_memory &mem, size_t pitch_
   }
 
   if (mem_alloc_result != CUDA_SUCCESS) {
-    status = " failed, out of device and host memory";
-    set_error("System is out of GPU and shared host memory");
+    if (mem.type == MEM_DEVICE_ONLY) {
+      status = " failed, out of device memory";
+      set_error("System is out of GPU memory");
+    }
+    else {
+      status = " failed, out of device and host memory";
+      set_error("System is out of GPU and shared host memory");
+    }
   }
 
   if (mem.name) {

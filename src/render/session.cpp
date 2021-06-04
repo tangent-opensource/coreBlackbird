@@ -243,11 +243,6 @@ void Session::run_gpu()
       }
     }
 
-    /* Don't go in pause mode when image was rendered with preview kernels
-     * When feature kernels become available the session will be reset. */
-    else if (no_tiles && kernel_state == DEVICE_KERNEL_WAITING_FOR_FEATURE_KERNEL) {
-      time_sleep(0.1);
-    }
     else if (no_tiles && kernel_state == DEVICE_KERNEL_FEATURE_KERNEL_AVAILABLE) {
       reset_gpu(tile_manager.params, params.samples);
     }
@@ -762,11 +757,6 @@ void Session::run_cpu()
       }
     }
 
-    /* Don't go in pause mode when preview kernels are used
-     * When feature kernels become available the session will be reset. */
-    else if (no_tiles && kernel_state == DEVICE_KERNEL_WAITING_FOR_FEATURE_KERNEL) {
-      time_sleep(0.1);
-    }
     else if (no_tiles && kernel_state == DEVICE_KERNEL_FEATURE_KERNEL_AVAILABLE) {
       reset_cpu(tile_manager.params, params.samples);
     }
@@ -1050,13 +1040,7 @@ bool Session::update_scene()
   BakeManager *bake_manager = scene->bake_manager;
 
   if (integrator->get_sampling_pattern() != SAMPLING_PATTERN_SOBOL || bake_manager->get_baking()) {
-    int aa_samples = tile_manager.num_samples;
-
-    integrator->set_aa_samples(aa_samples);
-
-    if (integrator->is_modified()) {
-      integrator->tag_update(scene);
-    }
+    integrator->set_aa_samples(tile_manager.num_samples);
   }
 
   bool kernel_switch_needed = false;

@@ -96,7 +96,7 @@ float4 PointCloud::Point::point_for_step(const float3 *points,
 
 NODE_DEFINE(PointCloud)
 {
-  NodeType *type = NodeType::add("pointcloud", create, NodeType::NONE, Geometry::node_base_type);
+  NodeType *type = NodeType::add("pointcloud", create, NodeType::NONE, Geometry::get_node_base_type());
 
   SOCKET_POINT_ARRAY(points, "Points", array<float3>());
   SOCKET_FLOAT_ARRAY(radius, "Radius", array<float>());
@@ -309,42 +309,55 @@ void PointCloud::pack(Scene *scene, float4 *packed_points, uint *packed_shader)
   }
 }
 
-void PointCloud::pack_primitives(PackedBVH &pack, int object, uint visibility)
+void PointCloud::pack_primitives(PackedBVH *pack, int object, uint visibility, PackFlags pack_flags)
 {
   if (points.empty()) {
     return;
   }
 
   const size_t num_prims = points.size();
-  pack.prim_tri_index.reserve(pack.prim_tri_index.size() + num_prims);
-  pack.prim_type.reserve(pack.prim_type.size() + num_prims);
-  pack.prim_visibility.reserve(pack.prim_visibility.size() + num_prims);
-  pack.prim_index.reserve(pack.prim_index.size() + num_prims);
-  pack.prim_object.reserve(pack.prim_object.size() + num_prims);
   // 'pack.prim_time' is unused by Embree and OptiX
 
-  uint prim_type = PRIMITIVE_NONE;
+  /* Separate loop as other arrays are not initialized if their packing is not required. */
+  if ((pack_flags & PackFlags::PACK_VISIBILITY) != 0) {
+    unsigned int *prim_visibility = &pack->prim_visibility[optix_prim_offset];
+    for (size_t k = 0; k < num_prims; ++k) {
+      prim_visibility[k] = visibility;
+    }
+  }
+
+  uint type = PRIMITIVE_NONE;
   switch (point_style) {
     case POINT_CLOUD_POINT_SPHERE:
-      prim_type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE : PRIMITIVE_POINT_SPHERE;
+      type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_SPHERE : PRIMITIVE_POINT_SPHERE;
       break;
     case POINT_CLOUD_POINT_DISC:
-      prim_type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC : PRIMITIVE_POINT_DISC;
+      type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC : PRIMITIVE_POINT_DISC;
       break;
     case POINT_CLOUD_POINT_DISC_ORIENTED:
-      prim_type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED : PRIMITIVE_POINT_DISC_ORIENTED;
+      type = has_motion_blur() ? PRIMITIVE_MOTION_POINT_DISC_ORIENTED : PRIMITIVE_POINT_DISC_ORIENTED;
       break;
     default:
       assert(false);
   }
 
-  for (size_t j = 0; j < num_prims; ++j) {
-    pack.prim_tri_index.push_back_reserved(-1);
-    pack.prim_type.push_back_reserved(geometry_type);
-    pack.prim_visibility.push_back_reserved(visibility);
-    pack.prim_index.push_back_reserved(j + prim_offset);
-    pack.prim_object.push_back_reserved(object);
+  if ((pack_flags & PackFlags::PACK_GEOMETRY) != 0) {
+    /* Use optix_prim_offset for indexing as those arrays also contain data for Hair geometries. */
+    unsigned int *prim_tri_index = &pack->prim_tri_index[optix_prim_offset];
+    int *prim_type = &pack->prim_type[optix_prim_offset];
+    int *prim_index = &pack->prim_index[optix_prim_offset];
+    int *prim_object = &pack->prim_object[optix_prim_offset];
+
+    for (size_t k = 0; k < num_prims; ++k) {
+      if ((pack_flags & PackFlags::PACK_GEOMETRY) != 0) {
+        prim_tri_index[k] = -1;
+        prim_type[k] = type;
+        prim_index[k] = prim_offset + k;
+        prim_object[k] = object;
+      }
+    }
   }
+
 }
 
 CCL_NAMESPACE_END

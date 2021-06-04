@@ -503,6 +503,7 @@ class RGBToBWNode : public ShaderNode {
 class ConvertNode : public ShaderNode {
  public:
   ConvertNode(SocketType::Type from, SocketType::Type to, bool autoconvert = false);
+  ConvertNode(const ConvertNode &other);
   SHADER_NODE_BASE_CLASS(ConvertNode)
 
   void constant_fold(const ConstantFolder &folder);
@@ -1601,10 +1602,22 @@ class SetNormalNode : public ShaderNode {
   NODE_SOCKET_API(float3, direction)
 };
 
-class OSLNode : public ShaderNode {
+class OSLNode final : public ShaderNode {
  public:
   static OSLNode *create(ShaderGraph *graph, size_t num_inputs, const OSLNode *from = NULL);
   ~OSLNode();
+
+  static void operator delete(void *ptr)
+  {
+    /* Override delete operator to silence new-delete-type-mismatch ASAN warnings
+     * regarding size mismatch in the destructor. This is intentional as we allocate
+     * extra space at the end of the node. */
+    ::operator delete(ptr);
+  }
+  static void operator delete(void *, void *)
+  {
+    /* Deliberately empty placement delete operator, to avoid MSVC warning C4291. */
+  }
 
   ShaderNode *clone(ShaderGraph *graph) const;
 
@@ -1614,7 +1627,7 @@ class OSLNode : public ShaderNode {
 
   SHADER_NODE_NO_CLONE_CLASS(OSLNode)
 
-  /* ideally we could beter detect this, but we can't query this now */
+  /* Ideally we could better detect this, but we can't query this now. */
   bool has_spatial_varying()
   {
     return true;

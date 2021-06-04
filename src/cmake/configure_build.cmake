@@ -31,11 +31,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(APPLE)
-	if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-		# 10.9 is our min. target, if you use higher sdk, weak linking happens.
-		set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "" FORCE)
-	endif()
-
 	if(NOT ${CMAKE_GENERATOR} MATCHES "Xcode")
 		# force CMAKE_OSX_DEPLOYMENT_TARGET for makefiles, will not work else ( cmake bug ? )
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")

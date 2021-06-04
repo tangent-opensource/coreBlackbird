@@ -15,6 +15,7 @@
 #
 
 # <pep8 compliant>
+from __future__ import annotations
 
 import bpy
 from bpy.props import (
@@ -645,6 +646,12 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         min=0, max=(1 << 24),
         default=1,
     )
+    preview_denoising_input_passes: EnumProperty(
+        name="Viewport Input Passes",
+        description="Passes used by the denoiser to distinguish noise from shader and geometry detail",
+        items=enum_denoising_input_passes,
+        default='RGB_ALBEDO',
+    )
 
     debug_reset_timeout: FloatProperty(
         name="Reset timeout",
@@ -870,17 +877,22 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Custom path for the texture cache"
     )
 
+    use_fast_gi: BoolProperty(
+        name="Fast GI Approximation",
+        description="Approximate diffuse indirect light with background tinted ambient occlusion. This provides fast alternative to full global illumination, for interactive viewport rendering or final renders with reduced quality",
+        default=False,
+    )
     ao_bounces: IntProperty(
         name="AO Bounces",
-        default=0,
-        description="Approximate indirect light with background tinted ambient occlusion at the specified bounce, 0 disables this feature",
+        default=1,
+        description="After this number of light bounces, use approximate global illumination. 0 disables this feature",
         min=0, max=1024,
     )
 
     ao_bounces_render: IntProperty(
         name="AO Bounces Render",
-        default=0,
-        description="Approximate indirect light with background tinted ambient occlusion at the specified bounce, 0 disables this feature",
+        default=1,
+        description="After this number of light bounces, use approximate global illumination. 0 disables this feature",
         min=0, max=1024,
     )
 
@@ -917,7 +929,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
             ('MEGA', "Mega", ""),
             ('SPLIT', "Split", ""),
         ),
-        update=_devices_update_callback
+        update=CyclesRenderSettings._devices_update_callback
     )
 
     debug_opencl_device_type: EnumProperty(
@@ -931,10 +943,8 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
             ('GPU', "GPU", ""),
             ('ACCELERATOR', "Accelerator", ""),
         ),
-        update=_devices_update_callback
+        update=CyclesRenderSettings._devices_update_callback
     )
-
-    del _devices_update_callback
 
     debug_use_opencl_debug: BoolProperty(name="Debug OpenCL", default=False)
 
@@ -1511,7 +1521,6 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         items=enum_denoising_input_passes,
         default='RGB_ALBEDO',
     )
-
     denoising_openimagedenoise_input_passes: EnumProperty(
         name="Input Passes",
         description="Passes used by the denoiser to distinguish noise from shader and geometry detail",
@@ -1557,7 +1566,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     compute_device_type: EnumProperty(
         name="Compute Device Type",
         description="Device to use for computation (rendering with Cycles)",
-        items=get_device_types,
+        items=CyclesPreferences.get_device_types,
     )
 
     devices: bpy.props.CollectionProperty(type=CyclesDeviceSettings)

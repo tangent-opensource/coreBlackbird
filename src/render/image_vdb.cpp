@@ -165,20 +165,28 @@ bool VDBImageLoader::load_metadata(const ImageDeviceFeatures &features, ImageMet
 
   Transform texture_to_index;
 #  ifdef WITH_NANOVDB
-  texture_to_index = transform_identity();
-#  else
-  openvdb::Coord min = bbox.min();
-  texture_to_index = transform_translate(min.x(), min.y(), min.z()) *
-                     transform_scale(dim.x(), dim.y(), dim.z());
+  if (nanogrid) {
+    texture_to_index = transform_identity();
+  }
+  else
 #  endif
+  {
+    openvdb::Coord min = bbox.min();
+    texture_to_index = transform_translate(min.x(), min.y(), min.z()) *
+                       transform_scale(dim.x(), dim.y(), dim.z());
+  }
 
 
   metadata.transform_3d = transform_inverse(index_to_object * texture_to_index);
   metadata.use_transform_3d = true;
 
+#  ifndef WITH_NANOVDB
+  (void)features;
+#  endif
   return true;
 #else
   (void)metadata;
+  (void)features;
   return false;
 #endif
 }

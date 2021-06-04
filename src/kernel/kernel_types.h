@@ -104,28 +104,24 @@ CCL_NAMESPACE_BEGIN
 #define __AO__
 #define __PASSES__
 #define __HAIR__
+#define __SVM__
+#define __EMISSION__
+#define __HOLDOUT__
+#define __MULTI_CLOSURE__
+#define __TRANSPARENT_SHADOWS__
+#define __BACKGROUND_MIS__
+#define __LAMP_MIS__
+#define __CAMERA_MOTION__
+#define __OBJECT_MOTION__
+#define __BAKING__
+#define __PRINCIPLED__
+#define __SUBSURFACE__
+#define __VOLUME__
+#define __VOLUME_SCATTER__
+#define __CMJ__
+#define __SHADOW_RECORD_ALL__
+#define __BRANCHED_PATH__
 #define __POINTCLOUD__
-
-/* Without these we get an AO render, used by OpenCL preview kernel. */
-#ifndef __KERNEL_AO_PREVIEW__
-#  define __SVM__
-#  define __EMISSION__
-#  define __HOLDOUT__
-#  define __MULTI_CLOSURE__
-#  define __TRANSPARENT_SHADOWS__
-#  define __BACKGROUND_MIS__
-#  define __LAMP_MIS__
-#  define __CAMERA_MOTION__
-#  define __OBJECT_MOTION__
-#  define __BAKING__
-#  define __PRINCIPLED__
-#  define __SUBSURFACE__
-#  define __VOLUME__
-#  define __VOLUME_SCATTER__
-#  define __CMJ__
-#  define __SHADOW_RECORD_ALL__
-#  define __BRANCHED_PATH__
-#endif
 
 /* Device specific features */
 #ifdef __KERNEL_CPU__
@@ -1555,9 +1551,9 @@ typedef struct KernelAreaLight {
   float axisu[3];
   float invarea;
   float axisv[3];
-  float pad1;
+  float tan_spread;
   float dir[3];
-  float pad2;
+  float normalize_spread;
 } KernelAreaLight;
 
 typedef struct KernelDistantLight {
@@ -1695,7 +1691,7 @@ enum RayState {
   RAY_UPDATE_BUFFER,
   /* Denotes ray needs to skip most surface shader work. */
   RAY_HAS_ONLY_VOLUME,
-  /* Donotes ray has hit background */
+  /* Denotes ray has hit background */
   RAY_HIT_BACKGROUND,
   /* Denotes ray has to be regenerated */
   RAY_TO_REGENERATE,
@@ -1753,8 +1749,8 @@ typedef struct WorkTile {
   ccl_global float *buffer;
 } WorkTile;
 
-/* Precoumputed sample table sizes for PMJ02 sampler. */
-#define NUM_PMJ_SAMPLES 64 * 64
+/* Pre-computed sample table sizes for PMJ02 sampler. */
+#define NUM_PMJ_SAMPLES (64 * 64)
 #define NUM_PMJ_PATTERNS 48
 
 CCL_NAMESPACE_END

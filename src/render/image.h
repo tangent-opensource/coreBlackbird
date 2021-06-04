@@ -199,7 +199,9 @@ class ImageManager {
 
   void collect_statistics(RenderStats *stats);
 
-  bool need_update;
+  void tag_update();
+
+  bool need_update() const;
 
   struct Image {
     ImageParams params;
@@ -219,6 +221,8 @@ class ImageManager {
   };
 
  private:
+  bool need_update_;
+
   ImageDeviceFeatures features;
 
   thread_mutex device_mutex;

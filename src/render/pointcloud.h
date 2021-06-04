@@ -101,7 +101,7 @@ class PointCloud : public Geometry {
 
   /* BVH */
   void pack(Scene *scene, float4 *packed_points, uint *packed_shader);
-  void pack_primitives(PackedBVH &pack, int object, uint visibility) override;
+  void pack_primitives(PackedBVH *pack, int object, uint visibility, PackFlags pack_flag) override;
 };
 
 CCL_NAMESPACE_END

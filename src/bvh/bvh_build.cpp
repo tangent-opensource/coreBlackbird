@@ -481,7 +481,7 @@ void BVHBuild::add_references(BVHRange &root)
 
   /* happens mostly on empty meshes */
   if (!bounds.valid())
-    bounds.grow(make_float3(0.0f, 0.0f, 0.0f));
+    bounds.grow(zero_float3());
 
   root = BVHRange(bounds, center, 0, references.size());
 }
@@ -837,7 +837,7 @@ BVHNode *BVHBuild::build_node(const BVHRange &range,
     unalignedSplitSAH = params.sah_node_cost * unaligned_split.bounds.half_area() +
                         params.sah_primitive_cost * unaligned_split.nodeSAH;
     /* TOOD(sergey): Check we can create leaf already. */
-    /* Check whether unaligned split is better than the regulat one. */
+    /* Check whether unaligned split is better than the regular one. */
     if (unalignedSplitSAH < splitSAH) {
       do_unalinged_split = true;
     }
@@ -976,7 +976,7 @@ BVHNode *BVHBuild::create_leaf_node(const BVHRange &range, const vector<BVHRefer
   vector<BVHReference, LeafReferenceStackAllocator> object_references;
 
   uint visibility[PRIMITIVE_NUM_TOTAL] = {0};
-  /* NOTE: Keep initializtion in sync with actual number of primitives. */
+  /* NOTE: Keep initialization in sync with actual number of primitives. */
   BoundBox bounds[PRIMITIVE_NUM_TOTAL] = {
       BoundBox::empty, BoundBox::empty, BoundBox::empty, BoundBox::empty};
   int ob_num = 0;
@@ -985,7 +985,7 @@ BVHNode *BVHBuild::create_leaf_node(const BVHRange &range, const vector<BVHRefer
   for (int i = 0; i < range.size(); i++) {
     const BVHReference &ref = references[range.start() + i];
     if (ref.prim_index() != -1) {
-      int type_index = bitscan(ref.prim_type() & PRIMITIVE_ALL);
+      uint32_t type_index = bitscan((uint32_t)(ref.prim_type() & PRIMITIVE_ALL));
       p_ref[type_index].push_back(ref);
       p_type[type_index].push_back(ref.prim_type());
       p_index[type_index].push_back(ref.prim_index());
