@@ -201,9 +201,9 @@ ccl_device_inline ProjectionTransform projection_perspective(float fov, float n,
   return scale * persp;
 }
 
-ccl_device_inline ProjectionTransform projection_orthographic(float znear, float zfar)
+ccl_device_inline ProjectionTransform projection_orthographic(float znear, float zfar, float overscan = 0.f)
 {
-  Transform t = transform_scale(1.0f, 1.0f, 1.0f / (zfar - znear)) *
+  Transform t = transform_scale(1.0f / (1.0f + overscan), 1.0f / (1.0f + overscan), 1.0f / (zfar - znear)) *
                 transform_translate(0.0f, 0.0f, -znear);
 
   return ProjectionTransform(t);
