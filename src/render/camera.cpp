@@ -270,7 +270,7 @@ void Camera::update(Scene *scene)
   /* screen to camera */
   ProjectionTransform cameratoscreen;
   if (type == CAMERA_PERSPECTIVE)
-    cameratoscreen = projection_perspective(fov, nearclip, farclip);
+    cameratoscreen = projection_perspective(fov, nearclip, farclip, overscan);
   else if (type == CAMERA_ORTHOGRAPHIC)
     cameratoscreen = projection_orthographic(nearclip, farclip, overscan);
   else
