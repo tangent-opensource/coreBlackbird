@@ -376,7 +376,7 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
   kfilm->pass_aov_color_num = 0;
 
   bool have_cryptomatte = false;
-  int num_lightgroups = 0;
+  uint num_lightgroups = 0;
 
   for (size_t i = 0; i < passes.size(); i++) {
     Pass &pass = passes[i];

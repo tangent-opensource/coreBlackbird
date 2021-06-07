@@ -307,7 +307,7 @@ ccl_device_inline void path_radiance_accum_emission(KernelGlobals *kg,
                                                     ccl_global float *buffer,
                                                     float3 throughput,
                                                     float3 value,
-                                                    uint lightgroups)
+                                                    uint lightgroup)
 {
 #ifdef __SHADOW_TRICKS__
   if (state->flag & PATH_RAY_SHADOW_CATCHER) {
@@ -329,8 +329,8 @@ ccl_device_inline void path_radiance_accum_emission(KernelGlobals *kg,
     else
       L->indirect += contribution;
 
-    if (lightgroups && buffer) {
-      kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * (lightgroups - 1),
+    if (lightgroup && buffer) {
+      kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * (lightgroup - 1),
                                 contribution);
     }
   }
@@ -414,7 +414,7 @@ ccl_device_inline void path_radiance_accum_light(KernelGlobals *kg,
                                                  BsdfEval *bsdf_eval,
                                                  float3 shadow,
                                                  float shadow_fac,
-                                                 uint lightgroups,
+                                                 uint lightgroup,
                                                  bool is_lamp)
 {
 #ifdef __SHADOW_TRICKS__
@@ -458,8 +458,8 @@ ccl_device_inline void path_radiance_accum_light(KernelGlobals *kg,
       L->indirect += full_contribution;
     }
 
-    if (lightgroups && buffer) {
-      kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * (lightgroups - 1),
+    if (lightgroup && buffer) {
+      kernel_write_pass_float3(buffer + kernel_data.film.pass_lightgroup + 4 * (lightgroup - 1),
                                 full_contribution);
     }
   }

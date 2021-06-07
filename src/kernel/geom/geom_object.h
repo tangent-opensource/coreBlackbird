@@ -242,9 +242,9 @@ ccl_device_inline float object_pass_id(KernelGlobals *kg, int object)
   return kernel_tex_fetch(__objects, object).pass_id;
 }
 
-/* Lightgroup bitfield of lamp */
+/* Lightgroup of lamp */
 
-ccl_device_inline uint lamp_lightgroups(KernelGlobals *kg, int lamp)
+ccl_device_inline uint lamp_lightgroup(KernelGlobals *kg, int lamp)
 {
   if (lamp == LAMP_NONE)
     return LIGHTGROUPS_NONE;
@@ -252,9 +252,9 @@ ccl_device_inline uint lamp_lightgroups(KernelGlobals *kg, int lamp)
   return kernel_tex_fetch(__lights, lamp).lightgroup;
 }
 
-/* Lightgroup bitfield of object */
+/* Lightgroup of object */
 
-ccl_device_inline uint object_lightgroups(KernelGlobals *kg, int object)
+ccl_device_inline uint object_lightgroup(KernelGlobals *kg, int object)
 {
   if (object == OBJECT_NONE)
     return LIGHTGROUPS_NONE;

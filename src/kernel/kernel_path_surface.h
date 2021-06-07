@@ -86,7 +86,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
       light_ray.time = sd->time;
 #    endif
       bool has_emission = false;
-      uint lightgroups;
+      uint lightgroup;
 
       if (kernel_data.integrator.use_direct_light && (sd->flag & SD_BSDF_HAS_EVAL)) {
         float light_u, light_v;
@@ -103,7 +103,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
         LightSample ls ccl_optional_struct_init;
         const int lamp = is_lamp ? i : -1;
         if (light_sample(kg, lamp, light_u, light_v, sd->time, sd->P, state->bounce, &ls)) {
-          lightgroups = ls.groups;
+          lightgroup = ls.group;
 
           /* The sampling probability returned by lamp_light_sample assumes that all lights were
            * sampled. However, this code only samples lamps, so if the scene also had mesh lights,
@@ -133,7 +133,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
                                     &L_light,
                                     shadow,
                                     num_samples_inv,
-                                    lightgroups,
+                                    lightgroup,
                                     is_lamp);
         }
         else {
@@ -238,7 +238,7 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
   BsdfEval L_light ccl_optional_struct_init;
   bool is_lamp = false;
   bool has_emission = false;
-  uint lightgroups;
+  uint lightgroup;
 
   light_ray.t = 0.0f;
 #    ifdef __OBJECT_MOTION__
@@ -251,7 +251,7 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
 
     LightSample ls ccl_optional_struct_init;
     if (light_sample(kg, -1, light_u, light_v, sd->time, sd->P, state->bounce, &ls)) {
-      lightgroups = ls.groups;
+      lightgroup = ls.group;
       float terminate = path_state_rng_light_termination(kg, state);
       has_emission = direct_emission(
           kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
@@ -267,7 +267,7 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
     if (!blocked) {
       /* accumulate */
       path_radiance_accum_light(
-          kg, L, state, buffer, throughput, &L_light, shadow, 1.0f, lightgroups, is_lamp);
+          kg, L, state, buffer, throughput, &L_light, shadow, 1.0f, lightgroup, is_lamp);
     }
     else {
       path_radiance_accum_total_light(L, state, throughput, &L_light);

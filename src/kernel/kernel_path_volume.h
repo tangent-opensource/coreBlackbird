@@ -32,7 +32,7 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
   BsdfEval L_light ccl_optional_struct_init;
   bool is_lamp = false;
   bool has_emission = false;
-  uint lightgroups;
+  uint lightgroup;
 
   light_ray.t = 0.0f;
 #    ifdef __OBJECT_MOTION__
@@ -46,7 +46,7 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
 
     LightSample ls ccl_optional_struct_init;
     if (light_sample(kg, -1, light_u, light_v, sd->time, sd->P, state->bounce, &ls)) {
-      lightgroups = ls.groups;
+      lightgroup = ls.group;
       float terminate = path_state_rng_light_termination(kg, state);
       has_emission = direct_emission(
           kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
@@ -61,7 +61,7 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
   if (has_emission && !blocked) {
     /* accumulate */
     path_radiance_accum_light(
-        kg, L, state, buffer, throughput, &L_light, shadow, 1.0f, lightgroups, is_lamp);
+        kg, L, state, buffer, throughput, &L_light, shadow, 1.0f, lightgroup, is_lamp);
   }
 #  endif /* __EMISSION__ */
 }
@@ -192,7 +192,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
       light_ray.time = sd->time;
 #      endif
       bool has_emission = false;
-      uint lightgroups;
+      uint lightgroup;
 
       float3 tp = throughput;
 
@@ -232,7 +232,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
         if (result == VOLUME_PATH_SCATTERED) {
           /* todo: split up light_sample so we don't have to call it again with new position */
           if (light_sample(kg, lamp, light_u, light_v, sd->time, sd->P, state->bounce, &ls)) {
-            lightgroups = ls.groups;
+            lightgroup = ls.group;
             if (double_pdf) {
               ls.pdf *= 2.0f;
             }
@@ -261,7 +261,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                                   &L_light,
                                   shadow,
                                   num_samples_inv,
-                                  lightgroups,
+                                  lightgroup,
                                   is_lamp);
       }
     }

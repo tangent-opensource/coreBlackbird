@@ -292,7 +292,7 @@ ccl_device_noinline_cpu void indirect_lamp_emission(KernelGlobals *kg,
       lamp_L *= mis_weight;
     }
 
-    path_radiance_accum_emission(kg, L, state, buffer, throughput, lamp_L, ls.groups);
+    path_radiance_accum_emission(kg, L, state, buffer, throughput, lamp_L, ls.group);
   }
 }
 

@@ -316,8 +316,8 @@ ccl_device_forceinline bool kernel_path_shader_apply(KernelGlobals *kg,
   if (sd->flag & SD_EMISSION) {
     float3 emission = indirect_primitive_emission(
         kg, sd, sd->ray_length, state->flag, state->ray_pdf);
-    uint lightgroups = object_lightgroups(kg, sd->object);
-    path_radiance_accum_emission(kg, L, state, buffer, throughput, emission, lightgroups);
+    uint lightgroup = object_lightgroup(kg, sd->object);
+    path_radiance_accum_emission(kg, L, state, buffer, throughput, emission, lightgroup);
   }
 #endif /* __EMISSION__ */
 

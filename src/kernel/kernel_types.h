@@ -1309,8 +1309,8 @@ typedef struct KernelFilm {
   int pass_aov_value;
   int pass_aov_color_num;
   int pass_aov_value_num;
-  int pass_lightgroup;
-  int num_lightgroups;
+  uint pass_lightgroup;
+  uint num_lightgroups;
   int pad1, pad2, pad3;
 
   /* XYZ to rendering color space transform. float4 instead of float3 to
@@ -1373,7 +1373,7 @@ typedef struct KernelBackground {
 
   int use_mis;
 
-  int lightgroup;
+  uint lightgroup;
 
   int pad1, pad2, pad3;
 } KernelBackground;
