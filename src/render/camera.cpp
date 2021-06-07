@@ -391,9 +391,9 @@ void Camera::update(Scene *scene)
        * calculation above.
        */
       ProjectionTransform screentocamera_pre = projection_inverse(
-          projection_perspective(fov_pre, nearclip, farclip));
+          projection_perspective(fov_pre, nearclip, farclip, overscan));
       ProjectionTransform screentocamera_post = projection_inverse(
-          projection_perspective(fov_post, nearclip, farclip));
+          projection_perspective(fov_post, nearclip, farclip, overscan));
 
       kcam->perspective_pre = screentocamera_pre * rastertoscreen;
       kcam->perspective_post = screentocamera_post * rastertoscreen;
