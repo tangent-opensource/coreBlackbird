@@ -318,6 +318,14 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
         }
       }
       break;
+    case ATTR_ELEMENT_CORNER_MOTION:
+      if (type == Geometry::MESH) {
+        const Mesh *mesh = static_cast<const Mesh *>(this);
+        if (prim == ATTR_PRIM_GEOMETRY) {
+          size = (mesh->num_triangles() * 3) * (mesh->motion_steps - 1);
+        }
+      }
+      break;
     case ATTR_ELEMENT_CURVE:
       if (type == Geometry::HAIR) {
         const Hair *hair = static_cast<const Hair *>(this);
@@ -371,6 +379,8 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const
       case ATTR_STD_MOTION_VERTEX_POSITION:
         return TypeDesc::TypePoint;
       case ATTR_STD_MOTION_VERTEX_NORMAL:
+        return TypeDesc::TypeNormal;
+      case ATTR_STD_MOTION_CORNER_NORMAL:
         return TypeDesc::TypeNormal;
       case ATTR_STD_PTEX_FACE_ID:
         return TypeDesc::TypeFloat;
@@ -478,6 +488,8 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const
         return ATTR_ELEMENT_VERTEX_MOTION;
       case ATTR_STD_MOTION_VERTEX_NORMAL:
         return ATTR_ELEMENT_VERTEX_MOTION;
+      case ATTR_STD_MOTION_CORNER_NORMAL:
+        return ATTR_ELEMENT_CORNER_MOTION;
       case ATTR_STD_PTEX_FACE_ID:
         return ATTR_ELEMENT_FACE;
       case ATTR_STD_PTEX_UV:
@@ -904,7 +916,8 @@ static void update_attribute_element_offset(Geometry *geom,
         else
           offset -= mesh->face_offset;
       }
-      else if (element == ATTR_ELEMENT_CORNER || element == ATTR_ELEMENT_CORNER_BYTE) {
+      else if (element == ATTR_ELEMENT_CORNER || element == ATTR_ELEMENT_CORNER_BYTE ||
+               element == ATTR_ELEMENT_CORNER_MOTION) {
         if (prim == ATTR_PRIM_GEOMETRY)
           offset -= 3 * mesh->prim_offset;
         else
