@@ -1322,7 +1322,7 @@ typedef struct KernelFilm {
 
   int pass_bake_primitive;
   int pass_bake_differential;
-  //int pad;
+  // int pad;
 
 #ifdef __KERNEL_DEBUG__
   int pass_bvh_traversed_nodes;

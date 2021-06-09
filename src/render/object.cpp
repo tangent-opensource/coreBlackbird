@@ -443,7 +443,9 @@ static float object_surface_area(UpdateObjectTransformState *state,
   return surface_area;
 }
 
-void ObjectManager::device_update_object_transform(UpdateObjectTransformState *state, Object *ob, const Scene *scene)
+void ObjectManager::device_update_object_transform(UpdateObjectTransformState *state,
+                                                   Object *ob,
+                                                   const Scene *scene)
 {
   KernelObject &kobject = state->objects[ob->index];
   Transform *object_motion_pass = state->object_motion_pass;

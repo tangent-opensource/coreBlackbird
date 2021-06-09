@@ -68,7 +68,8 @@ ccl_device_noinline bool kernel_split_branched_path_volume_indirect_light_iter(K
 #  ifdef __VOLUME_SCATTER__
     if (result == VOLUME_PATH_SCATTERED) {
       /* direct lighting */
-      kernel_path_volume_connect_light(kg, sd, emission_sd, *tp, &branched_state->path_state, buffer, L);
+      kernel_path_volume_connect_light(
+          kg, sd, emission_sd, *tp, &branched_state->path_state, buffer, L);
 
       /* indirect light bounce */
       if (!kernel_path_volume_bounce(kg, sd, tp, ps, &L->state, pray)) {

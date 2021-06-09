@@ -689,7 +689,8 @@ vector<Pass> BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay,
   /* TODO: Update existing lights when rendering with multiple render layers. */
   lightgroups.clear();
   list<string> lg_names;
-  RNA_BEGIN (&crp, lightgroup, "lightgroups") {
+  RNA_BEGIN(&crp, lightgroup, "lightgroups")
+  {
     BL::Collection b_collection(RNA_pointer_get(&lightgroup, "collection"));
     bool include_world = get_boolean(lightgroup, "include_world");
 
