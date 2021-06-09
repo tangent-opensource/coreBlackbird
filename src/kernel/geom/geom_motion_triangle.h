@@ -77,14 +77,14 @@ ccl_device_inline void motion_triangle_verts_for_step(KernelGlobals *kg,
 }
 
 ccl_device_inline void motion_triangle_vertex_normals_for_step(KernelGlobals *kg,
-                                                        uint4 tri_vindex,
-                                                        int obj,
-                                                        int obj_flags,
-                                                        int offset,
-                                                        int numverts,
-                                                        int numsteps,
-                                                        int step,
-                                                        float3 normals[3])
+                                                               uint4 tri_vindex,
+                                                               int obj,
+                                                               int obj_flags,
+                                                               int offset,
+                                                               int numverts,
+                                                               int numsteps,
+                                                               int step,
+                                                               float3 normals[3])
 {
   if (step == numsteps) {
     int normal_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
@@ -108,14 +108,14 @@ ccl_device_inline void motion_triangle_vertex_normals_for_step(KernelGlobals *kg
 }
 
 ccl_device_inline void motion_triangle_corner_normals_for_step(KernelGlobals *kg,
-                                                        int obj,
-                                                        int obj_flags,
-                                                        int prim,
-                                                        int offset,
-                                                        int numverts,
-                                                        int numsteps,
-                                                        int step,
-                                                        float3 normals[3])
+                                                               int obj,
+                                                               int obj_flags,
+                                                               int prim,
+                                                               int offset,
+                                                               int numverts,
+                                                               int numsteps,
+                                                               int step,
+                                                               float3 normals[3])
 {
   if (step == numsteps) {
     int normal_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
@@ -190,7 +190,7 @@ ccl_device_inline float3 motion_triangle_smooth_normal(
 
     /* fetch normals */
     motion_triangle_corner_normals_for_step(
-      kg, object, object_flags, prim, offset, numverts, numsteps, step, normals);
+        kg, object, object_flags, prim, offset, numverts, numsteps, step, normals);
     motion_triangle_corner_normals_for_step(
         kg, object, object_flags, prim, offset, numverts, numsteps, step + 1, next_normals);
   }
@@ -204,10 +204,9 @@ ccl_device_inline float3 motion_triangle_smooth_normal(
     uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
 
     motion_triangle_vertex_normals_for_step(
-      kg, tri_vindex, object, object_flags, offset, numverts, numsteps, step, normals);
+        kg, tri_vindex, object, object_flags, offset, numverts, numsteps, step, normals);
     motion_triangle_vertex_normals_for_step(
         kg, tri_vindex, object, object_flags, offset, numverts, numsteps, step + 1, next_normals);
-
   }
 
   /* interpolate between steps */

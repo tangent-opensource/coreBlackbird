@@ -131,11 +131,8 @@ ccl_device_inline void triangle_dPdudv(KernelGlobals *kg,
   *dPdv = (p1 - p2);
 }
 
-ccl_device_inline void triangle_dNdudv(KernelGlobals *kg,
-                                       int prim,
-                                       int obj,
-                                       ccl_addr_space float3 *dNdu,
-                                       ccl_addr_space float3 *dNdv)
+ccl_device_inline void triangle_dNdudv(
+    KernelGlobals *kg, int prim, int obj, ccl_addr_space float3 *dNdu, ccl_addr_space float3 *dNdv)
 {
   /* load triangle vertices */
   const uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);

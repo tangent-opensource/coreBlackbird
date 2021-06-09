@@ -96,9 +96,16 @@ ccl_device_noinline void motion_triangle_shader_setup(
 
     /* Fetch corner coordinates. */
     motion_triangle_corner_normals_for_step(
-      kg, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step, normals);
-    motion_triangle_corner_normals_for_step(
-      kg, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step + 1, next_normals);    
+        kg, sd->object, sd->object_flag, sd->prim, offset, numverts, numsteps, step, normals);
+    motion_triangle_corner_normals_for_step(kg,
+                                            sd->object,
+                                            sd->object_flag,
+                                            sd->prim,
+                                            offset,
+                                            numverts,
+                                            numsteps,
+                                            step + 1,
+                                            next_normals);
   }
   else if (sd->shader & SHADER_SMOOTH_NORMAL) {
     /* Find attribute. */
@@ -107,10 +114,18 @@ ccl_device_noinline void motion_triangle_shader_setup(
     kernel_assert(offset != ATTR_STD_NOT_FOUND);
     /* Fetch vertex coordinates. */
     motion_triangle_vertex_normals_for_step(
-      kg, tri_vindex, sd->object, sd->object_flag, offset, numverts, numsteps, step, normals);
-    motion_triangle_vertex_normals_for_step(
-      kg, tri_vindex, sd->object, sd->object_flag, offset, numverts, numsteps, step + 1, next_normals);
-  } else {
+        kg, tri_vindex, sd->object, sd->object_flag, offset, numverts, numsteps, step, normals);
+    motion_triangle_vertex_normals_for_step(kg,
+                                            tri_vindex,
+                                            sd->object,
+                                            sd->object_flag,
+                                            offset,
+                                            numverts,
+                                            numsteps,
+                                            step + 1,
+                                            next_normals);
+  }
+  else {
     return;
   }
 
