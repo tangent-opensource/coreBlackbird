@@ -202,6 +202,17 @@ static void xml_read_camera(XMLReadState &state, xml_node node)
 
   cam->need_update = true;
   cam->update(state.scene);
+
+  // dicing camera
+  Camera* dicing_cam = state.scene->dicing_camera;
+  dicing_cam->width = cam->width;
+  dicing_cam->height = cam->height;
+  dicing_cam->full_width = cam->full_width;
+  dicing_cam->full_height = cam->full_height;
+
+  dicing_cam->matrix = state.tfm;
+  dicing_cam->need_update = true;
+  dicing_cam->update(state.scene);
 }
 
 /* Shader */
