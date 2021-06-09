@@ -156,14 +156,14 @@ template<> void OsdValue<uchar4>::AddWithWeight(OsdValue<uchar4> const &src, flo
 /* class for holding OpenSubdiv data used during tessellation */
 
 class OsdData {
-  Mesh *mesh;
+  const Mesh *mesh;
   vector<OsdValue<float3>> verts;
   Far::TopologyRefiner *refiner;
   Far::PatchTable *patch_table;
   Far::PatchMap *patch_map;
 
  public:
-  OsdData() : mesh(NULL), refiner(NULL), patch_table(NULL), patch_map(NULL)
+  OsdData() : mesh(nullptr), refiner(nullptr), patch_table(nullptr), patch_map(nullptr)
   {
   }
 
@@ -186,7 +186,7 @@ class OsdData {
     return verts;
   }
 
-  void build_from_mesh(Mesh *mesh_)
+  void build_from_mesh(const Mesh *mesh_)
   {
     mesh = mesh_;
 
@@ -325,14 +325,14 @@ class OsdData {
 
 /* ccl::Patch implementation that uses OpenSubdiv for eval */
 
-struct OsdPatch : Patch {
-  OsdData *osd_data;
-
-  OsdPatch()
+class OsdPatch final : public Patch {
+ public:
+  OsdPatch(const OsdData *data, int _patch_index, int _face_index, int _shader, bool _from_ngon)
+    : osd_data(data)
   {
-  }
-  OsdPatch(OsdData *data) : osd_data(data)
-  {
+    patch_index = _patch_index;
+    face_index = _face_index;
+    from_ngon = _from_ngon;
   }
 
   void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override
@@ -374,6 +374,9 @@ struct OsdPatch : Patch {
       *N = (t != 0.0f) ? *N / t : make_float3(0.0f, 0.0f, 1.0f);
     }
   }
+
+ private:
+  const OsdData *osd_data;
 };
 
 #endif
