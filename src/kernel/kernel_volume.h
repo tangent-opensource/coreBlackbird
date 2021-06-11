@@ -1640,7 +1640,7 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
     t -= logf(1 - xi) * inv_max_extinction;
 
     if (t > ray->t) {
-      return result;
+      break;
     }
 
     pos = ray->P + ray->D * t;
@@ -1649,7 +1649,7 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
     if (pos.x < root.bmin.x || pos.x > root.bmax.x || pos.y < root.bmin.y || pos.y > root.bmax.y ||
         pos.z < root.bmin.z || pos.z > root.bmax.z) {
       /* Ray ended up outside root bbox */
-      return result;
+      break;
     }
 
     /* Sum all volume attributes */
@@ -1685,16 +1685,18 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(
     if (scattering_sample * inv_max_extinction > zeta) {
       *throughput *= albedo;
       result = VOLUME_PATH_SCATTERED;
+      ray->P = pos;
       return result;
     }
     else if (absorption_sample * inv_max_extinction > zeta) {
       state->flag = PATH_RAY_TERMINATE;
       *throughput = make_float3(0.0f);
       result = VOLUME_PATH_ATTENUATED;
+      ray->P = pos;
       return result;
     }
 
-  } while (result != VOLUME_PATH_MISSED);
+  } while (true);
 
   return result;
 }
