@@ -160,7 +160,7 @@ ccl_device_noinline
     // TODO stefan curves
     /* dNdu/dNdv */
     float3 dNdu, dNdv;
-    triangle_dNdudv(kg, sd->prim, &dNdu, &dNdv);
+    triangle_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
     sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
     sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
 
@@ -245,7 +245,7 @@ ccl_device_inline
     /* dNdu/dNdv */
     if (sd->shader & SHADER_SMOOTH_NORMAL && sd->type & PRIMITIVE_TRIANGLE) {
       float3 dNdu, dNdv;
-      triangle_dNdudv(kg, sd->prim, &dNdu, &dNdv);
+      triangle_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
       sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
       sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
     }
@@ -401,7 +401,7 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
 #ifdef __DNDU__
 
     float3 dNdu, dNdv;
-    triangle_dNdudv(kg, sd->prim, &dNdu, &dNdv);
+    triangle_dNdudv(kg, sd->prim, sd->object, &dNdu, &dNdv);
     sd->dNdx = dNdu * sd->du.dx + dNdv * sd->dv.dx;
     sd->dNdy = dNdu * sd->du.dy + dNdv * sd->dv.dy;
 

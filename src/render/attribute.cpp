@@ -273,6 +273,8 @@ const char *Attribute::standard_name(AttributeStandard std)
       return "motion_P";
     case ATTR_STD_MOTION_VERTEX_NORMAL:
       return "motion_N";
+    case ATTR_STD_MOTION_CORNER_NORMAL:
+      return "motion_Nc";
     case ATTR_STD_PARTICLE:
       return "particle";
     case ATTR_STD_CURVE_INTERCEPT:

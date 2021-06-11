@@ -768,10 +768,11 @@ typedef enum AttributeElement {
   ATTR_ELEMENT_VERTEX_MOTION = (1 << 4),
   ATTR_ELEMENT_CORNER = (1 << 5),
   ATTR_ELEMENT_CORNER_BYTE = (1 << 6),
-  ATTR_ELEMENT_CURVE = (1 << 7),
-  ATTR_ELEMENT_CURVE_KEY = (1 << 8),
-  ATTR_ELEMENT_CURVE_KEY_MOTION = (1 << 9),
-  ATTR_ELEMENT_VOXEL = (1 << 10)
+  ATTR_ELEMENT_CORNER_MOTION = (1 << 7),
+  ATTR_ELEMENT_CURVE = (1 << 8),
+  ATTR_ELEMENT_CURVE_KEY = (1 << 9),
+  ATTR_ELEMENT_CURVE_KEY_MOTION = (1 << 10),
+  ATTR_ELEMENT_VOXEL = (1 << 11)
 } AttributeElement;
 
 typedef enum AttributeStandard {
@@ -793,9 +794,9 @@ typedef enum AttributeStandard {
    * be generated using either or both the velocity/acceleration. */
   ATTR_STD_VERTEX_VELOCITY,
   ATTR_STD_VERTEX_ACCELERATION,
-
   ATTR_STD_MOTION_VERTEX_POSITION,
   ATTR_STD_MOTION_VERTEX_NORMAL,
+  ATTR_STD_MOTION_CORNER_NORMAL,
   ATTR_STD_PARTICLE,
   ATTR_STD_CURVE_INTERCEPT,
   ATTR_STD_CURVE_RANDOM,

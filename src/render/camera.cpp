@@ -211,6 +211,8 @@ Camera::Camera() : Node(get_node_type())
   dx = zero_float3();
   dy = zero_float3();
 
+  overscan = 0.f;
+
   need_device_update = true;
   need_flags_update = true;
   previous_need_motion = -1;
@@ -286,9 +288,9 @@ void Camera::update(Scene *scene)
   /* Screen to camera. */
   ProjectionTransform cameratoscreen;
   if (camera_type == CAMERA_PERSPECTIVE)
-    cameratoscreen = projection_perspective(fov, nearclip, farclip);
+    cameratoscreen = projection_perspective(fov, nearclip, farclip, overscan);
   else if (camera_type == CAMERA_ORTHOGRAPHIC)
-    cameratoscreen = projection_orthographic(nearclip, farclip);
+    cameratoscreen = projection_orthographic(nearclip, farclip, overscan);
   else
     cameratoscreen = projection_identity();
 
@@ -410,9 +412,9 @@ void Camera::update(Scene *scene)
        * calculation above.
        */
       ProjectionTransform screentocamera_pre = projection_inverse(
-          projection_perspective(fov_pre, nearclip, farclip));
+          projection_perspective(fov_pre, nearclip, farclip, overscan));
       ProjectionTransform screentocamera_post = projection_inverse(
-          projection_perspective(fov_post, nearclip, farclip));
+          projection_perspective(fov_post, nearclip, farclip, overscan));
 
       kcam->perspective_pre = screentocamera_pre * rastertoscreen;
       kcam->perspective_post = screentocamera_post * rastertoscreen;
