@@ -69,8 +69,8 @@ class Attribute {
   void resize(size_t num_elements);
 
   size_t data_sizeof() const;
-  size_t element_size(Geometry *geom, AttributePrimitive prim) const;
-  size_t buffer_size(Geometry *geom, AttributePrimitive prim) const;
+  size_t element_size(const Geometry *geom, AttributePrimitive prim) const;
+  size_t buffer_size(const Geometry *geom, AttributePrimitive prim) const;
 
   char *data()
   {

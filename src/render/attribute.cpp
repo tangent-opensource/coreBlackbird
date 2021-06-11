@@ -153,7 +153,7 @@ size_t Attribute::data_sizeof() const
     return sizeof(float3);
 }
 
-size_t Attribute::element_size(Geometry *geom, AttributePrimitive prim) const
+size_t Attribute::element_size(const Geometry *geom, AttributePrimitive prim) const
 {
   if (flags & ATTR_FINAL_SIZE) {
     return buffer.size() / data_sizeof();
@@ -162,7 +162,7 @@ size_t Attribute::element_size(Geometry *geom, AttributePrimitive prim) const
   return geom->element_size(element, prim);
 }
 
-size_t Attribute::buffer_size(Geometry *geom, AttributePrimitive prim) const
+size_t Attribute::buffer_size(const Geometry *geom, AttributePrimitive prim) const
 {
   return element_size(geom, prim) * data_sizeof();
 }
