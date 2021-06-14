@@ -167,6 +167,14 @@ size_t Attribute::buffer_size(const Geometry *geom, AttributePrimitive prim) con
   return element_size(geom, prim) * data_sizeof();
 }
 
+size_t Attribute::element_size(const AttributeSet& attribute_set) const {
+  return element_size(attribute_set.geometry, attribute_set.prim);
+}
+
+size_t Attribute::buffer_size(const AttributeSet& attribute_set) const {
+  return buffer_size(attribute_set.geometry, attribute_set.prim);
+}
+
 bool Attribute::same_storage(TypeDesc a, TypeDesc b)
 {
   if (a == b)
