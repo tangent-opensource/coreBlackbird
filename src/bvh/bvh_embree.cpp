@@ -256,6 +256,46 @@ static void rtc_filter_occluded_func_thick_curve(const RTC_NAMESPACE::RTCFilterF
   rtc_filter_occluded_func(args);
 }
 
+static void rtc_filter_func_transparent_points(const RTCFilterFunctionNArguments *args)
+{
+  const RTCRay *ray = (RTCRay *)args->ray;
+  RTCHit *hit = (RTCHit *)args->hit;
+  CCLIntersectContext *ctx = ((IntersectContext *)args->context)->userRayExt;
+  KernelGlobals *kg = ctx->kg;
+
+  /* Resolve the object id and geometry */
+  /* todo: this is duplicated from kernels/bvh_embree.cpp */
+  int prim, object;
+  if (hit->instID[0] != RTC_INVALID_GEOMETRY_ID) {
+    RTCScene inst_scene = (RTCScene)rtcGetGeometryUserData(rtcGetGeometry(ctx->kg->__data.bvh.scene, hit->instID[0]));
+    prim = hit->primID + (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(inst_scene, hit->geomID));
+    object = hit->instID[0] / 2;
+  }
+  else {
+    prim = hit->primID + (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(ctx->kg->__data.bvh.scene, hit->geomID));
+    object = kernel_tex_fetch(__prim_object, prim);
+  }
+
+  /* Read opacity  */
+  const uint opacity_offset = kernel_tex_fetch(__object_opacity_offset, object);
+  const float opacity = kernel_tex_fetch(__points_opacity, opacity_offset);
+  // printf("filter geometry object %d prim %d offset %d opacity %f\n", object, prim, opacity_offset, (double)opacity);
+
+  /* Unique random number per ray per geometry */
+  // const float rand_opacity = cmj_randfloat(cmj_hash_simple(ctx->ps_rng_hash, (uint)object), (uint)prim);
+  uint hash = (uint&)ctx->ps_rng_hash;
+  const float rand_opacity = cmj_randfloat(hash, cmj_hash(object, prim));
+  // uint rand_u32 = ((uint&)ctx->ps_rng_hash) ^ ((uint&)object);
+  // const float rand_opacity = (float&)rand_u32;
+  
+  // printf("rand opacity %f\n", rand_opacity);
+  if (rand_opacity > 0.735) {
+    *args->valid = 0;
+  }
+
+  // printf("point filter %f\n", ctx->rand_transparent);
+}
+
 static size_t unaccounted_mem = 0;
 
 static bool rtc_memory_monitor_func(void *userPtr, const ssize_t bytes, const bool)
@@ -1167,6 +1207,11 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   rtcSetGeometryUserData(geom_id, (void *)prim_offset);
   rtcSetGeometryOccludedFilterFunction(geom_id, rtc_filter_occluded_func);
   rtcSetGeometryMask(geom_id, ob->visibility_for_tracing());
+
+  if (!pointcloud->opacity.empty()) {
+    printf("REGISTERING OPACITY FILTER\n");
+    rtcSetGeometryIntersectFilterFunction(geom_id, rtc_filter_func_transparent_points);
+  }
 
   rtcCommitGeometry(geom_id);
   rtcAttachGeometryByID(scene, geom_id, i * 2);

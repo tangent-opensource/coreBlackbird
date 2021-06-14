@@ -43,6 +43,9 @@ ccl_device void bsdf_transparent_setup(ShaderData *sd, const float3 weight, int 
     return;
   }
 
+  // printf("bsdf_transparent_setup sample weight %f weight %f %f %f\n", 
+    // sample_weight, weight[0], weight[1], weight[2]);
+
   if (sd->flag & SD_TRANSPARENT) {
     sd->closure_transparent_extinction += weight;
 

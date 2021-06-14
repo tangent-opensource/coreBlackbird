@@ -1205,6 +1205,7 @@ void GeometryManager::device_update_mesh(
   size_t curve_size = 0;
 
   size_t point_size = 0;
+  size_t point_opacity_size = 0;
 
   size_t patch_size = 0;
 
@@ -1243,6 +1244,10 @@ void GeometryManager::device_update_mesh(
     else if (geom->is_pointcloud()) {
       PointCloud *pointcloud = static_cast<PointCloud *>(geom);
       point_size += pointcloud->num_points() * pointcloud->num_attributes();
+
+      if (!pointcloud->opacity.empty()) {
+        point_opacity_size += pointcloud->num_points();
+      }
     }
   }
 
@@ -1371,6 +1376,33 @@ void GeometryManager::device_update_mesh(
 
     dscene->points.copy_to_device();
     dscene->points_shader.copy_to_device();
+
+    if (point_opacity_size) {
+      printf("Allocating point opacities %d total objects %d\n", point_opacity_size, (int)scene->objects.size());
+      float *points_opacity = dscene->points_opacity.alloc(point_opacity_size);
+      uint* object_opacity_offset = dscene->object_opacity_offset.alloc(scene->objects.size());
+
+      /* This is separated because the loop above is over geometry while we want to loop ober objects */
+      uint opacity_offset = 0;
+      for (size_t i = 0; i < scene->objects.size(); ++i) {
+        Geometry* geom = scene->objects[i]->geometry;
+        object_opacity_offset[i] = opacity_offset;
+
+        if (geom && geom->is_pointcloud()) {
+          PointCloud* pointcloud = static_cast<PointCloud *>(geom);
+
+          for (size_t j = 0; j < pointcloud->num_points(); ++j) {
+            points_opacity[opacity_offset + j] = pointcloud->opacity[j];
+          }
+
+          opacity_offset += pointcloud->num_points();
+        }
+      }
+
+      assert(opacity_offset);
+      dscene->points_opacity.copy_to_device();
+      dscene->object_opacity_offset.copy_to_device();
+    }
   }
 
   if (patch_size != 0) {
@@ -1860,6 +1892,8 @@ void GeometryManager::device_free(Device *device, DeviceScene *dscene)
   dscene->curve_keys.free();
   dscene->points.free();
   dscene->points_shader.free();
+  dscene->points_opacity.free();
+  dscene->object_opacity_offset.free();
   dscene->attributes_map.free();
   dscene->attributes_float.free();
   dscene->attributes_float2.free();

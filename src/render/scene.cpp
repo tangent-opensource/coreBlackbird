@@ -63,6 +63,8 @@ DeviceScene::DeviceScene(Device *device)
       curve_keys(device, "__curve_keys", MEM_GLOBAL),
       points(device, "__points", MEM_GLOBAL),
       points_shader(device, "__points_shader", MEM_GLOBAL),
+      points_opacity(device, "__points_opacity", MEM_GLOBAL),
+      object_opacity_offset(device, "__object_opacity_offset", MEM_GLOBAL),
       objects(device, "__objects", MEM_GLOBAL),
       object_motion_pass(device, "__object_motion_pass", MEM_GLOBAL),
       object_motion(device, "__object_motion", MEM_GLOBAL),

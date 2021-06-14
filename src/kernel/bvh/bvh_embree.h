@@ -49,6 +49,9 @@ struct CCLIntersectContext {
   int local_object_id;
   uint *lcg_state;
 
+  /* for transparent rays */
+  float ps_rng_hash;
+
   CCLIntersectContext(KernelGlobals *kg_, RayType type_)
   {
     kg = kg_;
@@ -59,6 +62,7 @@ struct CCLIntersectContext {
     local_isect = NULL;
     local_object_id = -1;
     lcg_state = NULL;
+    ps_rng_hash = 0;
   }
 };
 

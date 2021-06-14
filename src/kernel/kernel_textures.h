@@ -58,6 +58,8 @@ KERNEL_TEX(float4, __curve_keys)
 /* curves */
 KERNEL_TEX(float4, __points)
 KERNEL_TEX(uint, __points_shader)
+KERNEL_TEX(float, __points_opacity)
+KERNEL_TEX(uint, __object_opacity_offset)
 
 /* attributes */
 KERNEL_TEX(uint4, __attributes_map)

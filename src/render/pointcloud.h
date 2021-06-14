@@ -64,6 +64,7 @@ class PointCloud : public Geometry {
   array<float3> points;
   array<float> radius;
   array<int> shader;
+  array<float> opacity;
 
   /* NODE_SOCKET_API(array<float3>, points);
    * NODE_SOCKET_API(array<float>, radius);
