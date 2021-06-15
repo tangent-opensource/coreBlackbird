@@ -483,7 +483,7 @@ ccl_device int bsdf_microfacet_multi_ggx_sample(KernelGlobals *kg,
 {
   const MicrofacetBsdf *bsdf = (const MicrofacetBsdf *)sc;
 
-  if (len(bsdf->N) < FLT_EPSILON) {
+  if (len_squared(bsdf->N) < FLT_EPSILON) {
     *eval = make_float3(.0f);
     *pdf = 0.0f;
     return LABEL_NONE;
