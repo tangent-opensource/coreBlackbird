@@ -79,7 +79,7 @@ void EdgeDice::add_triangle(const Patch *patch, int v0, int v1, int v2)
   tri_offset++;
 }
 
-void EdgeDice::stitch_triangles(Subpatch &sub, int edge)
+void EdgeDice::stitch_triangles(const Subpatch &sub, int edge)
 {
   int Mu = max(sub.edge_u0.T, sub.edge_u1.T);
   int Mv = max(sub.edge_v0.T, sub.edge_v1.T);
@@ -132,7 +132,7 @@ QuadDice::QuadDice(const SubdParams &params_) : EdgeDice(params_)
 {
 }
 
-float2 QuadDice::map_uv(Subpatch &sub, float u, float v)
+float2 QuadDice::map_uv(const Subpatch &sub, float u, float v) const
 {
   /* map UV from subpatch to patch parametric coordinates */
   float2 d0 = interp(sub.c00, sub.c01, v);
@@ -140,7 +140,7 @@ float2 QuadDice::map_uv(Subpatch &sub, float u, float v)
   return interp(d0, d1, u);
 }
 
-float3 QuadDice::eval_projected(Subpatch &sub, float u, float v)
+float3 QuadDice::eval_projected(const Subpatch &sub, float u, float v) const
 {
   float2 uv = map_uv(sub, u, v);
   float3 P;
@@ -152,12 +152,12 @@ float3 QuadDice::eval_projected(Subpatch &sub, float u, float v)
   return P;
 }
 
-void QuadDice::set_vert(Subpatch &sub, int index, float u, float v)
+void QuadDice::set_vert(const Subpatch &sub, int index, float u, float v)
 {
   EdgeDice::set_vert(sub.patch, index, map_uv(sub, u, v));
 }
 
-void QuadDice::set_side(Subpatch &sub, int edge)
+void QuadDice::set_side(const Subpatch &sub, int edge)
 {
   int t = sub.edges[edge].T;
 
@@ -195,7 +195,7 @@ float QuadDice::quad_area(const float3 &a, const float3 &b, const float3 &c, con
   return triangle_area(a, b, d) + triangle_area(a, d, c);
 }
 
-float QuadDice::scale_factor(Subpatch &sub, int Mu, int Mv)
+float QuadDice::scale_factor(const Subpatch &sub, int Mu, int Mv)
 {
   /* estimate area as 4x largest of 4 quads */
   float3 P[3][3];
@@ -224,7 +224,7 @@ float QuadDice::scale_factor(Subpatch &sub, int Mu, int Mv)
   return S;
 }
 
-void QuadDice::add_grid(Subpatch &sub, int Mu, int Mv, int offset)
+void QuadDice::add_grid(const Subpatch &sub, int Mu, int Mv, int offset)
 {
   /* create inner grid */
   float du = 1.0f / (float)Mu;
@@ -250,7 +250,7 @@ void QuadDice::add_grid(Subpatch &sub, int Mu, int Mv, int offset)
   }
 }
 
-void QuadDice::dice(Subpatch &sub)
+void QuadDice::dice(const Subpatch &sub)
 {
   /* compute inner grid size with scale factor */
   int Mu = max(sub.edge_u0.T, sub.edge_u1.T);
