@@ -160,6 +160,8 @@ class Camera : public Node {
   float3 frustum_right_normal;
   float3 frustum_top_normal;
 
+  float overscan;
+
   /* update */
   bool need_update;
   bool need_device_update;
