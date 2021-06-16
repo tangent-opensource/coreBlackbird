@@ -1919,6 +1919,11 @@ void GeometryManager::create_motion_blur_geometry(
     A = attr_A->data_float3();
   }
 
+  /* If we don't have anything to generate motion blur with, we just disable it */
+  if (!attr_V && !attr_A) {
+    return;
+  }
+
   /* Rounding up to include center step */
   geom->motion_steps += (geom->motion_steps % 2) ? 0 : 1;
 
