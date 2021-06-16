@@ -1921,6 +1921,8 @@ void GeometryManager::create_motion_blur_geometry(
 
   /* If we don't have anything to generate motion blur with, we just disable it */
   if (!attr_V && !attr_A) {
+    geom->motion_steps = 1;
+    geom->use_motion_blur = false;
     return;
   }
 
