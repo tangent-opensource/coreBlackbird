@@ -240,7 +240,7 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
 
     /* Get the probabilistic volume scatter result */
     VolumeIntegrateResult result = kernel_volume_traverse_octree(
-        kg, state, &volume_ray, &volume_sd, &tp);
+        kg, state, &volume_ray, L, &volume_sd, &tp);
 
 #        ifdef __VOLUME_SCATTER__
     if (result == VOLUME_PATH_SCATTERED) {
