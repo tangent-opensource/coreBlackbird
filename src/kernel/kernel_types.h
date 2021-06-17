@@ -1523,8 +1523,9 @@ typedef struct KernelObject {
   float dupli_uv[2];
 
   int numkeys;
-  int numsteps;
   int numverts;
+  uint16_t num_tfm_steps;
+  uint16_t num_dfm_steps;
 
   uint patch_map_offset;
   uint attribute_map_offset;
