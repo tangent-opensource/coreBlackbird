@@ -17,11 +17,14 @@
 #ifndef __SUBD_PATCH_H__
 #define __SUBD_PATCH_H__
 
-#include "util/util_boundbox.h"
 #include "util/util_types.h"
 
 CCL_NAMESPACE_BEGIN
 
+///
+/// Abstract interface to represent a patch used by DiagSplit to evaluate properties on the
+/// limit surface.
+///
 class Patch {
  public:
   Patch() : patch_index(0), shader(0), from_ngon(false)
@@ -30,8 +33,34 @@ class Patch {
 
   virtual ~Patch() = default;
 
+  /// Limit surface evaluation
   virtual void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const = 0;
 
+  ///
+  int get_patch_index() const {
+    return patch_index;
+  }
+
+  int get_shader() const {
+    return shader;
+  }
+
+  bool get_from_ngon() const {
+    return from_ngon;
+  }
+
+ protected:
+  Patch() : patch_index(0), shader(0), from_ngon(false)
+  {
+  }
+
+  Patch(const Patch&) = default;
+  Patch(Patch&&) = default;
+
+  Patch& operator=(const Patch&) = default;
+  Patch& operator=(Patch&&) = default;
+
+ public: // TODO: make protected to follow RAII and const correctness
   int patch_index;
   int shader;
   bool from_ngon;

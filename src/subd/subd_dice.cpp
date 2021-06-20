@@ -73,8 +73,8 @@ void EdgeDice::add_triangle(const Patch *patch, int v0, int v1, int v2)
 {
   Mesh *mesh = params.mesh;
 
-  mesh->add_triangle(v0 + vert_offset, v1 + vert_offset, v2 + vert_offset, patch->shader, true);
-  params.mesh->triangle_patch[params.mesh->num_triangles() - 1] = patch->patch_index;
+  mesh->add_triangle(v0 + vert_offset, v1 + vert_offset, v2 + vert_offset, patch->get_shader(), true);
+  mesh->triangle_patch[params.mesh->num_triangles() - 1] = patch->get_patch_index();
 
   tri_offset++;
 }
