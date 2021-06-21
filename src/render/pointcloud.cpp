@@ -102,6 +102,12 @@ NODE_DEFINE(PointCloud)
   SOCKET_FLOAT_ARRAY(radius, "Radius", array<float>());
   SOCKET_INT_ARRAY(shader, "Shader", array<int>());
 
+  static NodeEnum style_enum;
+  style_enum.insert("sphere", POINT_CLOUD_POINT_SPHERE);
+  style_enum.insert("disc", POINT_CLOUD_POINT_DISC);
+  style_enum.insert("disc_oriented", POINT_CLOUD_POINT_DISC_ORIENTED);
+  SOCKET_ENUM(point_style, "PointStyle", style_enum, POINT_CLOUD_POINT_DISC);
+
   return type;
 }
 
