@@ -323,15 +323,6 @@ ccl_device_inline void store_pass_pixel4(
   }
 }
 
-ccl_device_inline int get_nearest_point_index(
-    int dst_idx, float scalex, float scaley, int dst_width, int src_width)
-{
-  const int dst_x = dst_idx % dst_width;
-  const int dst_y = dst_idx / dst_width;  // If only dst_width was a power of two..
-  const int src_x = (int)(dst_x * scalex);
-  const int src_y = (int)(dst_y * scaley);
-  return src_y * src_width + src_x;
-}
 }  // namespace
 
 bool RenderBuffers::get_pass_rect_as(const string &name,
@@ -402,46 +393,54 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 
       /* Scalar */
       if (type == PASS_DEPTH) {
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          float f = *src;
-          store_pass_pixel1(pixels, pixels_type, (f == 0.0f) ? 1e10f : f * scale_exposure);
-          pixels += pixels_stride;
+            float f = *src;
+            store_pass_pixel1(pixels, pixels_type, (f == 0.0f) ? 1e10f : f * scale_exposure);
+            pixels += pixels_stride;
+          }
         }
       }
       else if (type == PASS_MIST) {
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          float f = *src;
-          store_pass_pixel1(pixels, pixels_type, saturate(f * scale_exposure));
-          pixels += pixels_stride;
+            float f = *src;
+            store_pass_pixel1(pixels, pixels_type, saturate(f * scale_exposure));
+            pixels += pixels_stride;
+          }
         }
       }
 #ifdef WITH_CYCLES_DEBUG
       else if (type == PASS_BVH_TRAVERSED_NODES || type == PASS_BVH_TRAVERSED_INSTANCES ||
                type == PASS_BVH_INTERSECTIONS || type == PASS_RAY_BOUNCES) {
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          float f = *src;
-          store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
-          pixels += pixels_stride;
+            float f = *src;
+            store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
+            pixels += pixels_stride;
+          }
         }
       }
 #endif
       else {
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          float f = *src;
-          store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
-          pixels += pixels_stride;
+            float f = *src;
+            store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
+            pixels += pixels_stride;
+          }
         }
       }
     }
@@ -450,14 +449,16 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 
       /* RGBA */
       if (type == PASS_SHADOW) {
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          const float4 f = make_float4(src[0], src[1], src[2], src[3]);
-          const float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
-          store_pass_pixel3(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw);
-          pixels += pixels_stride;
+            const float4 f = make_float4(src[0], src[1], src[2], src[3]);
+            const float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
+            store_pass_pixel3(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw);
+            pixels += pixels_stride;
+          }
         }
       }
       else if (pass.divide_type != PASS_NONE) {
@@ -470,33 +471,37 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
           pass_offset_divide += color_pass.components;
         }
 
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
-          const float *src_divide = buffer.data() + pass_offset_divide + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+            const float *src_divide = buffer.data() + pass_offset_divide + src_idx * pass_stride;
 
-          float3 f = make_float3(src[0], src[1], src[2]);
-          const float3 f_divide = make_float3(src_divide[0], src_divide[1], src_divide[2]);
+            float3 f = make_float3(src[0], src[1], src[2]);
+            const float3 f_divide = make_float3(src_divide[0], src_divide[1], src_divide[2]);
 
-          f = safe_divide_even_color(f * exposure, f_divide);
+            f = safe_divide_even_color(f * exposure, f_divide);
 
-          store_pass_pixel3(pixels, pixels_type, f.x, f.y, f.z);
-          pixels += pixels_stride;
+            store_pass_pixel3(pixels, pixels_type, f.x, f.y, f.z);
+            pixels += pixels_stride;
+          }
         }
       }
       else {
         /* RGB/vector */
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          float3 f = make_float3(src[0], src[1], src[2]);
-          store_pass_pixel3(pixels,
-                            pixels_type,
-                            f.x * scale_exposure,
-                            f.y * scale_exposure,
-                            f.z * scale_exposure);
-          pixels += pixels_stride;
+            float3 f = make_float3(src[0], src[1], src[2]);
+            store_pass_pixel3(pixels,
+                              pixels_type,
+                              f.x * scale_exposure,
+                              f.y * scale_exposure,
+                              f.z * scale_exposure);
+            pixels += pixels_stride;
+          }
         }
       }
     }
@@ -505,14 +510,16 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 
       /* RGBA */
       if (type == PASS_SHADOW) {
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          float4 f = make_float4(src[0], src[1], src[2], src[3]);
-          float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
-          store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, 1.0f);
-          pixels += pixels_stride;
+            float4 f = make_float4(src[0], src[1], src[2], src[3]);
+            float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
+            store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, 1.0f);
+            pixels += pixels_stride;
+          }
         }
       }
       else if (type == PASS_MOTION) {
@@ -525,52 +532,58 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
           pass_offset_weight += color_pass.components;
         }
 
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
-          const float *src_weight = buffer.data() + pass_offset_weight + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+            const float *src_weight = buffer.data() + pass_offset_weight + src_idx * pass_stride;
 
-          float4 f = make_float4(src[0], src[1], src[2], src[3]);
-          float w = src_weight[0];
-          float invw = (w > 0.0f) ? 1.0f / w : 0.0f;
+            float4 f = make_float4(src[0], src[1], src[2], src[3]);
+            float w = src_weight[0];
+            float invw = (w > 0.0f) ? 1.0f / w : 0.0f;
 
-          store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, f.w * invw);
-          pixels += pixels_stride;
+            store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, f.w * invw);
+            pixels += pixels_stride;
+          }
         }
       }
       else if (type == PASS_CRYPTOMATTE) {
-        for (int i = 0; i < size; i++) {
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
-          float4 f = make_float4(src[0], src[1], src[2], src[3]);
-          /* x and z contain integer IDs, don't rescale them.
-             y and w contain matte weights, they get scaled. */
-          store_pass_pixel4(pixels, pixels_type, f.x, f.y * scale, f.z, f.w * scale);
-          pixels += pixels_stride;
+            float4 f = make_float4(src[0], src[1], src[2], src[3]);
+            /* x and z contain integer IDs, don't rescale them.
+              y and w contain matte weights, they get scaled. */
+            store_pass_pixel4(pixels, pixels_type, f.x, f.y * scale, f.z, f.w * scale);
+            pixels += pixels_stride;
+          }
         }
       }
       else {
-        for (int i = 0; i < size; i++) {
-          if (sample_count && sample_count[i * pass_stride] < 0.0f) {
-            scale = (pass.filter) ? -1.0f / (sample_count[i * pass_stride]) : 1.0f;
-            scale_exposure = (pass.exposure) ? scale * exposure : scale;
+        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+          for (int x = 0; x < dst_width; x++) {
+            const int src_idx = src_y + static_cast<int>(x * scalex);
+
+            if (sample_count && sample_count[src_idx * pass_stride] < 0.0f) {
+              scale = (pass.filter) ? -1.0f / (sample_count[src_idx * pass_stride]) : 1.0f;
+              scale_exposure = (pass.exposure) ? scale * exposure : scale;
+            }
+
+            const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
+            float4 f = make_float4(src[0], src[1], src[2], src[3]);
+
+            store_pass_pixel4(pixels,
+                              pixels_type,
+                              f.x * scale_exposure,
+                              f.y * scale_exposure,
+                              f.z * scale_exposure,
+                              /* clamp since alpha might be > 1.0 due to russian roulette */
+                              saturate(f.w * scale));
+
+            pixels += pixels_stride;
           }
-
-          const int src_idx = get_nearest_point_index(i, scalex, scaley, dst_width, src_width);
-          const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
-
-          float4 f = make_float4(src[0], src[1], src[2], src[3]);
-
-          store_pass_pixel4(pixels,
-                            pixels_type,
-                            f.x * scale_exposure,
-                            f.y * scale_exposure,
-                            f.z * scale_exposure,
-                            /* clamp since alpha might be > 1.0 due to russian roulette */
-                            saturate(f.w * scale));
-
-          pixels += pixels_stride;
         }
       }
     }
