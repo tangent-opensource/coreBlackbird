@@ -31,8 +31,8 @@
 #  include <opensubdiv/far/patchMap.h>
 #  include <opensubdiv/far/patchTableFactory.h>
 #  include <opensubdiv/far/primvarRefiner.h>
-#  include <opensubdiv/far/stencilTable.h>
 #  include <opensubdiv/far/ptexIndices.h>
+#  include <opensubdiv/far/stencilTable.h>
 #  include <opensubdiv/far/stencilTableFactory.h>
 #  include <opensubdiv/far/topologyRefinerFactory.h>
 
@@ -266,7 +266,6 @@ class OsdData {
 
     /* create patch table */
     Far::PatchTableFactory::Options patch_options;
-//    patch_options.generateAllLevels = true;
     patch_options.SetEndCapType(Far::PatchTableFactory::Options::ENDCAP_GREGORY_BASIS);
     patch_table = std::unique_ptr<Far::PatchTable>(
         Far::PatchTableFactory::Create(*refiner, patch_options));
@@ -432,17 +431,17 @@ class OsdPatch final : public Patch {
     patch_index = patch_param.GetFaceId();
 
     // ptex index -> input face
-    const Mesh::SubdFace& face = get_face();
+    const Mesh::SubdFace &face = get_face();
 
     shader = face.shader;
     from_ngon = face.num_corners != osd_data->get_face_size();
   }
 
-  OsdPatch(const OsdData* data, int ptex_index) : osd_data{data}
+  OsdPatch(const OsdData *data, int ptex_index) : osd_data{data}
   {
     patch_index = ptex_index;
 
-    const Mesh::SubdFace& face = get_face();
+    const Mesh::SubdFace &face = get_face();
     shader = face.shader;
     from_ngon = face.num_corners != osd_data->get_face_size();
   }
@@ -512,6 +511,163 @@ class OsdPatch final : public Patch {
   const OsdData *osd_data;
 };
 
+class OsdPatchDataBuilder final : public Mesh::PatchDataBuilder {
+ public:
+  OsdPatchDataBuilder(const OsdData &osd_data, const Mesh *mesh)
+  {
+    build_vertex_indices(osd_data, mesh);
+    build_corner_indices(osd_data, mesh);
+  }
+
+  void pack(const Mesh *mesh,
+            uint *patch_data,
+            uint vert_offset,
+            uint face_offset,
+            uint corner_offset) const override
+  {
+    size_t num_faces = mesh->subd_faces.size();
+    int ngons = 0;
+    size_t patch_index = 0;
+
+    for (size_t f = 0; f < num_faces; f++) {
+      const Mesh::SubdFace &face = mesh->subd_faces[f];
+
+      if (face.is_quad()) {
+        *(patch_data++) = vertex_data[patch_index * 4 + 0] + vert_offset;
+        *(patch_data++) = vertex_data[patch_index * 4 + 1] + vert_offset;
+        *(patch_data++) = vertex_data[patch_index * 4 + 2] + vert_offset;
+        *(patch_data++) = vertex_data[patch_index * 4 + 3] + vert_offset;
+
+        *(patch_data++) = corner_data[patch_index * 4 + 0] + face_offset;
+        *(patch_data++) = corner_data[patch_index * 4 + 1];
+        *(patch_data++) = corner_data[patch_index * 4 + 2] + corner_offset;
+        *(patch_data++) = corner_data[patch_index * 4 + 3];
+
+        ++patch_index;
+      }
+      else {
+        for (int i = 0; i < face.num_corners; i++) {
+
+          // vertex data indices
+          *(patch_data++) = vertex_data[patch_index * 4 + 0] + vert_offset;
+          *(patch_data++) = vertex_data[patch_index * 4 + 1] + vert_offset;
+          *(patch_data++) = vertex_data[patch_index * 4 + 2] + vert_offset;
+          *(patch_data++) = vertex_data[patch_index * 4 + 3] + vert_offset;
+
+          *(patch_data++) = corner_data[patch_index * 4 + 0] + face_offset;
+          *(patch_data++) = corner_data[patch_index * 4 + 1];
+          *(patch_data++) = corner_data[patch_index * 4 + 2] + corner_offset;
+          *(patch_data++) = corner_data[patch_index * 4 + 3] + corner_offset;
+
+          ++patch_index;
+        }
+
+        ngons++;
+      }
+    }
+  }
+
+ private:
+  void build_vertex_indices(const OsdData &osd_data, const Mesh *mesh)
+  {
+    const Far::TopologyRefiner *osd_refiner = osd_data.get_refiner();
+    const Far::PatchTable *osd_patch_table = osd_data.get_patch_table();
+    const Far::TopologyLevel &osd_base_level = osd_refiner->GetLevel(0);
+    const Far::TopologyLevel &osd_subd_level = osd_refiner->GetLevel(1);
+
+    // construct vertex data lookup
+    vertex_data.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
+
+    for (int face = 0, patch_index = 0; face < osd_base_level.GetNumFaces(); ++face) {
+      Far::ConstIndexArray face_vertices = osd_base_level.GetFaceVertices(face);
+
+      if (face_vertices.size() == 4) {
+        vertex_data[patch_index * 4 + 0] = face_vertices[0];
+        vertex_data[patch_index * 4 + 1] = face_vertices[1];
+        vertex_data[patch_index * 4 + 2] = face_vertices[2];
+        vertex_data[patch_index * 4 + 3] = face_vertices[3];
+
+        ++patch_index;
+      }
+      else {
+        // special case of n-gon being
+        Far::ConstIndexArray child_faces = osd_base_level.GetFaceChildFaces(face);
+        const Mesh::SubdFace &subd_face = mesh->subd_faces[face];
+        for (int i = 0; i < child_faces.size(); ++i) {
+          int child_face = child_faces[i];
+
+          Far::ConstIndexArray child_face_vertices = osd_subd_level.GetFaceVertices(child_face);
+          assert(child_face_vertices.size() == 4);
+
+          int m;
+          m = mod(i + 0, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 0] = face_vertices[m];
+
+          m = mod(i + 1, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 1] = face_vertices[m];
+
+          m = 2;
+          vertex_data[patch_index * 4 + 2] = osd_base_level.GetNumVertices() +
+                                             child_face_vertices[2];
+
+          m = mod(i - 1, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 3] = face_vertices[m];
+          ++patch_index;
+        }
+      }
+    }
+  }
+
+  void build_corner_indices(const OsdData &osd_data, const Mesh *mesh)
+  {
+    const Far::TopologyRefiner *osd_refiner = osd_data.get_refiner();
+    if (osd_refiner->GetNumFVarChannels() == 0) {
+      return;
+    }
+
+    const Far::PatchTable *osd_patch_table = osd_data.get_patch_table();
+    const Far::TopologyLevel &osd_base_level = osd_refiner->GetLevel(0);
+    const Far::TopologyLevel &osd_subd_level = osd_refiner->GetLevel(1);
+
+    corner_data.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
+
+    for (int face = 0, patch_index = 0; face < osd_base_level.GetNumFaces(); ++face) {
+      const Mesh::SubdFace &subd_face = mesh->subd_faces[face];
+      auto fvar_values = osd_base_level.GetFaceFVarValues(face);
+      Far::ConstIndexArray child_faces = osd_base_level.GetFaceChildFaces(face);
+
+      if (fvar_values.size() == 4) {
+        corner_data[patch_index * 4 + 0] = face;
+        corner_data[patch_index * 4 + 1] = subd_face.num_corners;
+        corner_data[patch_index * 4 + 2] = subd_face.start_corner;
+        corner_data[patch_index * 4 + 3] = 0;
+
+        ++patch_index;
+      }
+      else {
+
+        for (int i = 0; i < child_faces.size(); ++i) {
+          int child_face = child_faces[i];
+
+          Far::ConstIndexArray child_face_vertices = osd_subd_level.GetFaceFVarValues(child_face);
+          assert(child_face_vertices.size() == 4);
+
+          corner_data[patch_index * 4 + 0] = face;
+          corner_data[patch_index * 4 + 1] = subd_face.num_corners | (i << 16);
+          corner_data[patch_index * 4 + 2] = subd_face.start_corner;
+          corner_data[patch_index * 4 + 3] = osd_base_level.GetNumFVarValues() +
+                                             child_face_vertices[2];
+
+          ++patch_index;
+        }
+      }
+    }
+  }
+
+  array<int> vertex_data;
+  array<int> corner_data;
+};
+
 //
 // Process of adaptive subdivision is separated into following steps:
 // * adaptive subdivision - osd patch generation
@@ -531,13 +687,13 @@ static void osd_tessellate(Mesh *mesh, DiagSplit *split)
   // Instead, during eval, lookup for Osd patches happens. Vector of OsdPatches represents
   // base level that comes from the refiner.
 
-  const Far::TopologyRefiner* osd_refiner = osd_data.get_refiner();
-  const Far::TopologyLevel& osd_base_level = osd_refiner->GetLevel(0);
+  const Far::TopologyRefiner *osd_refiner = osd_data.get_refiner();
+  const Far::TopologyLevel &osd_base_level = osd_refiner->GetLevel(0);
   const int face_size = Sdc::SchemeTypeTraits::GetRegularFaceSize(osd_refiner->GetSchemeType());
 
   ccl::vector<OsdPatch> patches;
-  patches.reserve(osd_base_level.GetNumFaces() * face_size); // worse case scenario
-  for(int base_face = 0, ptex_index=0; base_face < osd_base_level.GetNumFaces(); ++base_face) {
+  patches.reserve(osd_base_level.GetNumFaces() * face_size);  // worse case scenario
+  for (int base_face = 0, ptex_index = 0; base_face < osd_base_level.GetNumFaces(); ++base_face) {
     int num_face_vertices = osd_base_level.GetFaceVertices(base_face).size();
     int num_ptex_faces = (num_face_vertices == face_size) ? 1 : num_face_vertices;
     for (int i = 0; i < num_ptex_faces; ++i, ++ptex_index) {
@@ -554,59 +710,13 @@ static void osd_tessellate(Mesh *mesh, DiagSplit *split)
     need_packed_patch_table = true;
   }
 
-  // build mesh data indices
-  const Far::PatchTable* osd_patch_table = osd_data.get_patch_table();
-
-  //
-  // construct vertex data lookup
-  //
-
-  mesh->subd_patch_vertex_data_indices.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
-  mesh->subd_patch_corner_data_indices.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
-
-  for(int face = 0, patch_index = 0; face < osd_base_level.GetNumFaces(); ++face) {
-    auto face_vertices = osd_base_level.GetFaceVertices(face);
-
-    if(face_vertices.size() == 4) {
-      mesh->subd_patch_vertex_data_indices[patch_index * 4 + 0] = face_vertices[0];
-      mesh->subd_patch_vertex_data_indices[patch_index * 4 + 1] = face_vertices[1];
-      mesh->subd_patch_vertex_data_indices[patch_index * 4 + 2] = face_vertices[2];
-      mesh->subd_patch_vertex_data_indices[patch_index * 4 + 3] = face_vertices[3];
-
-      ++patch_index;
-    } else {
-      // special case of n-gon being
-      const Mesh::SubdFace& subd_face = mesh->subd_faces[face];
-
-      auto child_faces = osd_base_level.GetFaceChildFaces(face);
-      for(int i = 0; i < child_faces.size(); ++i) {
-        int child_face = child_faces[i];
-
-        auto child_face_vertices = osd_refiner->GetLevel(1).GetFaceVertices(child_face);
-        assert(child_face_vertices.size() == 4);
-
-        int m;
-        m = mod(i + 0, subd_face.num_corners);
-        mesh->subd_patch_vertex_data_indices[patch_index * 4 + 0] = face_vertices[m];
-
-        m = mod(i + 1, subd_face.num_corners);
-        mesh->subd_patch_vertex_data_indices[patch_index * 4 + 1] = face_vertices[m];
-
-        m = 2;
-        mesh->subd_patch_vertex_data_indices[patch_index * 4 + 2] = osd_base_level.GetNumVertices() + child_face_vertices[2];
-
-        m = mod(i - 1, subd_face.num_corners);
-        mesh->subd_patch_vertex_data_indices[patch_index * 4 + 3] = face_vertices[m];
-        ++patch_index;
-      }
-    }
-  }
-
   // packed patch table
   if (need_packed_patch_table) {
     delete mesh->patch_table;
     mesh->patch_table = new PackedPatchTable;
     mesh->patch_table->pack(osd_data.get_patch_table());
+
+    mesh->patch_data_builder = std::make_unique<OsdPatchDataBuilder>(osd_data, mesh);
   }
 }
 

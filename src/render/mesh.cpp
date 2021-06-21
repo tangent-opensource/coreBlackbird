@@ -653,45 +653,8 @@ void Mesh::pack_verts(const vector<uint> &tri_prim_index,
 
 void Mesh::pack_patches(uint *patch_data, uint vert_offset, uint face_offset, uint corner_offset)
 {
-  size_t num_faces = subd_faces.size();
-  int ngons = 0;
-  size_t patch_index = 0;
-
-  for (size_t f = 0; f < num_faces; f++) {
-    const SubdFace& face = subd_faces[f];
-
-    if (face.is_quad()) {
-      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 0] + vert_offset;
-      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 1] + vert_offset;
-      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 2] + vert_offset;
-      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 3] + vert_offset;
-
-      *(patch_data++) = f + face_offset;
-      *(patch_data++) = face.num_corners;
-      *(patch_data++) = face.start_corner + corner_offset;
-      *(patch_data++) = 0;
-
-      ++patch_index;
-    }
-    else {
-      for (int i = 0; i < face.num_corners; i++) {
-
-        // vertex data indices
-        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 0] + vert_offset;
-        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 1] + vert_offset;
-        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 2] + vert_offset;
-        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 3] + vert_offset;
-
-        *(patch_data++) = f + face_offset;
-        *(patch_data++) = face.num_corners | (i << 16);
-        *(patch_data++) = face.start_corner + corner_offset;
-        *(patch_data++) = subd_face_corners.size() + ngons + corner_offset;
-
-        ++patch_index;
-      }
-
-      ngons++;
-    }
+  if(patch_data_builder) {
+    patch_data_builder->pack(this, patch_data, vert_offset, face_offset, corner_offset);
   }
 }
 

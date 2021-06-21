@@ -121,6 +121,21 @@ class Mesh : public Geometry {
     SUBDIVISION_CATMULL_CLARK,
   };
 
+
+  class PatchDataBuilder {
+   public:
+    virtual ~PatchDataBuilder() = default;
+
+    virtual void pack(const Mesh *mesh,
+                      uint *patch_data,
+                      uint vert_offset,
+                      uint face_offset,
+                      uint corner_offset) const = 0;
+
+   protected:
+    PatchDataBuilder() = default;
+  };
+
   SubdivisionType subdivision_type;
 
   /* Mesh Data */
@@ -141,10 +156,6 @@ class Mesh : public Geometry {
   array<int> subd_face_corners;
   int num_ngons;
 
-  // patch data lookup tables
-  array<int> subd_patch_vertex_data_indices;
-  array<int> subd_patch_corner_data_indices;
-
   array<SubdEdgeCrease> subd_creases;
 
   SubdParams *subd_params;
@@ -152,6 +163,7 @@ class Mesh : public Geometry {
   AttributeSet subd_attributes;
 
   PackedPatchTable *patch_table;
+  std::unique_ptr<const PatchDataBuilder> patch_data_builder;
 
   /* BVH */
   size_t vert_offset;
