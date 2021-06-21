@@ -42,7 +42,7 @@ class Patch {
     return shader;
   }
 
-  bool get_from_ngon() const {
+  bool is_from_ngon() const {
     return from_ngon;
   }
 

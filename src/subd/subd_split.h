@@ -62,10 +62,52 @@ class DiagSplit {
 
   explicit DiagSplit(const SubdParams &params);
 
-  void split_patches(const Patch *patches, size_t patches_byte_stride);
+  template<typename T>
+  void split(const ccl::vector<T>& patches) {
+    const Mesh* mesh = params.mesh;
 
+    for(size_t f = 0, p = 0; f < mesh->subd_faces.size(); ++f)
+    {
+      const Mesh::SubdFace &face = mesh->subd_faces[f];
+      const T &patch = patches[p];
+
+      if(face.is_quad()) {
+        split_quad(face, &patch);
+        ++p;
+      } else {
+        split_ngon(face, &patch, patches);
+        p += face.num_corners;
+      }
+    }
+
+    params.mesh->vert_to_stitching_key_map.clear();
+    params.mesh->vert_stitching_map.clear();
+
+    // dicing
+    post_split();
+  }
+
+ public:
   void split_quad(const Mesh::SubdFace &face, const Patch *patch);
-  void split_ngon(const Mesh::SubdFace &face, const Patch *patches, size_t patches_byte_stride);
+  template<typename T>
+  void split_ngon(const Mesh::SubdFace &face, const T *input_patch, const ccl::vector<T> &patches)
+  {
+    Edge *prev_edge_u0 = nullptr;
+    Edge *first_edge_v0 = nullptr;
+
+    auto patch_index = input_patch->get_patch_index();
+
+    for (int corner = 0; corner < face.num_corners; corner++) {
+      const T *patch = &patches[patch_index + corner];
+      split_ngon(face, patch, prev_edge_u0, first_edge_v0, corner);
+    }
+  }
+
+  void split_ngon(const Mesh::SubdFace &face,
+                  const Patch *patch,
+                  Edge *&prev_edge_u0,
+                  Edge *&first_edge_v0,
+                  int corner);
 
   void post_split();
 };
