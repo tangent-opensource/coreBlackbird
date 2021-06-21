@@ -655,41 +655,39 @@ void Mesh::pack_patches(uint *patch_data, uint vert_offset, uint face_offset, ui
 {
   size_t num_faces = subd_faces.size();
   int ngons = 0;
+  size_t patch_index = 0;
 
   for (size_t f = 0; f < num_faces; f++) {
-    SubdFace face = subd_faces[f];
+    const SubdFace& face = subd_faces[f];
 
     if (face.is_quad()) {
-      int c[4];
-      memcpy(c, &subd_face_corners[face.start_corner], sizeof(int) * 4);
-
-      *(patch_data++) = c[0] + vert_offset;
-      *(patch_data++) = c[1] + vert_offset;
-      *(patch_data++) = c[2] + vert_offset;
-      *(patch_data++) = c[3] + vert_offset;
+      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 0] + vert_offset;
+      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 1] + vert_offset;
+      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 2] + vert_offset;
+      *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 3] + vert_offset;
 
       *(patch_data++) = f + face_offset;
       *(patch_data++) = face.num_corners;
       *(patch_data++) = face.start_corner + corner_offset;
       *(patch_data++) = 0;
+
+      ++patch_index;
     }
     else {
       for (int i = 0; i < face.num_corners; i++) {
-        int c[4];
-        c[0] = subd_face_corners[face.start_corner + mod(i + 0, face.num_corners)];
-        c[1] = subd_face_corners[face.start_corner + mod(i + 1, face.num_corners)];
-        c[2] = verts.size() - num_subd_verts + ngons;
-        c[3] = subd_face_corners[face.start_corner + mod(i - 1, face.num_corners)];
 
-        *(patch_data++) = c[0] + vert_offset;
-        *(patch_data++) = c[1] + vert_offset;
-        *(patch_data++) = c[2] + vert_offset;
-        *(patch_data++) = c[3] + vert_offset;
+        // vertex data indices
+        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 0] + vert_offset;
+        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 1] + vert_offset;
+        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 2] + vert_offset;
+        *(patch_data++) = subd_patch_vertex_data_indices[patch_index * 4 + 3] + vert_offset;
 
         *(patch_data++) = f + face_offset;
         *(patch_data++) = face.num_corners | (i << 16);
         *(patch_data++) = face.start_corner + corner_offset;
         *(patch_data++) = subd_face_corners.size() + ngons + corner_offset;
+
+        ++patch_index;
       }
 
       ngons++;

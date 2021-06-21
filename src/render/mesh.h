@@ -141,6 +141,10 @@ class Mesh : public Geometry {
   array<int> subd_face_corners;
   int num_ngons;
 
+  // patch data lookup tables
+  array<int> subd_patch_vertex_data_indices;
+  array<int> subd_patch_corner_data_indices;
+
   array<SubdEdgeCrease> subd_creases;
 
   SubdParams *subd_params;
