@@ -258,79 +258,97 @@ namespace {
 /* Separating the functions by component which should help reduce bloating
  * since get_pass_rect already switches on the number of components and
  * the remaining combinations of != components are limited  */
-ccl_device_inline void store_pass_pixel1(uint8_t *pixels,
-                                         RenderBuffers::ComponentType pixels_type,
-                                         float val)
+
+template<enum RenderBuffers::ComponentType> void store_pass_pixel1(uint8_t *pixels, float val)
 {
-  switch (pixels_type) {
-    case RenderBuffers::ComponentType::Float32: {
-      ((float *)pixels)[0] = val;
-      return;
-    }
-    case RenderBuffers::ComponentType::Float16: {
-      ((half *)pixels)[0] = float_to_half(val);
-      return;
-    }
-    case RenderBuffers::ComponentType::Int32: {
-      ((int32_t *)pixels)[0] = (int32_t)val;
-      return;
-    }
-    default:
-      assert(false);
-      return;
-  }
+  assert(false);
 }
 
-ccl_device_inline void store_pass_pixel3(
-    uint8_t *pixels, RenderBuffers::ComponentType pixels_type, float x, float y, float z)
+template<>
+void store_pass_pixel1<RenderBuffers::ComponentType::Float32>(uint8_t *pixels, float val)
 {
-  switch (pixels_type) {
-    case RenderBuffers::ComponentType::Float32x3: {
-      ((float *)pixels)[0] = x;
-      ((float *)pixels)[1] = y;
-      ((float *)pixels)[2] = z;
-      return;
-    }
-    case RenderBuffers::ComponentType::Float16x3: {
-      ((half *)pixels)[0] = float_to_half(x);
-      ((half *)pixels)[1] = float_to_half(y);
-      ((half *)pixels)[2] = float_to_half(z);
-      return;
-    }
-    case RenderBuffers::ComponentType::Float16x4: {
-      ((half *)pixels)[0] = float_to_half(x);
-      ((half *)pixels)[1] = float_to_half(y);
-      ((half *)pixels)[2] = float_to_half(z);
-      ((half *)pixels)[3] = float_to_half(1.0f);
-      return;
-    }
-  }
+  ((float *)pixels)[0] = val;
 }
 
-ccl_device_inline void store_pass_pixel4(
-    uint8_t *pixels, RenderBuffers::ComponentType pixels_type, float x, float y, float z, float w)
+template<>
+void store_pass_pixel1<RenderBuffers::ComponentType::Float16>(uint8_t *pixels, float val)
 {
-  switch (pixels_type) {
-    case RenderBuffers::ComponentType::Float32x4: {
-      ((float4 *)pixels)[0] = make_float4(x, y, z, w);
-      return;
-    }
-    case RenderBuffers::ComponentType::Float16x4: {
-      float4 f4 = make_float4(x, y, z, w);
-      float4_store_half((half *)pixels, f4, 1.0f);
-      return;
-    }
-  }
+  ((half *)pixels)[0] = float_to_half(val);
 }
 
+template<> void store_pass_pixel1<RenderBuffers::ComponentType::Int32>(uint8_t *pixels, float val)
+{
+  ((int32_t *)pixels)[0] = (int32_t)val;
+}
+
+template<enum RenderBuffers::ComponentType>
+void store_pass_pixel3(uint8_t *pixels, float x, float y, float z)
+{
+  assert(false);
+}
+
+template<>
+void store_pass_pixel3<RenderBuffers::ComponentType::Float32x3>(uint8_t *pixels,
+                                                                float x,
+                                                                float y,
+                                                                float z)
+{
+  ((float *)pixels)[0] = x;
+  ((float *)pixels)[1] = y;
+  ((float *)pixels)[2] = z;
+}
+
+template<>
+void store_pass_pixel3<RenderBuffers::ComponentType::Float16x3>(uint8_t *pixels,
+                                                                float x,
+                                                                float y,
+                                                                float z)
+{
+  ((half *)pixels)[0] = float_to_half(x);
+  ((half *)pixels)[1] = float_to_half(y);
+  ((half *)pixels)[2] = float_to_half(z);
+}
+
+template<>
+void store_pass_pixel3<RenderBuffers::ComponentType::Float16x4>(uint8_t *pixels,
+                                                                float x,
+                                                                float y,
+                                                                float z)
+{
+  ((half *)pixels)[0] = float_to_half(x);
+  ((half *)pixels)[1] = float_to_half(y);
+  ((half *)pixels)[2] = float_to_half(z);
+  ((half *)pixels)[3] = float_to_half(1.0f);
+}
+
+template<enum RenderBuffers::ComponentType>
+void store_pass_pixel4(uint8_t *pixels, float x, float y, float z, float w)
+{
+  assert(false);
+}
+
+template<>
+void store_pass_pixel4<RenderBuffers::ComponentType::Float16x4>(
+    uint8_t *pixels, float x, float y, float z, float w)
+{
+  float4 f4 = make_float4(x, y, z, w);
+  float4_store_half((half *)pixels, f4, 1.0f);
+}
+
+template<>
+void store_pass_pixel4<RenderBuffers::ComponentType::Float32x4>(
+    uint8_t *pixels, float x, float y, float z, float w)
+{
+  ((float4 *)pixels)[0] = make_float4(x, y, z, w);
+}
 }  // namespace
 
+template<enum RenderBuffers::ComponentType T>
 bool RenderBuffers::get_pass_rect_as(const string &name,
                                      float exposure,
                                      int sample,
                                      int components,
                                      uint8_t *pixels,
-                                     ComponentType pixels_type,
                                      int src_width,
                                      int src_height,
                                      int dst_width,
@@ -384,7 +402,7 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
       /* Render time is not stored by kernel, but measured per tile. */
       const float val = (float)(1000.0 * render_time / (dst_width * dst_height * sample));
       for (int i = 0; i < size; i++) {
-        store_pass_pixel1(pixels, pixels_type, val);
+        store_pass_pixel1<T>(pixels, val);
         pixels += pixels_stride;
       }
     }
@@ -393,25 +411,27 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 
       /* Scalar */
       if (type == PASS_DEPTH) {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
             float f = *src;
-            store_pass_pixel1(pixels, pixels_type, (f == 0.0f) ? 1e10f : f * scale_exposure);
+            store_pass_pixel1<T>(pixels, (f == 0.0f) ? 1e10f : f * scale_exposure);
             pixels += pixels_stride;
           }
         }
       }
       else if (type == PASS_MIST) {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
             float f = *src;
-            store_pass_pixel1(pixels, pixels_type, saturate(f * scale_exposure));
+            store_pass_pixel1<T>(pixels, saturate(f * scale_exposure));
             pixels += pixels_stride;
           }
         }
@@ -419,26 +439,28 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 #ifdef WITH_CYCLES_DEBUG
       else if (type == PASS_BVH_TRAVERSED_NODES || type == PASS_BVH_TRAVERSED_INSTANCES ||
                type == PASS_BVH_INTERSECTIONS || type == PASS_RAY_BOUNCES) {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
             float f = *src;
-            store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
+            store_pass_pixel1<T>(pixels, f * scale_exposure);
             pixels += pixels_stride;
           }
         }
       }
 #endif
       else {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
             float f = *src;
-            store_pass_pixel1(pixels, pixels_type, f * scale_exposure);
+            store_pass_pixel1<T>(pixels, f * scale_exposure);
             pixels += pixels_stride;
           }
         }
@@ -449,14 +471,15 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 
       /* RGBA */
       if (type == PASS_SHADOW) {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
             const float4 f = make_float4(src[0], src[1], src[2], src[3]);
             const float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
-            store_pass_pixel3(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw);
+            store_pass_pixel3<T>(pixels, f.x * invw, f.y * invw, f.z * invw);
             pixels += pixels_stride;
           }
         }
@@ -471,7 +494,8 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
           pass_offset_divide += color_pass.components;
         }
 
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
@@ -482,24 +506,22 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 
             f = safe_divide_even_color(f * exposure, f_divide);
 
-            store_pass_pixel3(pixels, pixels_type, f.x, f.y, f.z);
+            store_pass_pixel3<T>(pixels, f.x, f.y, f.z);
             pixels += pixels_stride;
           }
         }
       }
       else {
         /* RGB/vector */
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
             float3 f = make_float3(src[0], src[1], src[2]);
-            store_pass_pixel3(pixels,
-                              pixels_type,
-                              f.x * scale_exposure,
-                              f.y * scale_exposure,
-                              f.z * scale_exposure);
+            store_pass_pixel3<T>(
+                pixels, f.x * scale_exposure, f.y * scale_exposure, f.z * scale_exposure);
             pixels += pixels_stride;
           }
         }
@@ -510,14 +532,15 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
 
       /* RGBA */
       if (type == PASS_SHADOW) {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
 
             float4 f = make_float4(src[0], src[1], src[2], src[3]);
             float invw = (f.w > 0.0f) ? 1.0f / f.w : 1.0f;
-            store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, 1.0f);
+            store_pass_pixel4<T>(pixels, f.x * invw, f.y * invw, f.z * invw, 1.0f);
             pixels += pixels_stride;
           }
         }
@@ -532,7 +555,8 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
           pass_offset_weight += color_pass.components;
         }
 
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
@@ -542,13 +566,14 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
             float w = src_weight[0];
             float invw = (w > 0.0f) ? 1.0f / w : 0.0f;
 
-            store_pass_pixel4(pixels, pixels_type, f.x * invw, f.y * invw, f.z * invw, f.w * invw);
+            store_pass_pixel4<T>(pixels, f.x * invw, f.y * invw, f.z * invw, f.w * invw);
             pixels += pixels_stride;
           }
         }
       }
       else if (type == PASS_CRYPTOMATTE) {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
@@ -556,13 +581,14 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
             float4 f = make_float4(src[0], src[1], src[2], src[3]);
             /* x and z contain integer IDs, don't rescale them.
               y and w contain matte weights, they get scaled. */
-            store_pass_pixel4(pixels, pixels_type, f.x, f.y * scale, f.z, f.w * scale);
+            store_pass_pixel4<T>(pixels, f.x, f.y * scale, f.z, f.w * scale);
             pixels += pixels_stride;
           }
         }
       }
       else {
-        for (int y = 0, src_y = 0; y < dst_height; y++, src_y = static_cast<int>(y * scaley) * src_width) {
+        for (int y = 0, src_y = 0; y < dst_height;
+             y++, src_y = static_cast<int>(y * scaley) * src_width) {
           for (int x = 0; x < dst_width; x++) {
             const int src_idx = src_y + static_cast<int>(x * scalex);
 
@@ -574,13 +600,12 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
             const float *src = buffer.data() + pass_offset + src_idx * pass_stride;
             float4 f = make_float4(src[0], src[1], src[2], src[3]);
 
-            store_pass_pixel4(pixels,
-                              pixels_type,
-                              f.x * scale_exposure,
-                              f.y * scale_exposure,
-                              f.z * scale_exposure,
-                              /* clamp since alpha might be > 1.0 due to russian roulette */
-                              saturate(f.w * scale));
+            store_pass_pixel4<T>(pixels,
+                                 f.x * scale_exposure,
+                                 f.y * scale_exposure,
+                                 f.z * scale_exposure,
+                                 /* clamp since alpha might be > 1.0 due to russian roulette */
+                                 saturate(f.w * scale));
 
             pixels += pixels_stride;
           }
@@ -592,6 +617,102 @@ bool RenderBuffers::get_pass_rect_as(const string &name,
   }
 
   return false;
+}
+
+bool RenderBuffers::get_pass_rect_as(const string &name,
+                                     float exposure,
+                                     int sample,
+                                     int components,
+                                     uint8_t *pixels,
+                                     ComponentType pixels_type,
+                                     int src_width,
+                                     int src_height,
+                                     int dst_width,
+                                     int dst_height,
+                                     int pixels_stride)
+{
+  switch (pixels_type) {
+    case ComponentType::Float32:
+      return get_pass_rect_as<ComponentType::Float32>(name,
+                                                      exposure,
+                                                      sample,
+                                                      components,
+                                                      pixels,
+                                                      src_width,
+                                                      src_height,
+                                                      dst_width,
+                                                      dst_height,
+                                                      pixels_stride);
+    case ComponentType::Float32x3:
+      return get_pass_rect_as<ComponentType::Float32x3>(name,
+                                                        exposure,
+                                                        sample,
+                                                        components,
+                                                        pixels,
+                                                        src_width,
+                                                        src_height,
+                                                        dst_width,
+                                                        dst_height,
+                                                        pixels_stride);
+    case ComponentType::Float32x4:
+      return get_pass_rect_as<ComponentType::Float32x4>(name,
+                                                        exposure,
+                                                        sample,
+                                                        components,
+                                                        pixels,
+                                                        src_width,
+                                                        src_height,
+                                                        dst_width,
+                                                        dst_height,
+                                                        pixels_stride);
+    case ComponentType::Float16:
+      return get_pass_rect_as<ComponentType::Float16>(name,
+                                                      exposure,
+                                                      sample,
+                                                      components,
+                                                      pixels,
+                                                      src_width,
+                                                      src_height,
+                                                      dst_width,
+                                                      dst_height,
+                                                      pixels_stride);
+    case ComponentType::Float16x3:
+      return get_pass_rect_as<ComponentType::Float16x3>(name,
+                                                        exposure,
+                                                        sample,
+                                                        components,
+                                                        pixels,
+                                                        src_width,
+                                                        src_height,
+                                                        dst_width,
+                                                        dst_height,
+                                                        pixels_stride);
+    case ComponentType::Float16x4:
+      return get_pass_rect_as<ComponentType::Float16x4>(name,
+                                                        exposure,
+                                                        sample,
+                                                        components,
+                                                        pixels,
+                                                        src_width,
+                                                        src_height,
+                                                        dst_width,
+                                                        dst_height,
+                                                        pixels_stride);
+    case ComponentType::Int32:
+      return get_pass_rect_as<ComponentType::Int32>(name,
+                                                    exposure,
+                                                    sample,
+                                                    components,
+                                                    pixels,
+                                                    src_width,
+                                                    src_height,
+                                                    dst_width,
+                                                    dst_height,
+                                                    pixels_stride);
+    default:
+      assert(false);
+      return false;
+  }
 }
 
 bool RenderBuffers::get_pass_rect(
