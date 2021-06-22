@@ -303,13 +303,19 @@ ccl_device bool kernel_path_surface_bounce(KernelGlobals *kg,
       state->ray_t = 0.0f;
 #endif
       state->min_ray_pdf = fminf(bsdf_pdf, state->min_ray_pdf);
+
+      // printf("Non transparent pdf %f ")
     }
 
     /* update path state */
     path_state_next(kg, state, label);
 
     /* setup ray */
-    ray->P = ray_offset(sd->P, (label & LABEL_TRANSMIT) ? -sd->Ng : sd->Ng);
+    if ((label & LABEL_TRANSPARENT)) {
+      ray->P = sd->P + normalize(bsdf_omega_in) * 1e-5f;
+    } else {
+      ray->P = ray_offset(sd->P, (label & LABEL_TRANSMIT) ? -sd->Ng : sd->Ng);
+    }
     ray->D = normalize(bsdf_omega_in);
 
     if (state->bounce == 0)

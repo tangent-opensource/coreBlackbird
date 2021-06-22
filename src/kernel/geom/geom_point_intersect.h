@@ -66,12 +66,20 @@ ccl_device_forceinline bool point_intersect_test_disc(const float4 point,
   const float3 center = float4_to_float3(point);
   const float radius = point.w;
 
-  const float rd2 = 1.f / dot(dir, dir);
+  const float d2 = dot(dir, dir);
+  const float rd2 = 1.f / d2;
+  const float rd = 1.f / sqrt(d2);
 
   const float3 c0 = center - P;
   const float projC0 = dot(c0, dir) * rd2;
 
   if (*t <= projC0 || projC0 < 0.f) {
+    return false;
+  }
+
+  /* Self-intersection */
+  const float avoidance_factor = 2.0 * radius * rd;
+  if (projC0 < avoidance_factor) {
     return false;
   }
 
@@ -96,7 +104,7 @@ ccl_device_forceinline bool point_intersect_test_disc_oriented(
 
   const float3 center = float4_to_float3(point);
   const float radius = point.w;
-
+ 
   const float divisor = dot(dir, N);
   if (divisor == 0.f) {  // parallel
     return false;
@@ -259,6 +267,9 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
           kg, sd->object, sd->prim, sd->time, n_attrs, ATTR_STD_MOTION_VERTEX_NORMAL, 1));
     }
   }
+
+  // printf("Point normal %f %f %f\n", sd->N[0], sd->N[1], sd->N[2]);
+
   if (isect->object != OBJECT_NONE) {
     object_inverse_normal_transform(kg, sd, &sd->Ng);
   }
