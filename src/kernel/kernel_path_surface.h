@@ -311,11 +311,7 @@ ccl_device bool kernel_path_surface_bounce(KernelGlobals *kg,
     path_state_next(kg, state, label);
 
     /* setup ray */
-    if ((label & LABEL_TRANSPARENT)) {
-      ray->P = sd->P + normalize(bsdf_omega_in) * 1e-5f;
-    } else {
-      ray->P = ray_offset(sd->P, (label & LABEL_TRANSMIT) ? -sd->Ng : sd->Ng);
-    }
+    ray->P = ray_offset(sd->P, (label & LABEL_TRANSMIT) ? -sd->Ng : sd->Ng);
     ray->D = normalize(bsdf_omega_in);
 
     if (state->bounce == 0)
