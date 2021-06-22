@@ -1993,11 +1993,13 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       }
     }
 
+    /* Generating motion blur geometry if possible */
+    if (geom->get_use_motion_blur()) {
+      create_motion_blur_geometry(scene, geom, progress);
+    }
+
     if (geom->is_mesh()) {
       Mesh *mesh = static_cast<Mesh *>(geom);
-
-      // Generating motion blur geometry for Meshes with no authored motion samples
-      create_motion_blur_geometry(scene, static_cast<Mesh *>(geom), progress);
 
       if (mesh->need_update_rebuild) {
         device_update_flags |= DEVICE_MESH_DATA_NEEDS_REALLOC;
@@ -2010,7 +2012,11 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
     if (geom->is_pointcloud())  {
       /* TODO(Stefan) Do we need more here? */
       PointCloud *points = static_cast<PointCloud *>(geom);
-      if(points->is_modified()) {
+
+      if (points->need_update_rebuild) {
+        device_update_flags |= DEVICE_POINT_DATA_NEEDS_REALLOC;
+      }
+      else if(points->is_modified()) {
         device_update_flags |= DEVICE_POINT_DATA_MODIFIED;
       }
     }
@@ -2031,7 +2037,7 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
   /* tag the device arrays for reallocation or modification */
   DeviceScene *dscene = &scene->dscene;
 
-  if (device_update_flags & (DEVICE_MESH_DATA_NEEDS_REALLOC | DEVICE_CURVE_DATA_NEEDS_REALLOC)) {
+  if (device_update_flags & (DEVICE_MESH_DATA_NEEDS_REALLOC | DEVICE_CURVE_DATA_NEEDS_REALLOC | DEVICE_POINT_DATA_NEEDS_REALLOC)) {
     delete scene->bvh;
     scene->bvh = nullptr;
 
@@ -2058,6 +2064,11 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
     if (device_update_flags & DEVICE_CURVE_DATA_NEEDS_REALLOC) {
       dscene->curves.tag_realloc();
       dscene->curve_keys.tag_realloc();
+    }
+
+    if (device_update_flags & DEVICE_POINT_DATA_NEEDS_REALLOC) {
+      dscene->points.tag_realloc();
+      dscene->points_shader.tag_realloc();
     }
   }
 
@@ -2522,6 +2533,8 @@ void GeometryManager::device_update(Device *device,
   dscene->curves.clear_modified();
   dscene->curve_keys.clear_modified();
   dscene->patches.clear_modified();
+  dscene->points.clear_modified();
+  dscene->points_shader.clear_modified();
   dscene->attributes_map.clear_modified();
   dscene->attributes_float.clear_modified();
   dscene->attributes_float2.clear_modified();
@@ -2625,7 +2638,8 @@ void GeometryManager::create_motion_blur_geometry(
   }
 
   /* Rounding up to include center step */
-  geom->set_motion_steps(geom->get_motion_steps() + (geom->get_motion_steps() % 2) ? 0 : 1);
+  const uint num_motion_steps = geom->get_motion_steps();
+  geom->set_motion_steps(num_motion_steps + ((num_motion_steps % 2) ? 0 : 1));
 
   /* Making space for motion vertices */
   attr_mP = geom->attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);

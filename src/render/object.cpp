@@ -495,10 +495,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
                         0;
   kobject.dupli_uv[0] = ob->dupli_uv[0];
   kobject.dupli_uv[1] = ob->dupli_uv[1];
-  int totalsteps = geom->motion_steps;
+  int totalsteps = geom->get_motion_steps();
   kobject.num_dfm_steps = (totalsteps - 1) / 2;
-  kobject.num_tfm_steps = ob->motion.size();
-  kobject.numverts = (geom->type == Geometry::MESH) ? static_cast<Mesh *>(geom)->verts.size() : 0;
+  kobject.num_tfm_steps = ob->get_motion().size();
+  kobject.numverts = (geom->geometry_type == Geometry::MESH) ? (static_cast<Mesh *>(geom)->get_verts().size()) : 0;
   kobject.patch_map_offset = 0;
   kobject.attribute_map_offset = 0;
 
