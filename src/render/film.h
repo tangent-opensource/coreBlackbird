@@ -96,8 +96,6 @@ class Film : public Node {
   void tag_update(Scene *scene);
 
   int get_aov_offset(string name, bool &is_color);
-
-  bool update_lightgroups(Scene *scene);
 };
 
 CCL_NAMESPACE_END

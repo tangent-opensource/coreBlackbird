@@ -60,7 +60,6 @@ class Object : public Node {
   bool use_holdout;
   bool is_shadow_catcher;
   float shadow_terminator_offset;
-  ustring lightgroup;
 
   /* This scale is applied to volumetric motion blur. */
   float velocity_scale;
@@ -144,9 +143,7 @@ class ObjectManager {
   string get_cryptomatte_assets(Scene *scene);
 
  protected:
-  void device_update_object_transform(UpdateObjectTransformState *state,
-                                      Object *ob,
-                                      const Scene *scene);
+  void device_update_object_transform(UpdateObjectTransformState *state, Object *ob);
   void device_update_object_transform_task(UpdateObjectTransformState *state);
   bool device_update_object_transform_pop_work(UpdateObjectTransformState *state,
                                                int *start_index,
