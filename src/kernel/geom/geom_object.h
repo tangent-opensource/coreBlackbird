@@ -78,7 +78,7 @@ ccl_device_inline Transform object_fetch_transform_motion(KernelGlobals *kg,
 {
   const uint motion_offset = kernel_tex_fetch(__objects, object).motion_offset;
   const ccl_global DecomposedTransform *motion = &kernel_tex_fetch(__object_motion, motion_offset);
-  const uint num_steps = kernel_tex_fetch(__objects, object).numsteps * 2 + 1;
+  const uint num_steps = kernel_tex_fetch(__objects, object).num_tfm_steps;
 
   Transform tfm;
   transform_motion_array_interpolate(&tfm, motion, num_steps, time);
@@ -235,6 +235,26 @@ ccl_device_inline float object_pass_id(KernelGlobals *kg, int object)
   return kernel_tex_fetch(__objects, object).pass_id;
 }
 
+/* Lightgroup of lamp */
+
+ccl_device_inline uint lamp_lightgroup(KernelGlobals *kg, int lamp)
+{
+  if (lamp == LAMP_NONE)
+    return LIGHTGROUPS_NONE;
+
+  return kernel_tex_fetch(__lights, lamp).lightgroup;
+}
+
+/* Lightgroup of object */
+
+ccl_device_inline uint object_lightgroup(KernelGlobals *kg, int object)
+{
+  if (object == OBJECT_NONE)
+    return LIGHTGROUPS_NONE;
+
+  return kernel_tex_fetch(__objects, object).lightgroup;
+}
+
 /* Per lamp random number for shader variation */
 
 ccl_device_inline float lamp_random_number(KernelGlobals *kg, int lamp)
@@ -298,7 +318,7 @@ ccl_device_inline void object_motion_info(
   }
 
   if (numsteps)
-    *numsteps = kernel_tex_fetch(__objects, object).numsteps;
+    *numsteps = kernel_tex_fetch(__objects, object).num_dfm_steps;
   if (numverts)
     *numverts = kernel_tex_fetch(__objects, object).numverts;
 }

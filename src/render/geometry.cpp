@@ -2620,6 +2620,10 @@ void GeometryManager::create_motion_blur_geometry(
     A = attr_A->data_float3();
   }
 
+  if (!attr_V && !attr_A) {
+    return;
+  }
+
   /* Rounding up to include center step */
   geom->set_motion_steps(geom->get_motion_steps() + (geom->get_motion_steps() % 2) ? 0 : 1);
 

@@ -242,6 +242,18 @@ void Scene::device_update(Device *device_, Progress &progress)
    * - Lookup tables are done a second time to handle film tables
    */
 
+  if (film->is_modified()) {
+    if (film->update_lightgroups(this)) {
+      if (lightgroups.size() > LIGHTGROUPS_MAX) {
+        progress.set_error(string_printf("Light groups exceed maximum of %i", LIGHTGROUPS_MAX));
+      }
+
+      /* TODO: more fine grained updates. What has changed with lightgroups? */
+      light_manager->tag_update(this, LightManager::UPDATE_ALL);
+      object_manager->tag_update(this, ObjectManager::TRANSFORM_MODIFIED);
+    }
+  }
+
   progress.set_status("Updating Shaders");
   shader_manager->device_update(device, &dscene, this, progress);
 

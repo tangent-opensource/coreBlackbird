@@ -106,6 +106,8 @@ class Film : public Node {
   int get_denoising_data_offset() const;
   int get_denoising_clean_offset() const;
   size_t get_filter_table_offset() const;
+
+  bool update_lightgroups(Scene *scene);
 };
 
 CCL_NAMESPACE_END

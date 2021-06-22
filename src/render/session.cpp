@@ -769,8 +769,8 @@ void Session::run_cpu()
       if (!pause && delayed_reset.do_reset) {
         /* reset once to start */
         thread_scoped_lock reset_lock(delayed_reset.mutex);
-        thread_scoped_lock buffers_lock(buffers_mutex);
         thread_scoped_lock display_lock(display_mutex);
+        thread_scoped_lock buffers_lock(buffers_mutex);
 
         reset_(delayed_reset.params, delayed_reset.samples);
         delayed_reset.do_reset = false;
@@ -838,8 +838,8 @@ void Session::run_cpu()
 
     {
       thread_scoped_lock reset_lock(delayed_reset.mutex);
-      thread_scoped_lock buffers_lock(buffers_mutex);
       thread_scoped_lock display_lock(display_mutex);
+      thread_scoped_lock buffers_lock(buffers_mutex);
 
       if (delayed_reset.do_reset) {
         /* reset rendering if request from main thread */
