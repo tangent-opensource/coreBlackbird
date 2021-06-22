@@ -450,7 +450,11 @@ static Edge *create_split_edge_from_corner(DiagSplit *split,
   return edge;
 }
 
-void DiagSplit::split_ngon(const Mesh::SubdFace &face, const Patch *patch, Edge *&prev_edge_u0, Edge *&first_edge_v0, int corner)
+void DiagSplit::split_ngon(const Mesh::SubdFace &face,
+                           const Patch *patch,
+                           Edge *&prev_edge_u0,
+                           Edge *&first_edge_v0,
+                           int corner)
 {
   Subpatch subpatch(patch);
 
@@ -463,8 +467,7 @@ void DiagSplit::split_ngon(const Mesh::SubdFace &face, const Patch *patch, Edge 
   edge_v1->is_stitch_edge = true;
   edge_u1->is_stitch_edge = true;
 
-  edge_u1->stitch_start_vert_index = -(face.start_corner + mod(corner + 0, face.num_corners)) -
-                                     1;
+  edge_u1->stitch_start_vert_index = -(face.start_corner + mod(corner + 0, face.num_corners)) - 1;
   edge_u1->stitch_end_vert_index = STITCH_NGON_CENTER_VERT_INDEX_OFFSET + face.ptex_offset;
 
   edge_u1->start_vert_index = v + 3;
@@ -472,8 +475,7 @@ void DiagSplit::split_ngon(const Mesh::SubdFace &face, const Patch *patch, Edge 
 
   edge_u1->stitch_edge_key = {edge_u1->stitch_start_vert_index, edge_u1->stitch_end_vert_index};
 
-  edge_v1->stitch_start_vert_index = -(face.start_corner + mod(corner + 1, face.num_corners)) -
-                                     1;
+  edge_v1->stitch_start_vert_index = -(face.start_corner + mod(corner + 1, face.num_corners)) - 1;
   edge_v1->stitch_end_vert_index = STITCH_NGON_CENTER_VERT_INDEX_OFFSET + face.ptex_offset;
 
   edge_v1->start_vert_index = v + 1;
@@ -567,8 +569,11 @@ void DiagSplit::split_ngon(const Mesh::SubdFace &face, const Patch *patch, Edge 
   prev_edge_u0 = subpatch.edge_u0.edge;
 }
 
-void DiagSplit::post_split()
+void DiagSplit::stitch()
 {
+  params.mesh->vert_to_stitching_key_map.clear();
+  params.mesh->vert_stitching_map.clear();
+
   int num_stitch_verts = 0;
 
   /* All patches are now split, and all T values known. */
@@ -680,8 +685,10 @@ void DiagSplit::post_split()
       }
     }
   }
+}
 
-  /* Dice; TODO(mai): Move this out of split. */
+void DiagSplit::dice()
+{
   QuadDice dice(params);
 
   int num_verts = num_alloced_verts;

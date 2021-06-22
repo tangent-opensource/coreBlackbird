@@ -62,29 +62,27 @@ class DiagSplit {
 
   explicit DiagSplit(const SubdParams &params);
 
-  template<typename T>
-  void split(const ccl::vector<T>& patches) {
-    const Mesh* mesh = params.mesh;
+  template<typename T> void split(const ccl::vector<T> &patches)
+  {
+    const Mesh *mesh = params.mesh;
 
-    for(size_t f = 0, p = 0; f < mesh->subd_faces.size(); ++f)
-    {
+    for (size_t f = 0, p = 0; f < mesh->subd_faces.size(); ++f) {
       const Mesh::SubdFace &face = mesh->subd_faces[f];
       const T &patch = patches[p];
 
-      if(face.is_quad()) {
+      if (face.is_quad()) {
         split_quad(face, &patch);
         ++p;
-      } else {
+      }
+      else {
         split_ngon(face, &patch, patches);
         p += face.num_corners;
       }
     }
 
-    params.mesh->vert_to_stitching_key_map.clear();
-    params.mesh->vert_stitching_map.clear();
-
-    // dicing
-    post_split();
+    // stitch & dice
+    stitch();
+    dice();
   }
 
  public:
@@ -109,7 +107,8 @@ class DiagSplit {
                   Edge *&first_edge_v0,
                   int corner);
 
-  void post_split();
+  void stitch();
+  void dice();
 };
 
 CCL_NAMESPACE_END
