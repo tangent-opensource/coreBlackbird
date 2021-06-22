@@ -28,7 +28,6 @@ ccl_device_inline
                                    ShaderData *emission_sd,
                                    PathRadiance *L,
                                    ccl_addr_space PathState *state,
-                                   ccl_global float *buffer,
                                    ccl_addr_space Ray *ray,
                                    ccl_addr_space float3 *throughput,
                                    ccl_addr_space SubsurfaceIndirectRays *ss_indirect)
@@ -70,7 +69,7 @@ ccl_device_inline
        */
       subsurface_scatter_multi_setup(kg, &ss_isect, hit, sd, state, bssrdf_type, bssrdf_roughness);
 
-      kernel_path_surface_connect_light(kg, sd, emission_sd, *throughput, state, buffer, L);
+      kernel_path_surface_connect_light(kg, sd, emission_sd, *throughput, state, L);
 
       ccl_addr_space PathState *hit_state = &ss_indirect->state[ss_indirect->num_rays];
       ccl_addr_space Ray *hit_ray = &ss_indirect->rays[ss_indirect->num_rays];
