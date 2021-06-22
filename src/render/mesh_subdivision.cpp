@@ -516,7 +516,6 @@ class OsdPatchDataBuilder final : public Mesh::PatchDataBuilder {
   OsdPatchDataBuilder(const OsdData &osd_data, const Mesh *mesh)
   {
     build_vertex_indices(osd_data, mesh);
-    build_corner_indices(osd_data, mesh);
   }
 
   void pack(const Mesh *mesh,
@@ -577,8 +576,11 @@ class OsdPatchDataBuilder final : public Mesh::PatchDataBuilder {
 
     // construct vertex data lookup
     vertex_data.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
+    corner_data.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
 
     for (int face = 0, patch_index = 0; face < osd_base_level.GetNumFaces(); ++face) {
+      const Mesh::SubdFace &subd_face = mesh->subd_faces[face];
+
       Far::ConstIndexArray face_vertices = osd_base_level.GetFaceVertices(face);
 
       if (face_vertices.size() == 4) {
@@ -587,56 +589,6 @@ class OsdPatchDataBuilder final : public Mesh::PatchDataBuilder {
         vertex_data[patch_index * 4 + 2] = face_vertices[2];
         vertex_data[patch_index * 4 + 3] = face_vertices[3];
 
-        ++patch_index;
-      }
-      else {
-        // special case of n-gon being
-        Far::ConstIndexArray child_faces = osd_base_level.GetFaceChildFaces(face);
-        const Mesh::SubdFace &subd_face = mesh->subd_faces[face];
-        for (int i = 0; i < child_faces.size(); ++i) {
-          int child_face = child_faces[i];
-
-          Far::ConstIndexArray child_face_vertices = osd_subd_level.GetFaceVertices(child_face);
-          assert(child_face_vertices.size() == 4);
-
-          int m;
-          m = mod(i + 0, subd_face.num_corners);
-          vertex_data[patch_index * 4 + 0] = face_vertices[m];
-
-          m = mod(i + 1, subd_face.num_corners);
-          vertex_data[patch_index * 4 + 1] = face_vertices[m];
-
-          m = 2;
-          vertex_data[patch_index * 4 + 2] = osd_base_level.GetNumVertices() +
-                                             child_face_vertices[2];
-
-          m = mod(i - 1, subd_face.num_corners);
-          vertex_data[patch_index * 4 + 3] = face_vertices[m];
-          ++patch_index;
-        }
-      }
-    }
-  }
-
-  void build_corner_indices(const OsdData &osd_data, const Mesh *mesh)
-  {
-    const Far::TopologyRefiner *osd_refiner = osd_data.get_refiner();
-    if (osd_refiner->GetNumFVarChannels() == 0) {
-      return;
-    }
-
-    const Far::PatchTable *osd_patch_table = osd_data.get_patch_table();
-    const Far::TopologyLevel &osd_base_level = osd_refiner->GetLevel(0);
-    const Far::TopologyLevel &osd_subd_level = osd_refiner->GetLevel(1);
-
-    corner_data.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
-
-    for (int face = 0, patch_index = 0; face < osd_base_level.GetNumFaces(); ++face) {
-      const Mesh::SubdFace &subd_face = mesh->subd_faces[face];
-      auto fvar_values = osd_base_level.GetFaceFVarValues(face);
-      Far::ConstIndexArray child_faces = osd_base_level.GetFaceChildFaces(face);
-
-      if (fvar_values.size() == 4) {
         corner_data[patch_index * 4 + 0] = face;
         corner_data[patch_index * 4 + 1] = subd_face.num_corners;
         corner_data[patch_index * 4 + 2] = subd_face.start_corner;
@@ -645,18 +597,38 @@ class OsdPatchDataBuilder final : public Mesh::PatchDataBuilder {
         ++patch_index;
       }
       else {
+        // special case of n-gon being
 
+        const int num_face_vertices = osd_base_level.GetNumVertices();
+        const int num_fvar_vertices = osd_base_level.GetNumFVarValues();
+
+        Far::ConstIndexArray child_faces = osd_base_level.GetFaceChildFaces(face);
         for (int i = 0; i < child_faces.size(); ++i) {
           int child_face = child_faces[i];
 
-          Far::ConstIndexArray child_face_vertices = osd_subd_level.GetFaceFVarValues(child_face);
-          assert(child_face_vertices.size() == 4);
+          Far::ConstIndexArray child_face_vertices = osd_subd_level.GetFaceVertices(child_face);
+          Far::ConstIndexArray child_fvar_vertices = osd_subd_level.GetFaceFVarValues(child_face);
+          assert(child_face_vertices.size() == child_fvar_vertices.size());
 
+          // vertex
+          int m;
+          m = mod(i + 0, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 0] = face_vertices[m];
+
+          m = mod(i + 1, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 1] = face_vertices[m];
+
+          m = 2;
+          vertex_data[patch_index * 4 + 2] = num_face_vertices + child_face_vertices[2];
+
+          m = mod(i - 1, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 3] = face_vertices[m];
+
+          // corner
           corner_data[patch_index * 4 + 0] = face;
           corner_data[patch_index * 4 + 1] = subd_face.num_corners | (i << 16);
           corner_data[patch_index * 4 + 2] = subd_face.start_corner;
-          corner_data[patch_index * 4 + 3] = osd_base_level.GetNumFVarValues() +
-                                             child_face_vertices[2];
+          corner_data[patch_index * 4 + 3] = num_fvar_vertices + child_fvar_vertices[2];
 
           ++patch_index;
         }
