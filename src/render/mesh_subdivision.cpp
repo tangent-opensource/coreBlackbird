@@ -22,6 +22,7 @@
 #include "subd/subd_patch_table.h"
 #include "subd/subd_split.h"
 
+#include "scene.h"
 #include "util/util_algorithm.h"
 #include "util/util_hash.h"
 #include "util/util_math.h"
@@ -380,7 +381,7 @@ class OsdData {
     /* loop over all edges to find longest in screen space */
     const Far::TopologyLevel &level = refiner->GetLevel(0);
     Transform objecttoworld = mesh->subd_params->objecttoworld;
-    Camera *cam = mesh->subd_params->camera;
+    const Camera *cam = mesh->subd_params->camera;
 
     float longest_edge = 0.0f;
 
@@ -811,6 +812,20 @@ static void ccl_tessellate(Mesh *mesh, DiagSplit *split)
 {
   // TODO: implement catmull
   ccl_linear_tessellate(mesh, split);
+}
+
+/* virtual */
+bool Mesh::require_tessellation() const
+{
+  return subdivision_type != Mesh::SUBDIVISION_NONE && num_subd_verts == 0 && subd_params;
+}
+
+/* virtual */
+void Mesh::tessellate(const Scene *scene)
+{
+  subd_params->camera = scene->dicing_camera;
+  DiagSplit diag_split{*subd_params};
+  tessellate(&diag_split);
 }
 
 void Mesh::tessellate(DiagSplit *split)

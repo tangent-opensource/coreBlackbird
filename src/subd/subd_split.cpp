@@ -77,7 +77,7 @@ int DiagSplit::T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_
       L = len(P - Plast);
     }
     else {
-      Camera *cam = params.camera;
+      const Camera *cam = params.camera;
 
       float pixel_width = cam->world_to_raster_size((P + Plast) * 0.5f);
       L = len(P - Plast) / pixel_width;

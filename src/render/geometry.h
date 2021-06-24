@@ -94,11 +94,16 @@ class Geometry : public Node {
   virtual void clear();
   virtual void compute_bounds() = 0;
   virtual void apply_transform(const Transform &tfm, const bool apply_to_motion) = 0;
+
+  /* Create necessary attributes for motion blur */
   virtual void create_motion_blur_geometry(const Scene* scene);
 
+  /* Tessellate geometry */
+  virtual bool require_tessellation() const;
+  virtual void tessellate(const Scene* scene);
+
  protected:
-  // default implementation to create motion blur attributes from other attributes such as
-  // velocity, acceleration etc
+  /* Default implementation to create motion blur attributes from velocity, acceleration etc */
   void create_motion_blur_geometry(const Scene *scene,
                                    const float3 *P,
                                    const float *Pw,

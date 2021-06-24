@@ -220,9 +220,13 @@ class Mesh : public Geometry {
                   size_t tri_offset);
   void pack_patches(uint *patch_data, uint vert_offset, uint face_offset, uint corner_offset);
 
-  void tessellate(DiagSplit *split);
-
   void create_motion_blur_geometry(const Scene* scene) override;
+
+  bool require_tessellation() const override;
+  void tessellate(const Scene* scene) override;
+
+ private:
+  void tessellate(DiagSplit *split);
 };
 
 CCL_NAMESPACE_END

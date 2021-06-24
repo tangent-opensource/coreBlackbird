@@ -41,7 +41,7 @@ struct SubdParams {
   int split_threshold;
   float dicing_rate;
   int max_level;
-  Camera *camera;
+  const Camera *camera;
   Transform objecttoworld;
 
   SubdParams(Mesh *mesh_, bool ptex_ = false)

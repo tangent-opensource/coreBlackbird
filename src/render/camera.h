@@ -190,7 +190,7 @@ class Camera : public Node {
   BoundBox viewplane_bounds_get();
 
   /* Calculates the width of a pixel at point in world space. */
-  float world_to_raster_size(float3 P);
+  float world_to_raster_size(float3 P) const;
 
   /* Motion blur. */
   float motion_time(int step) const;

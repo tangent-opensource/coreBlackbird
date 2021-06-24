@@ -556,7 +556,19 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const
   return ATTR_ELEMENT_NONE;
 }
 
-void Geometry::create_motion_blur_geometry(const Scene* scene)
+/* virtual */
+void Geometry::create_motion_blur_geometry(const Scene *scene)
+{
+}
+
+/* virtual */
+bool Geometry::require_tessellation() const
+{
+  return false;
+}
+
+/* virtual */
+void Geometry::tessellate(const Scene * /*scene*/)
 {
 }
 
@@ -1649,6 +1661,11 @@ void GeometryManager::device_update(Device *device,
         geom->need_update = true;
     }
 
+    /* Test if we need tessellation. */
+    if (geom->require_tessellation()) {
+      ++total_tess_needed;
+    }
+
     if (geom->need_update && geom->type == Geometry::MESH) {
       Mesh *mesh = static_cast<Mesh *>(geom);
 
@@ -1658,12 +1675,6 @@ void GeometryManager::device_update(Device *device,
 
       if (mesh->need_attribute(scene, ATTR_STD_POSITION_UNDISPLACED)) {
         mesh->add_undisplaced();
-      }
-
-      /* Test if we need tessellation. */
-      if (mesh->subdivision_type != Mesh::SUBDIVISION_NONE && mesh->num_subd_verts == 0 &&
-          mesh->subd_params) {
-        total_tess_needed++;
       }
 
       /* Test if we need displacement. */
@@ -1678,36 +1689,32 @@ void GeometryManager::device_update(Device *device,
 
   /* Tessellate meshes that are using subdivision */
   if (total_tess_needed) {
-    Camera *dicing_camera = scene->dicing_camera;
-    dicing_camera->update(scene);
+    scene->dicing_camera->update(scene);
 
     size_t i = 0;
     foreach (Geometry *geom, scene->geometry) {
-      if (!(geom->need_update && geom->type == Geometry::MESH)) {
+      if (!(geom->need_update && geom->require_tessellation())) {
         continue;
       }
 
-      Mesh *mesh = static_cast<Mesh *>(geom);
-      if (mesh->subdivision_type != Mesh::SUBDIVISION_NONE && mesh->num_subd_verts == 0 &&
-          mesh->subd_params) {
-        string msg = "Tessellating ";
-        if (mesh->name == "")
-          msg += string_printf("%u/%u", (uint)(i + 1), (uint)total_tess_needed);
-        else
-          msg += string_printf(
-              "%s %u/%u", mesh->name.c_str(), (uint)(i + 1), (uint)total_tess_needed);
-
-        progress.set_status("Updating Mesh", msg);
-
-        mesh->subd_params->camera = dicing_camera;
-        DiagSplit dsplit(*mesh->subd_params);
-        mesh->tessellate(&dsplit);
-
-        i++;
-
-        if (progress.get_cancel())
-          return;
+      string msg = "Tessellating ";
+      if (geom->name.empty()) {
+        msg += string_printf("%u/%u", (uint)(i + 1), (uint)total_tess_needed);
       }
+      else {
+        msg += string_printf(
+            "%s %u/%u", geom->name.c_str(), (uint)(i + 1), (uint)total_tess_needed);
+      }
+
+      progress.set_status("Updating Mesh", msg);
+
+      geom->tessellate(scene);
+
+      if (progress.get_cancel()) {
+        return;
+      }
+
+      ++i;
     }
   }
 
