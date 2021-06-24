@@ -258,21 +258,15 @@ static void rtc_filter_occluded_func_thick_curve(const RTC_NAMESPACE::RTCFilterF
 
 static void rtc_filter_func_transparent_points(const RTC_NAMESPACE::RTCFilterFunctionNArguments *args)
 {
-  const RTCRay *ray = (RTCRay *)args->ray;
-  RTCHit *hit = (RTCHit *)args->hit;
+  const RTC_NAMESPACE::RTCRay *ray = (RTCRay *)args->ray;
+  RTC_NAMESPACE::RTCHit *hit = (RTCHit *)args->hit;
   CCLIntersectContext *ctx = ((IntersectContext *)args->context)->userRayExt;
   KernelGlobals *kg = ctx->kg;
 
   /* Resolve the object id and geometry */
-  /* todo: this is duplicated from kernels/bvh_embree.cpp */
   int prim, object;
-  if (hit->instID[0] != RTC_INVALID_GEOMETRY_ID) {
-    RTCScene inst_scene = (RTCScene)rtcGetGeometryUserData(rtcGetGeometry(ctx->kg->__data.bvh.scene, hit->instID[0]));
-    prim = hit->primID + (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(inst_scene, hit->geomID));
-    object = hit->instID[0] / 2;
-  }
-  else {
-    prim = hit->primID + (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(ctx->kg->__data.bvh.scene, hit->geomID));
+  kernel_embree_convert_hit_ids(kg, hit, &prim, &object);
+  if (object == OBJECT_NONE) {
     object = kernel_tex_fetch(__prim_object, prim);
   }
 
@@ -281,7 +275,7 @@ static void rtc_filter_func_transparent_points(const RTC_NAMESPACE::RTCFilterFun
   const float opacity = kernel_tex_fetch(__points_opacity, opacity_offset);
 
   /* Unique random number per ray per geometry */
-  uint hash = (uint&)ctx->ps_rng_hash;
+  uint hash = (uint&)ctx->ps_rng_transparent;
   const float rand_opacity = cmj_randfloat(hash, cmj_hash(object, prim));
 
   if (rand_opacity > opacity) {
