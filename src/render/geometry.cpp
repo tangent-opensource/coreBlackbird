@@ -556,7 +556,7 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const
   return ATTR_ELEMENT_NONE;
 }
 
-void Geometry::create_motion_blur_geometry(const Scene *scene, Progress &progress)
+void Geometry::create_motion_blur_geometry(const Scene* scene)
 {
 }
 
@@ -1548,7 +1548,7 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
     /* Generating motion blur geometry if possible */
     if (geom->use_motion_blur) {
       progress.set_status("Creating mesh motion blur geometry\n");
-      geom->create_motion_blur_geometry(scene, progress);
+      geom->create_motion_blur_geometry(scene);
     }
   }
 

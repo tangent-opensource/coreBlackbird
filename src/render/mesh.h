@@ -222,7 +222,7 @@ class Mesh : public Geometry {
 
   void tessellate(DiagSplit *split);
 
-  void create_motion_blur_geometry(const Scene *scene, Progress &progress) override;
+  void create_motion_blur_geometry(const Scene* scene) override;
 };
 
 CCL_NAMESPACE_END

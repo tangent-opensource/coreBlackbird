@@ -659,7 +659,7 @@ void Mesh::pack_patches(uint *patch_data, uint vert_offset, uint face_offset, ui
 }
 
 /* virtual */
-void Mesh::create_motion_blur_geometry(const Scene *scene, Progress &progress)
+void Mesh::create_motion_blur_geometry(const Scene* scene)
 {
   Geometry::create_motion_blur_geometry(scene, verts.data(), nullptr, verts.size());
 }

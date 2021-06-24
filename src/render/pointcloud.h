@@ -86,7 +86,7 @@ class PointCloud : public Geometry {
   void compute_bounds() override;
   void apply_transform(const Transform &tfm, const bool apply_to_motion) override;
 
-  void create_motion_blur_geometry(const Scene *scene, Progress &progress) override;
+  void create_motion_blur_geometry(const Scene* scene) override;
 
   /* Points */
   Point get_point(int i) const
