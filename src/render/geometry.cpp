@@ -1378,11 +1378,10 @@ void GeometryManager::device_update_mesh(
     dscene->points_shader.copy_to_device();
 
     if (point_opacity_size) {
-      printf("Allocating point opacities %d total objects %d\n", point_opacity_size, (int)scene->objects.size());
       float *points_opacity = dscene->points_opacity.alloc(point_opacity_size);
       uint* object_opacity_offset = dscene->object_opacity_offset.alloc(scene->objects.size());
 
-      /* This is separated because the loop above is over geometry while we want to loop ober objects */
+      /* This is separated because the loop above is over geometry while we want to loop over objects */
       uint opacity_offset = 0;
       for (size_t i = 0; i < scene->objects.size(); ++i) {
         Geometry* geom = scene->objects[i]->geometry;

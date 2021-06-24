@@ -104,7 +104,7 @@ ccl_device_forceinline bool point_intersect_test_disc_oriented(
 
   const float3 center = float4_to_float3(point);
   const float radius = point.w;
- 
+
   const float divisor = dot(dir, N);
   if (divisor == 0.f) {  // parallel
     return false;
@@ -267,9 +267,6 @@ ccl_device_inline void point_shader_setup(KernelGlobals *kg,
           kg, sd->object, sd->prim, sd->time, n_attrs, ATTR_STD_MOTION_VERTEX_NORMAL, 1));
     }
   }
-
-  // printf("Point normal %f %f %f\n", sd->N[0], sd->N[1], sd->N[2]);
-
   if (isect->object != OBJECT_NONE) {
     object_inverse_normal_transform(kg, sd, &sd->Ng);
   }

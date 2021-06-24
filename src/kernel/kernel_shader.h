@@ -767,8 +767,6 @@ ccl_device_inline const ShaderClosure *shader_bsdf_pick(ShaderData *sd, float *r
    * since we reuse the same random number. */
   int sampled = 0;
 
-  // printf("num closures %d\n", sd->num_closure);
-
   if (sd->num_closure > 1) {
     /* Pick a BSDF or based on sample weights. */
     float sum = 0.0f;
@@ -776,14 +774,10 @@ ccl_device_inline const ShaderClosure *shader_bsdf_pick(ShaderData *sd, float *r
     for (int i = 0; i < sd->num_closure; i++) {
       const ShaderClosure *sc = &sd->closure[i];
 
-      // printf("type %d sample weight %f\n", sc->type, sc->sample_weight);
-
       if (CLOSURE_IS_BSDF_OR_BSSRDF(sc->type)) {
         sum += sc->sample_weight;
       }
     }
-
-    // printf("sum %f\n", sum);
 
     float r = (*randu) * sum;
     float partial_sum = 0.0f;

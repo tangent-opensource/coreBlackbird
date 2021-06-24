@@ -649,9 +649,6 @@ void Session::run_cpu()
     if (params.background) {
       /* if no work left and in background mode, we can stop immediately */
       if (no_tiles) {
-        double total_time, render_time;
-        progress.get_time(total_time, render_time);
-        printf("Finished rendering total time %f render time %f\n", total_time, render_time);
         progress.set_status("Finished");
         break;
       }
