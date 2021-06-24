@@ -303,8 +303,6 @@ ccl_device bool kernel_path_surface_bounce(KernelGlobals *kg,
       state->ray_t = 0.0f;
 #endif
       state->min_ray_pdf = fminf(bsdf_pdf, state->min_ray_pdf);
-
-      // printf("Non transparent pdf %f ")
     }
 
     /* update path state */

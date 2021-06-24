@@ -279,21 +279,14 @@ static void rtc_filter_func_transparent_points(const RTCFilterFunctionNArguments
   /* Read opacity  */
   const uint opacity_offset = kernel_tex_fetch(__object_opacity_offset, object);
   const float opacity = kernel_tex_fetch(__points_opacity, opacity_offset);
-  // printf("filter geometry object %d prim %d offset %d opacity %f\n", object, prim, opacity_offset, (double)opacity);
 
   /* Unique random number per ray per geometry */
-  // const float rand_opacity = cmj_randfloat(cmj_hash_simple(ctx->ps_rng_hash, (uint)object), (uint)prim);
   uint hash = (uint&)ctx->ps_rng_hash;
   const float rand_opacity = cmj_randfloat(hash, cmj_hash(object, prim));
-  // uint rand_u32 = ((uint&)ctx->ps_rng_hash) ^ ((uint&)object);
-  // const float rand_opacity = (float&)rand_u32;
-  
-  // printf("rand opacity %f\n", rand_opacity);
-  if (rand_opacity > 0.735) {
+
+  if (rand_opacity > opacity) {
     *args->valid = 0;
   }
-
-  // printf("point filter %f\n", ctx->rand_transparent);
 }
 
 static size_t unaccounted_mem = 0;
@@ -1209,7 +1202,6 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   rtcSetGeometryMask(geom_id, ob->visibility_for_tracing());
 
   if (!pointcloud->opacity.empty()) {
-    printf("REGISTERING OPACITY FILTER\n");
     rtcSetGeometryIntersectFilterFunction(geom_id, rtc_filter_func_transparent_points);
   }
 
