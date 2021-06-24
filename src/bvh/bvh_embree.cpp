@@ -256,7 +256,7 @@ static void rtc_filter_occluded_func_thick_curve(const RTC_NAMESPACE::RTCFilterF
   rtc_filter_occluded_func(args);
 }
 
-static void rtc_filter_func_transparent_points(const RTCFilterFunctionNArguments *args)
+static void rtc_filter_func_transparent_points(const RTC_NAMESPACE::RTCFilterFunctionNArguments *args)
 {
   const RTCRay *ray = (RTCRay *)args->ray;
   RTCHit *hit = (RTCHit *)args->hit;
@@ -286,6 +286,14 @@ static void rtc_filter_func_transparent_points(const RTCFilterFunctionNArguments
 
   if (rand_opacity > opacity) {
     *args->valid = 0;
+  }
+}
+
+static void rtc_filter_occluded_func_transparent_points(const RTC_NAMESPACE::RTCFilterFunctionNArguments *args)
+{
+  rtc_filter_func_transparent_points(args);
+  if (*args->valid) {
+    rtc_filter_occluded_func(args);
   }
 }
 
@@ -1198,12 +1206,15 @@ void BVHEmbree::add_points(const Object *ob, const PointCloud *pointcloud, int i
   }
 
   rtcSetGeometryUserData(geom_id, (void *)prim_offset);
-  rtcSetGeometryOccludedFilterFunction(geom_id, rtc_filter_occluded_func);
-  rtcSetGeometryMask(geom_id, ob->visibility_for_tracing());
 
   if (!pointcloud->opacity.empty()) {
     rtcSetGeometryIntersectFilterFunction(geom_id, rtc_filter_func_transparent_points);
+    rtcSetGeometryOccludedFilterFunction(geom_id, rtc_filter_occluded_func_transparent_points);
+  } else {
+    rtcSetGeometryOccludedFilterFunction(geom_id, rtc_filter_occluded_func);
   }
+
+  rtcSetGeometryMask(geom_id, ob->visibility_for_tracing());
 
   rtcCommitGeometry(geom_id);
   rtcAttachGeometryByID(scene, geom_id, i * 2);
