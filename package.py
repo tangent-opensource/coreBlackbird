@@ -2,7 +2,7 @@
 
 name = 'cycles'
 
-version = '1.13.0-ta.1.13.0'
+version = '1.13.0-ta.1.14.0'
 
 authors = [
     'benjamin.skinner',
@@ -19,6 +19,7 @@ requires = [
     'openexr-2.4.0',
     'embree-3.8.0',
     'nanovdb-29.3.0',
+    'oidn-1.4.1',
 
     # Only needed for logging
     'glog-0.4.0',

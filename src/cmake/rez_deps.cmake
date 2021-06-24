@@ -80,6 +80,13 @@ else()
     set(WITH_CYCLES_EMBREE OFF CACHE BOOL "Build Cycles with embree support" FORCE)
 endif()
 
+if(DEFINED ENV{REZ_OIDN_BASE})
+    message("WITH REZ OIDN")
+    set(WITH_CYCLES_OPENIMAGEDENOISE ON CACHE BOOL "Build Cycles with OpenImageDenoise support" FORCE)
+else()
+    set(WITH_CYCLES_OPENIMAGEDENOISE OFF CACHE BOOL "Build Cycles with OpenImageDenoise support" FORCE)
+endif()
+
 set(WITH_CYCLES_DEBUG OFF CACHE BOOL "Build Cycles with with extra debug capabilties" FORCE)
 
 set(WITH_CYCLES_CUDA_BINARIES OFF CACHE BOOL "Build Cycles CUDA binaries" FORCE)
