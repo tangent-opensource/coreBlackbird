@@ -226,7 +226,7 @@ ccl_device_intersect bool scene_intersect(KernelGlobals *kg,
 
     return bvh_intersect_motion(kg, ray, isect, visibility);
   }
-#  endif /* __OBJECT_MOTION__ */
+#  endif   /* __OBJECT_MOTION__ */
 
 #  ifdef __HAIR__
   if (kernel_data.bvh.have_curves) {
@@ -235,7 +235,7 @@ ccl_device_intersect bool scene_intersect(KernelGlobals *kg,
 #  endif /* __HAIR__ */
 
   return bvh_intersect(kg, ray, isect, visibility);
-#endif /* __KERNEL_OPTIX__ */
+#endif   /* __KERNEL_OPTIX__ */
 }
 
 #ifdef __BVH_LOCAL__
@@ -326,8 +326,7 @@ ccl_device_intersect bool scene_intersect_local(KernelGlobals *kg,
         rtc_ray.dir_x = dir.x;
         rtc_ray.dir_y = dir.y;
         rtc_ray.dir_z = dir.z;
-        RTC_NAMESPACE::RTCScene scene = (RTC_NAMESPACE::RTCScene)
-            RTC_NAMESPACE::rtcGetGeometryUserData(geom);
+        RTC_NAMESPACE::RTCScene scene = (RTC_NAMESPACE::RTCScene)RTC_NAMESPACE::rtcGetGeometryUserData(geom);
         kernel_assert(scene);
         if (scene) {
           rtcOccluded1(scene, &rtc_ctx.context, &rtc_ray);
@@ -350,7 +349,7 @@ ccl_device_intersect bool scene_intersect_local(KernelGlobals *kg,
   }
 #    endif /* __OBJECT_MOTION__ */
   return bvh_intersect_local(kg, ray, local_isect, local_object, lcg_state, max_hits);
-#  endif /* __KERNEL_OPTIX__ */
+#  endif   /* __KERNEL_OPTIX__ */
 }
 #endif
 
@@ -427,7 +426,7 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals *kg,
 
     return bvh_intersect_shadow_all_motion(kg, ray, isect, visibility, max_hits, num_hits);
   }
-#    endif /* __OBJECT_MOTION__ */
+#    endif   /* __OBJECT_MOTION__ */
 
 #    ifdef __HAIR__
   if (kernel_data.bvh.have_curves) {
@@ -436,7 +435,7 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals *kg,
 #    endif /* __HAIR__ */
 
   return bvh_intersect_shadow_all(kg, ray, isect, visibility, max_hits, num_hits);
-#  endif /* __KERNEL_OPTIX__ */
+#  endif   /* __KERNEL_OPTIX__ */
 }
 #endif /* __SHADOW_RECORD_ALL__ */
 
@@ -495,7 +494,7 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals *kg,
 #    endif /* __OBJECT_MOTION__ */
 
   return bvh_intersect_volume(kg, ray, isect, visibility);
-#  endif /* __KERNEL_OPTIX__ */
+#  endif   /* __KERNEL_OPTIX__ */
 }
 #endif /* __VOLUME__ */
 
