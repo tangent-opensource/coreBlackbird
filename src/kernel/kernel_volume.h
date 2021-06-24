@@ -1637,11 +1637,6 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
   float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
   float3 pos = ray->P;
 
-  /* Control variate, set to min density. */
-  const float sigma_c = kernel_volume_channel_get(root.min_extinction, channel);
-  /* Residual compononent, max density - min density. */
-  const float sigma_r = kernel_volume_channel_get(root.max_extinction, channel) - sigma_c;
-
   float3 T_r = make_float3(1.0f);
 
   uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
@@ -1649,7 +1644,7 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
   do {
     float xi = lcg_step_float_addrspace(&lcg_state);
     float dt = -logf(1 - xi) * inv_max_extinction;
-    
+
     t += dt;
 
     if (t > ray->t) {
@@ -1695,18 +1690,11 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
         sigma_t += coeff.sigma_t;
       }
     }
-    
-    T_r *= (make_float3(1.0f, 1.0f, 1.0f) -
-                 (sigma_t - make_float3(sigma_c, sigma_c, sigma_c)) / sigma_r);
 
-    if (sd->flag & SD_EXTINCTION) {
-      emission.x *= (sigma_t.x > 0.0f) ? (1.0f - T_r.x) / sigma_t.x : dt;
-      emission.y *= (sigma_t.y > 0.0f) ? (1.0f - T_r.y) / sigma_t.y : dt;
-      emission.z *= (sigma_t.z > 0.0f) ? (1.0f - T_r.z) / sigma_t.z : dt;
-    }
-    else {
-      emission *= dt;
-    }
+    T_r *= make_float3(1.0f) - (sigma_t * inv_max_extinction);
+    T_r = clamp(T_r, make_float3(0.0f), make_float3(1.0f));
+
+    emission *= T_r;
 
     if (L && (sd->flag & SD_EMISSION)) {
       path_radiance_accum_emission(kg, L, state, *throughput, emission);
