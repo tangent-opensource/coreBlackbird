@@ -221,6 +221,8 @@ class Mesh : public Geometry {
   void pack_patches(uint *patch_data, uint vert_offset, uint face_offset, uint corner_offset);
 
   void tessellate(DiagSplit *split);
+
+  void create_motion_blur_geometry(const Scene *scene, Progress &progress) override;
 };
 
 CCL_NAMESPACE_END

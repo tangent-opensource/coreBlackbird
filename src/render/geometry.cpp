@@ -556,6 +556,10 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const
   return ATTR_ELEMENT_NONE;
 }
 
+void Geometry::create_motion_blur_geometry(const Scene *scene, Progress &progress)
+{
+}
+
 /* Geometry Manager */
 
 GeometryManager::GeometryManager()
@@ -1543,7 +1547,8 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
 
     /* Generating motion blur geometry if possible */
     if (geom->use_motion_blur) {
-      create_motion_blur_geometry(scene, geom, progress);
+      progress.set_status("Creating mesh motion blur geometry\n");
+      geom->create_motion_blur_geometry(scene, progress);
     }
   }
 
@@ -1883,9 +1888,13 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
   }
 }
 
-void GeometryManager::create_motion_blur_geometry(
-    const Scene *scene, Geometry *geom, const float3 *P, const float *Pw, int num_points)
+void Geometry::create_motion_blur_geometry(const Scene *scene,
+                                           const float3 *P,
+                                           const float *Pw,
+                                           int num_points)
 {
+  Geometry *geom = this;
+
   /* Skipping if motion positions already exit */
   Attribute *attr_mP = geom->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
   if (attr_mP) {
@@ -1954,35 +1963,6 @@ void GeometryManager::create_motion_blur_geometry(
 
     mP += num_points;
   }
-}
-
-/* Generates motion positions from velocity/acceleration attributes
- * only if no authored motion positions are available */
-void GeometryManager::create_motion_blur_geometry(const Scene *scene,
-                                                  Geometry *geom,
-                                                  Progress &progress)
-{
-  const float3 *P = nullptr;
-  const float *Pw = nullptr;
-  int num_points = 0;
-
-  if (geom->type == Geometry::MESH) {
-    Mesh *mesh = static_cast<Mesh *>(geom);
-    P = mesh->verts.data();
-    num_points = mesh->verts.size();
-  }
-  else if (geom->type == Geometry::POINTCLOUD) {
-    PointCloud *pc = static_cast<PointCloud *>(geom);
-    P = pc->points.data();
-    Pw = pc->radius.data();
-    num_points = pc->points.size();
-  }
-  else {
-    return;
-  }
-
-  progress.set_status("Creating mesh motion blur geometry\n");
-  create_motion_blur_geometry(scene, geom, P, Pw, num_points);
 }
 
 CCL_NAMESPACE_END
