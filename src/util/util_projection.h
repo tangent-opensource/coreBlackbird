@@ -189,21 +189,27 @@ ccl_device_inline void print_projection(const char *label, const ProjectionTrans
   printf("\n");
 }
 
-ccl_device_inline ProjectionTransform projection_perspective(float fov, float n, float f)
+ccl_device_inline ProjectionTransform projection_perspective(float fov,
+                                                             float n,
+                                                             float f,
+                                                             float overscan = 0.0f)
 {
   ProjectionTransform persp = make_projection(
       1, 0, 0, 0, 0, 1, 0, 0, 0, 0, f / (f - n), -f * n / (f - n), 0, 0, 1, 0);
 
-  float inv_angle = 1.0f / tanf(0.5f * fov);
+  float inv_angle = (1.0f / (1.0f + overscan * 2.0f)) / tanf(0.5f * fov);
 
   Transform scale = transform_scale(inv_angle, inv_angle, 1);
 
   return scale * persp;
 }
 
-ccl_device_inline ProjectionTransform projection_orthographic(float znear, float zfar)
+ccl_device_inline ProjectionTransform projection_orthographic(float znear,
+                                                              float zfar,
+                                                              float overscan = 0.0f)
 {
-  Transform t = transform_scale(1.0f, 1.0f, 1.0f / (zfar - znear)) *
+  const float scale = 1.0f / (1.0f + overscan);
+  Transform t = transform_scale(scale, scale, 1.0f / (zfar - znear)) *
                 transform_translate(0.0f, 0.0f, -znear);
 
   return ProjectionTransform(t);

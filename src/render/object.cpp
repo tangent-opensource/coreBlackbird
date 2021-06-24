@@ -537,7 +537,8 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.dupli_uv[0] = ob->dupli_uv[0];
   kobject.dupli_uv[1] = ob->dupli_uv[1];
   int totalsteps = geom->motion_steps;
-  kobject.numsteps = (totalsteps - 1) / 2;
+  kobject.num_dfm_steps = (totalsteps - 1) / 2;
+  kobject.num_tfm_steps = ob->motion.size();
   kobject.numverts = (geom->type == Geometry::MESH) ? static_cast<Mesh *>(geom)->verts.size() : 0;
   kobject.patch_map_offset = 0;
   kobject.attribute_map_offset = 0;
@@ -745,6 +746,7 @@ void ObjectManager::device_update_flags(
 
     /* Flagging the object to index normals by corner */
     if (object->geometry->attributes.find(ATTR_STD_CORNER_NORMAL)) {
+      /* Assuming that ATTR_STD_MOTION_CORNER_NORMAL has been authored */
       object_flag[object->index] |= SD_OBJECT_HAS_CORNER_NORMALS;
     }
   }

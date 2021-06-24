@@ -787,6 +787,7 @@ typedef enum AttributeElement {
   ATTR_ELEMENT_VERTEX_MOTION,
   ATTR_ELEMENT_CORNER,
   ATTR_ELEMENT_CORNER_BYTE,
+  ATTR_ELEMENT_CORNER_MOTION,
   ATTR_ELEMENT_CURVE,
   ATTR_ELEMENT_CURVE_KEY,
   ATTR_ELEMENT_CURVE_KEY_MOTION,
@@ -812,9 +813,9 @@ typedef enum AttributeStandard {
    * be generated using either or both the velocity/acceleration. */
   ATTR_STD_VERTEX_VELOCITY,
   ATTR_STD_VERTEX_ACCELERATION,
-
   ATTR_STD_MOTION_VERTEX_POSITION,
   ATTR_STD_MOTION_VERTEX_NORMAL,
+  ATTR_STD_MOTION_CORNER_NORMAL,
   ATTR_STD_PARTICLE,
   ATTR_STD_CURVE_INTERCEPT,
   ATTR_STD_CURVE_RANDOM,
@@ -1555,8 +1556,9 @@ typedef struct KernelObject {
   float dupli_uv[2];
 
   int numkeys;
-  int numsteps;
   int numverts;
+  uint16_t num_tfm_steps;
+  uint16_t num_dfm_steps;
 
   uint patch_map_offset;
   uint attribute_map_offset;
