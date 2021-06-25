@@ -131,19 +131,28 @@ ccl_device_inline void triangle_dPdudv(KernelGlobals *kg,
   *dPdv = (p1 - p2);
 }
 
-ccl_device_inline void triangle_dNdudv(
-    KernelGlobals *kg, int prim, int obj, ccl_addr_space float3 *dNdu, ccl_addr_space float3 *dNdv)
+ccl_device_inline void triangle_dNdudv(KernelGlobals *kg,
+                                       int prim,
+                                       int obj,
+                                       ccl_addr_space float3 *dNdu,
+                                       ccl_addr_space float3 *dNdv,
+                                       bool corner_normals)
 {
-  /* load triangle vertices */
-  const uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
+  float3 n0, n1, n2; /* base pointer for the geometry's normal buffer - base primitive offset */
+  int prim_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
 
-  /* base pointer for the geometry's normal buffer - base primitive offset */
-  int normal_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
-
-  float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.x));
-  float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.y));
-  float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, normal_offset + tri_vindex.z));
-
+  if (corner_normals) {
+    /* load corner normals */
+    float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 0));
+    float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 1));
+    float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + prim * 3 + 2));
+  }
+  else {
+    const uint4 tri_vindex = kernel_tex_fetch(__tri_vindex, prim);
+    float3 n0 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + tri_vindex.x));
+    float3 n1 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + tri_vindex.y));
+    float3 n2 = float4_to_float3(kernel_tex_fetch(__tri_vnormal, prim_offset + tri_vindex.z));
+  }
   /* compute derivatives of N w.r.t. uv */
   *dNdu = (n0 - n2);
   *dNdv = (n1 - n2);
