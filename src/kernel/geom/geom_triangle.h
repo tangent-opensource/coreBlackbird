@@ -134,9 +134,9 @@ ccl_device_inline void triangle_dPdudv(KernelGlobals *kg,
 ccl_device_inline void triangle_dNdudv(KernelGlobals *kg,
                                        int prim,
                                        int obj,
+                                       bool corner_normals,
                                        ccl_addr_space float3 *dNdu,
-                                       ccl_addr_space float3 *dNdv,
-                                       bool corner_normals)
+                                       ccl_addr_space float3 *dNdv)
 {
   float3 n0, n1, n2; /* base pointer for the geometry's normal buffer - base primitive offset */
   int prim_offset = kernel_tex_fetch(__object_vnormal_offset, obj);
