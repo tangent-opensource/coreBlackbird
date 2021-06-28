@@ -1944,23 +1944,13 @@ void VolumeTextureNode::compile(SVMCompiler &compiler)
   const bool use_vector = !vector_out->links.empty();
 
   if (use_vector) {
-    if (handle.empty()) {
-      ImageManager *image_manager = compiler.scene->image_manager;
-      handle = image_manager->add_image(attribute.string(), image_params());
-    }
+    int attr = compiler.attribute_standard(attribute);
 
-    const int slot = handle.svm_slot();
-    if (slot != -1) {
-      compiler.stack_assign(position_in);
-      compiler.add_node(NODE_TEX_VOLUME,
-                        slot,
-                        compiler.encode_uchar4(compiler.stack_assign(position_in),
-                                               compiler.stack_assign_if_linked(vector_out)));
-    }
-    else {
-      compiler.add_node(NODE_VALUE_V, compiler.stack_assign(vector_out));
-      compiler.add_node(NODE_VALUE_V, make_float3(0.0f, 0.0f, 0.0f));
-    }
+    compiler.stack_assign(position_in);
+    compiler.add_node(NODE_TEX_VOLUME,
+                      attr,
+                      compiler.encode_uchar4(compiler.stack_assign(position_in),
+                                             compiler.stack_assign_if_linked(vector_out)));
   }
 }
 
@@ -1971,12 +1961,7 @@ void VolumeTextureNode::compile(OSLCompiler &compiler)
   const bool use_vector = !vector_out->links.empty();
 
   if (use_vector) {
-    if (handle.empty()) {
-      ImageManager *image_manager = compiler.scene->image_manager;
-      handle = image_manager->add_image(attribute.string(), image_params());
-    }
-
-    compiler.parameter_texture("attribute", handle.svm_slot(true));
+    compiler.parameter("name", attribute.c_str());
     compiler.parameter(this, "interpolation");
     compiler.add(this, "node_volume_texture");
   }

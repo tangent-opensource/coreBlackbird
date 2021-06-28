@@ -419,20 +419,11 @@ class VolumeTextureNode : public TextureNode {
 
   ImageParams image_params() const;
 
-  /* Runtime. */
-  ImageHandle handle;
-
   /* Parameters */
   ustring attribute;
   InterpolationType interpolation;
   float3 position;
   float3 vector;
-
-  virtual bool equals(const ShaderNode &other)
-  {
-    const VolumeTextureNode &other_node = (const VolumeTextureNode &)other;
-    return ShaderNode::equals(other) && handle == other_node.handle;
-  }
 };
 
 class IESLightNode : public TextureNode {
