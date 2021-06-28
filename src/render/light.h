@@ -82,7 +82,7 @@ class Light : public Node {
   NODE_SOCKET_API(int, max_bounces)
   NODE_SOCKET_API(uint, random_id)
 
-  ustring lightgroup;
+  NODE_SOCKET_API(ustring, lightgroup);
 
   void tag_update(Scene *scene);
 
