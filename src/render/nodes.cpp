@@ -1888,6 +1888,100 @@ void PointDensityTextureNode::compile(OSLCompiler &compiler)
   }
 }
 
+/* Volume Texture */
+
+NODE_DEFINE(VolumeTextureNode)
+{
+  NodeType *type = NodeType::add("volume_texture", create, NodeType::SHADER);
+
+  SOCKET_STRING(attribute, "Attribute", ustring());
+
+  static NodeEnum interpolation_enum;
+  interpolation_enum.insert("closest", INTERPOLATION_CLOSEST);
+  interpolation_enum.insert("linear", INTERPOLATION_LINEAR);
+  interpolation_enum.insert("cubic", INTERPOLATION_CUBIC);
+  interpolation_enum.insert("smart", INTERPOLATION_SMART);
+  SOCKET_ENUM(interpolation, "Interpolation", interpolation_enum, INTERPOLATION_LINEAR);
+
+  SOCKET_IN_POINT(position, "Position", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_POSITION);
+
+  SOCKET_OUT_VECTOR(vector, "Vector");
+
+  return type;
+}
+
+VolumeTextureNode::VolumeTextureNode() : TextureNode(node_type)
+{
+}
+
+void VolumeTextureNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+  ShaderOutput *vector_out = output("Vector");
+
+  if (!vector_out->links.empty()) {
+    attributes->add_standard(attribute);
+  }
+
+  if (shader->has_volume) {
+    attributes->add(ATTR_STD_GENERATED_TRANSFORM);
+  }
+
+  ShaderNode::attributes(shader, attributes);
+}
+
+ImageParams VolumeTextureNode::image_params() const
+{
+  ImageParams params;
+  params.interpolation = interpolation;
+  return params;
+}
+
+void VolumeTextureNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *position_in = input("Position");
+  ShaderOutput *vector_out = output("Vector");
+
+  const bool use_vector = !vector_out->links.empty();
+
+  if (use_vector) {
+    if (handle.empty()) {
+      ImageManager *image_manager = compiler.scene->image_manager;
+      handle = image_manager->add_image(attribute.string(), image_params());
+    }
+
+    const int slot = handle.svm_slot();
+    if (slot != -1) {
+      compiler.stack_assign(position_in);
+      compiler.add_node(NODE_TEX_VOLUME,
+                        slot,
+                        compiler.encode_uchar4(compiler.stack_assign(position_in),
+                                               compiler.stack_assign_if_linked(vector_out)));
+    }
+    else {
+      compiler.add_node(NODE_VALUE_V, compiler.stack_assign(vector_out));
+      compiler.add_node(NODE_VALUE_V, make_float3(0.0f, 0.0f, 0.0f));
+    }
+  }
+}
+
+void VolumeTextureNode::compile(OSLCompiler &compiler)
+{
+  ShaderOutput *vector_out = output("Vector");
+
+  const bool use_vector = !vector_out->links.empty();
+
+  if (use_vector) {
+    if (handle.empty()) {
+      ImageManager *image_manager = compiler.scene->image_manager;
+      handle = image_manager->add_image(attribute.string(), image_params());
+    }
+
+    compiler.parameter_texture("attribute", handle.svm_slot(true));
+    compiler.parameter(this, "interpolation");
+    compiler.add(this, "node_volume_texture");
+  }
+}
+
 /* Normal */
 
 NODE_DEFINE(NormalNode)

@@ -397,6 +397,44 @@ class PointDensityTextureNode : public ShaderNode {
   }
 };
 
+class VolumeTextureNode : public TextureNode {
+ public:
+  SHADER_NODE_CLASS(VolumeTextureNode)
+  
+  void attributes(Shader *shader, AttributeRequestSet *attributes);
+  bool has_attribute_dependency()
+  {
+    return true;
+  }
+
+  bool has_spatial_varying()
+  {
+    return true;
+  }
+
+  virtual int get_group()
+  {
+    return NODE_GROUP_LEVEL_4;
+  }
+
+  ImageParams image_params() const;
+
+  /* Runtime. */
+  ImageHandle handle;
+
+  /* Parameters */
+  ustring attribute;
+  InterpolationType interpolation;
+  float3 position;
+  float3 vector;
+
+  virtual bool equals(const ShaderNode &other)
+  {
+    const VolumeTextureNode &other_node = (const VolumeTextureNode &)other;
+    return ShaderNode::equals(other) && handle == other_node.handle;
+  }
+};
+
 class IESLightNode : public TextureNode {
  public:
   SHADER_NODE_NO_CLONE_CLASS(IESLightNode)
