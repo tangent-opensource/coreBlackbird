@@ -258,6 +258,10 @@ void Pass::add(PassType type, vector<Pass> &passes, const char *name, bool filte
     case PASS_AOV_VALUE:
       pass.components = 1;
       break;
+    case PASS_LIGHTGROUP:
+      pass.components = 4;
+      pass.exposure = true;
+      break;
     case PASS_BAKE_PRIMITIVE:
     case PASS_BAKE_DIFFERENTIAL:
       pass.components = 4;
@@ -456,6 +460,7 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
   kfilm->pass_aov_color_num = 0;
 
   bool have_cryptomatte = false;
+  uint num_lightgroups = 0;
 
   for (size_t i = 0; i < scene->passes.size(); i++) {
     Pass &pass = scene->passes[i];
@@ -610,6 +615,12 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
         }
         kfilm->pass_aov_value_num++;
         break;
+      case PASS_LIGHTGROUP:
+        kfilm->pass_lightgroup = (num_lightgroups > 0) ?
+                                     min(kfilm->pass_lightgroup, kfilm->pass_stride) :
+                                     kfilm->pass_stride;
+        num_lightgroups++;
+        break;
       default:
         assert(false);
         break;
@@ -627,6 +638,8 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 
     kfilm->pass_stride += pass.components;
   }
+
+  kfilm->num_lightgroups = min(num_lightgroups, LIGHTGROUPS_MAX);
 
   kfilm->pass_denoising_data = 0;
   kfilm->pass_denoising_clean = 0;
@@ -746,6 +759,24 @@ int Film::get_denoising_clean_offset() const
 size_t Film::get_filter_table_offset() const
 {
   return filter_table_offset;
+}
+
+bool Film::update_lightgroups(Scene *scene)
+{
+  map<ustring, uint> lightgroups;
+  uint i = 0;
+  foreach (const Pass &pass, scene->passes) {
+    if (pass.type == PASS_LIGHTGROUP) {
+      i += 1;
+      lightgroups[ustring(pass.name)] = i;
+    }
+  }
+  if (scene->lightgroups != lightgroups) {
+    scene->lightgroups = lightgroups;
+    return true;
+  }
+
+  return false;
 }
 
 CCL_NAMESPACE_END

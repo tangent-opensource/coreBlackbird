@@ -45,6 +45,7 @@
 CCL_NAMESPACE_BEGIN
 
 static const char *cryptomatte_prefix = "Crypto";
+static const char *lightgroup_postfix = ".Combined";
 
 /* Constructor */
 
@@ -535,6 +536,9 @@ PassType BlenderSync::get_pass_type(BL::RenderPass &b_pass)
   if (string_startswith(name, cryptomatte_prefix)) {
     return PASS_CRYPTOMATTE;
   }
+  if (string_endswith(name, lightgroup_postfix)) {
+    return PASS_LIGHTGROUP;
+  }
 #undef MAP_PASS
 
   return PASS_NONE;
@@ -699,6 +703,30 @@ vector<Pass> BlenderSync::sync_render_passes(BL::Scene &b_scene,
       Pass::add(PASS_SAMPLE_COUNT, passes);
     }
   }
+
+  /* TODO: Update existing lights when rendering with multiple render layers. */
+  lightgroups.clear();
+  list<string> lg_names;
+  RNA_BEGIN(&crp, lightgroup, "lightgroups")
+  {
+    BL::Collection b_collection(RNA_pointer_get(&lightgroup, "collection"));
+    bool include_world = get_boolean(lightgroup, "include_world");
+
+    if (!(b_collection || include_world)) {
+      continue;
+    }
+
+    string passname = get_string(lightgroup, "name") + lightgroup_postfix;
+    if (find(lg_names.begin(), lg_names.end(), passname) != lg_names.end()) {
+      continue;
+    }
+    lg_names.push_back(passname);
+
+    b_engine.add_pass(passname.c_str(), 3, "RGB", b_view_layer.name().c_str());
+    Pass::add(PASS_LIGHTGROUP, passes, passname.c_str());
+    lightgroups.push_back(std::make_pair(b_collection, include_world));
+  }
+  RNA_END;
 
   BL::ViewLayer::aovs_iterator b_aov_iter;
   for (b_view_layer.aovs.begin(b_aov_iter); b_aov_iter != b_view_layer.aovs.end(); ++b_aov_iter) {

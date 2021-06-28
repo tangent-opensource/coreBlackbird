@@ -107,6 +107,7 @@ ccl_device void kernel_direct_lighting(KernelGlobals *kg,
           kernel_split_state.light_ray[ray_index] = light_ray;
           kernel_split_state.bsdf_eval[ray_index] = L_light;
           kernel_split_state.is_lamp[ray_index] = is_lamp;
+          kernel_split_state.lightgroup[ray_index] = ls.group;
           /* Mark ray state for next shadow kernel. */
           enqueue_flag = 1;
         }

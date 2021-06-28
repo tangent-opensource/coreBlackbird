@@ -82,6 +82,8 @@ class Light : public Node {
   NODE_SOCKET_API(int, max_bounces)
   NODE_SOCKET_API(uint, random_id)
 
+  ustring lightgroup;
+
   void tag_update(Scene *scene);
 
   /* Check whether the light has contribution the scene. */
