@@ -399,8 +399,11 @@ class PointDensityTextureNode : public ShaderNode {
 
 class VolumeTextureNode : public TextureNode {
  public:
-  SHADER_NODE_CLASS(VolumeTextureNode)
-  
+  SHADER_NODE_NO_CLONE_CLASS(VolumeTextureNode)
+
+  ~VolumeTextureNode();
+  ShaderNode *clone() const;
+  void load_file(ImageManager *image_manager);
   void attributes(Shader *shader, AttributeRequestSet *attributes);
   bool has_attribute_dependency()
   {
@@ -420,10 +423,21 @@ class VolumeTextureNode : public TextureNode {
   ImageParams image_params() const;
 
   /* Parameters */
-  ustring attribute;
+  ustring filename;
+  ustring grid;
   InterpolationType interpolation;
   float3 position;
   float3 vector;
+
+  /* Runtime. */
+  ImageHandle handle;
+  std::shared_ptr<VDBImageLoader> vdb_loader;
+
+  virtual bool equals(const ShaderNode &other)
+  {
+    const PointDensityTextureNode &other_node = (const PointDensityTextureNode &)other;
+    return ShaderNode::equals(other) && handle == other_node.handle;
+  }
 };
 
 class IESLightNode : public TextureNode {

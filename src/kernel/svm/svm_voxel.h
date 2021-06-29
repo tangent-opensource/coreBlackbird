@@ -55,32 +55,11 @@ ccl_device void svm_node_tex_volume(KernelGlobals *kg, ShaderData *sd, float *st
   svm_unpack_node_uchar2(node.z, &co_offset, &vector_out_offset);
 
 #ifdef __VOLUME__
-  NodeAttributeType type = NODE_ATTR_FLOAT;
-  AttributeDescriptor desc;
-
-  if (sd->object != OBJECT_NONE) {
-    desc = find_attribute(kg, sd, node.y);
-    if (desc.offset == ATTR_STD_NOT_FOUND) {
-      desc = attribute_not_found();
-      desc.offset = 0;
-      desc.type = (NodeAttributeType)node.w;
-    }
-  }
-  else {
-    /* background */
-    desc = attribute_not_found();
-    desc.offset = 0;
-    desc.type = (NodeAttributeType)node.w;
-  }
-
+  int id = node.y;
   float3 co = stack_load_float3(stack, co_offset);
-
-  ShaderData volume_sd = *sd;
-  volume_sd.P = co;
-
-  float3 r = volume_attribute_float3(kg, &volume_sd, desc);
+  float4 r = kernel_tex_image_interp_3d(kg, id, co, INTERPOLATION_NONE);
 #else
-  float3 r = make_float3(0.0f, 0.0f, 0.0f);
+  float4 r = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
 #endif
 
   if (stack_valid(vector_out_offset)) {
