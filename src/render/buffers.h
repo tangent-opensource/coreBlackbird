@@ -121,6 +121,19 @@ class RenderBuffers {
   bool get_denoising_pass_rect(
       int offset, float exposure, int sample, int components, float *pixels);
   bool set_pass_rect(PassType type, int components, float *pixels, int samples);
+
+ protected:
+  template<enum RenderBuffers::ComponentType T>
+  bool get_pass_rect_as(const string &name,
+                        float exposure,
+                        int sample,
+                        int components,
+                        uint8_t *pixels,
+                        int src_width,
+                        int src_height,
+                        int dst_width,
+                        int dst_height,
+                        int pixels_stride);
 };
 
 /* Display Buffer
