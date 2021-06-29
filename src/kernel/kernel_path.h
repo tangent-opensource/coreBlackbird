@@ -99,6 +99,7 @@ ccl_device_forceinline void kernel_path_lamp_emission(KernelGlobals *kg,
     Ray light_ray ccl_optional_struct_init;
 
     light_ray.P = ray->P - state->ray_t * ray->D;
+
     state->ray_t += isect->t;
     light_ray.D = ray->D;
     light_ray.t = state->ray_t;
@@ -185,6 +186,8 @@ ccl_device_forceinline VolumeIntegrateResult kernel_path_volume(KernelGlobals *k
     shader_setup_from_volume(kg, sd, &volume_ray);
     kernel_volume_decoupled_record(kg, state, &volume_ray, sd, &volume_segment, step_size);
 
+    kernel_update_light_picking(sd, &volume_ray);
+
     volume_segment.sampling_method = sampling_method;
 
     /* emission */
@@ -230,6 +233,8 @@ ccl_device_forceinline VolumeIntegrateResult kernel_path_volume(KernelGlobals *k
     /* integrate along volume segment with distance sampling */
     VolumeIntegrateResult result = kernel_volume_integrate(
         kg, state, sd, &volume_ray, L, throughput, step_size);
+
+    kernel_update_light_picking(sd, NULL);
 
 #    ifdef __VOLUME_SCATTER__
     if (result == VOLUME_PATH_SCATTERED) {
@@ -396,6 +401,7 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
 
     /* path iteration */
     for (;;) {
+
       /* Find intersection with objects in scene. */
       Intersection isect;
       bool hit = kernel_path_scene_intersect(kg, state, ray, &isect, L);
@@ -414,6 +420,7 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
       else if (result == VOLUME_PATH_MISSED) {
         break;
       }
+
 #    endif /* __VOLUME__*/
 
       /* Shade background. */
@@ -458,6 +465,8 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
 
           throughput /= probability;
         }
+
+        kernel_update_light_picking(sd, NULL);
 
 #    ifdef __DENOISING_FEATURES__
         kernel_update_denoising_features(kg, sd, state, L);
@@ -524,7 +533,6 @@ ccl_device_forceinline void kernel_path_integrate(KernelGlobals *kg,
 
   /* Shader data memory used for both volumes and surfaces, saves stack space. */
   ShaderData sd;
-
 #  ifdef __SUBSURFACE__
   SubsurfaceIndirectRays ss_indirect;
   kernel_path_subsurface_init_indirect(&ss_indirect);
@@ -534,6 +542,7 @@ ccl_device_forceinline void kernel_path_integrate(KernelGlobals *kg,
 
     /* path iteration */
     for (;;) {
+
       /* Find intersection with objects in scene. */
       Intersection isect;
       bool hit = kernel_path_scene_intersect(kg, state, ray, &isect, L);
@@ -595,6 +604,8 @@ ccl_device_forceinline void kernel_path_integrate(KernelGlobals *kg,
 
           throughput /= probability;
         }
+
+        kernel_update_light_picking(&sd, NULL);
 
 #  ifdef __DENOISING_FEATURES__
         kernel_update_denoising_features(kg, &sd, state, L);

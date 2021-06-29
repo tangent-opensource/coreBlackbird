@@ -292,6 +292,19 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=False,
     )
 
+    use_light_tree: BoolProperty(
+        name="Light Tree",
+        description="Samples many lights more efficiently",
+        default=False,
+    )
+
+    splitting_threshold: FloatProperty(
+        name="Splitting",
+        description="Amount of lights to sample at a time, from one light at 0.0, to adaptively more lights as needed, to all lights at 1.0",
+        min=0.0, max=1.0,
+        default=0.0,
+    )
+
     samples: IntProperty(
         name="Samples",
         description="Number of samples to render for each pixel",

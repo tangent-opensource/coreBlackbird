@@ -20,6 +20,7 @@
 #include "render/film.h"
 #include "render/graph.h"
 #include "render/integrator.h"
+#include "render/light_tree.h"
 #include "render/mesh.h"
 #include "render/nodes.h"
 #include "render/object.h"
@@ -283,7 +284,89 @@ bool LightManager::object_usable_as_light(Object *object)
   return false;
 }
 
-void LightManager::device_update_distribution(Device *,
+float LightManager::distant_lights_energy(const Scene *scene, const vector<Primitive> &prims)
+{
+  float luminance = 0.0f;
+  float3 emission;
+  foreach (Primitive prim, prims) {
+
+    if (prim.prim_id >= 0)
+      continue;
+
+    const Light *lamp = scene->lights[prim.lamp_id];
+    if (lamp->light_type != LIGHT_DISTANT)
+      continue;
+
+    /* get emission from shader */
+    bool is_constant_emission = lamp->shader->is_constant_emission(&emission);
+    if (!is_constant_emission)
+      continue;  // TODO: Properly handle this case
+
+    luminance += scene->shader_manager->linear_rgb_to_gray(emission);
+  }
+
+  /* TODO: could project each bbox onto a disk outside the scene and sum up
+   * all the projected areas instead if this results in too high sampling */
+
+  /* get radius of bounding sphere of scene */
+  BoundBox scene_bbox = BoundBox::empty;
+  foreach (Object *object, scene->objects) {
+    // TODO: What about transforms?
+    scene_bbox.grow(object->bounds);
+  }
+
+  float radius_squared = len_squared(scene_bbox.max - scene_bbox.center());
+
+  return M_PI_F * radius_squared * luminance;
+}
+
+float LightManager::background_light_energy(Device *device,
+                                            DeviceScene *dscene,
+                                            Scene *scene,
+                                            Progress &progress,
+                                            const vector<Primitive> &prims)
+{
+  /* compute energy for all background lights */
+  float average_luminance = 0.0f;
+  size_t num_pixels = 0;
+  /* find background lights */
+  foreach (Primitive prim, prims) {
+
+    if (prim.prim_id >= 0)
+      continue;
+
+    const Light *lamp = scene->lights[prim.lamp_id];
+    if (lamp->light_type != LIGHT_BACKGROUND)
+      continue;
+
+    vector<float3> pixels;
+    int2 res = get_background_map_resolution(lamp, scene);
+    shade_background_pixels(device, dscene, res.x, res.y, pixels, progress);
+    num_pixels += pixels.size();
+    for (int i = 0; i < pixels.size(); ++i) {
+      average_luminance += scene->shader_manager->linear_rgb_to_gray(pixels[i]);
+    }
+
+    break;
+  }
+
+  if (num_pixels == 0)
+    return 0.0f;
+
+  average_luminance /= (float)num_pixels;
+
+  /* get radius of bounding sphere of scene */
+  BoundBox scene_bbox = BoundBox::empty;
+  foreach (Object *object, scene->objects) {
+    // TODO: What about transforms?
+    scene_bbox.grow(object->bounds);
+  }
+  float radius_squared = len_squared(scene_bbox.max - scene_bbox.center());
+
+  return M_PI_F * radius_squared * average_luminance;
+}
+
+void LightManager::device_update_distribution(Device *device,
                                               DeviceScene *dscene,
                                               Scene *scene,
                                               Progress &progress)
@@ -294,28 +377,35 @@ void LightManager::device_update_distribution(Device *,
   size_t num_lights = 0;
   size_t num_portals = 0;
   size_t num_background_lights = 0;
+  size_t num_distant_lights = 0;
   size_t num_triangles = 0;
 
   bool background_mis = false;
 
-  foreach (Light *light, scene->lights) {
-    if (light->is_enabled) {
-      num_lights++;
-    }
-    if (light->is_portal) {
-      num_portals++;
-    }
-  }
+  /* The emissive_prims vector contains all emissive primitives in the scene,
+   * i.e., all mesh light triangles and all lamps. The order of the primitives
+   * in the vector is important since it has the same order as the
+   * light_distribution array.
+   *
+   * If using the light tree then the order is important since the light tree
+   * reordered the lights so lights in the same node are next to each other
+   * in memory.
+   *
+   * If NOT using the light tree then the order is important since during
+   * sampling we assume all triangles are first in the array. */
+  vector<Primitive> emissive_prims;
+  emissive_prims.reserve(scene->lights.size());
 
+  int object_id = 0;
   foreach (Object *object, scene->objects) {
     if (progress.get_cancel())
       return;
 
     if (!object_usable_as_light(object)) {
+      object_id++;
       continue;
     }
-
-    /* Count triangles. */
+    /* Count emissive triangles. */
     Mesh *mesh = static_cast<Mesh *>(object->get_geometry());
     size_t mesh_num_triangles = mesh->num_triangles();
     for (size_t i = 0; i < mesh_num_triangles; i++) {
@@ -325,13 +415,249 @@ void LightManager::device_update_distribution(Device *,
                            scene->default_surface;
 
       if (shader->get_use_mis() && shader->has_surface_emission) {
+        emissive_prims.push_back(Primitive(i + mesh->prim_offset, object_id));
         num_triangles++;
       }
     }
+
+    object_id++;
+  }
+
+  /* light index is the index of this lamp in the device lights array*/
+  int light_index = 0;
+
+  /* light_id is the index of this lamp in the scene lights array */
+  int light_id = 0;
+
+  /* the light index of the background light */
+  int background_index = -1;
+  foreach (Light *light, scene->lights) {
+    if (light->is_enabled) {
+      emissive_prims.push_back(Primitive(~light_index, light_id));
+      num_lights++;
+      if (light->light_type == LIGHT_BACKGROUND) {
+        background_index = light_index;
+      }
+      light_index++;
+    }
+    if (light->is_portal) {
+      num_portals++;
+    }
+    light_id++;
   }
 
   size_t num_distribution = num_triangles + num_lights;
   VLOG(1) << "Total " << num_distribution << " of light distribution primitives.";
+
+  if (scene->integrator->get_use_light_tree()) {
+
+    /* create light tree */
+    double time_start = time_dt();
+    LightTree light_tree(emissive_prims, scene, 64);
+    VLOG(1) << "Light tree build time: " << time_dt() - time_start;
+
+    /* the light tree reorders the primitives so update emissive_prims */
+    const vector<Primitive> &ordered_prims = light_tree.get_primitives();
+    emissive_prims = ordered_prims;
+
+    if (progress.get_cancel())
+      return;
+
+    /* create the nodes to be used on the device */
+    const vector<CompactNode> &nodes = light_tree.get_nodes();
+    float4 *dnodes = dscene->light_tree_nodes.alloc(nodes.size() * LIGHT_TREE_NODE_SIZE);
+
+    /* convert each compact node into 4xfloat4
+     * 4 for energy, right_child_offset, prim_id, num_emitters
+     * 4 for bbox.min + bbox.max[0]
+     * 4 for bbox.max[1-2], theta_o, theta_e
+     * 4 for axis + energy variance */
+    size_t offset = 0;
+    size_t num_leaf_lights = 0;
+    foreach (CompactNode node, nodes) {
+      dnodes[offset].x = node.energy;
+      dnodes[offset].y = __int_as_float(node.right_child_offset);
+      dnodes[offset].z = __int_as_float(node.first_prim_offset);
+      dnodes[offset].w = __int_as_float(node.num_lights);
+
+      dnodes[offset + 1].x = node.bounds_s.min[0];
+      dnodes[offset + 1].y = node.bounds_s.min[1];
+      dnodes[offset + 1].z = node.bounds_s.min[2];
+      dnodes[offset + 1].w = node.bounds_s.max[0];
+
+      dnodes[offset + 2].x = node.bounds_s.max[1];
+      dnodes[offset + 2].y = node.bounds_s.max[2];
+      dnodes[offset + 2].z = node.bounds_o.theta_o;
+      dnodes[offset + 2].w = node.bounds_o.theta_e;
+
+      dnodes[offset + 3].x = node.bounds_o.axis[0];
+      dnodes[offset + 3].y = node.bounds_o.axis[1];
+      dnodes[offset + 3].z = node.bounds_o.axis[2];
+      dnodes[offset + 3].w = node.energy_variance;
+
+      offset += 4;
+
+      if ((node.right_child_offset == -1) && (node.num_lights > 1)) {
+        num_leaf_lights += node.num_lights;
+      }
+    }
+
+    /* store information needed for importance computations for each emitter
+     * in leaf nodes containing several emitters.
+     *
+     * each leaf node with several emitters stores relevant information about
+     * its emitters in the light_tree_leaf_emitters array. each such node
+     * also stores an offset into the light_tree_leaf_emitters array to where
+     * its first light is. this offset is stored in leaf_to_first_emitter.
+     */
+    KernelLightTreeLeaf *leaf_emitters = dscene->light_tree_leaf_emitters.alloc(num_leaf_lights);
+    int *leaf_to_first_emitter = dscene->leaf_to_first_emitter.alloc(nodes.size());
+
+    offset = 0;
+    for (int i = 0; i < nodes.size(); ++i) {
+      const CompactNode &node = nodes[i];
+
+      /* only store this information for leaf nodes with several emitters */
+      if (!((node.right_child_offset == -1) && (node.num_lights > 1))) {
+        leaf_to_first_emitter[i] = -1;
+        continue;
+      }
+
+      leaf_to_first_emitter[i] = offset;
+
+      int start = node.first_prim_offset;  // distribution id
+      int end = start + node.num_lights;
+      for (int j = start; j < end; ++j) {
+
+        /* todo: is there a better way than recalcing this? */
+        /* have getters for the light tree that just accesses build_data? */
+        BoundBox bbox = light_tree.compute_bbox(emissive_prims[j]);
+        Orientation bcone = light_tree.compute_bcone(emissive_prims[j]);
+        float energy = light_tree.compute_energy(emissive_prims[j]);
+
+        leaf_emitters[offset].bbox_min[0] = bbox.min[0];
+        leaf_emitters[offset].bbox_min[1] = bbox.min[1];
+        leaf_emitters[offset].bbox_min[2] = bbox.min[2];
+        leaf_emitters[offset].theta_o = bcone.theta_o;
+
+        leaf_emitters[offset].bbox_max[0] = bbox.max[0];
+        leaf_emitters[offset].bbox_max[1] = bbox.max[1];
+        leaf_emitters[offset].bbox_max[2] = bbox.max[2];
+        leaf_emitters[offset].theta_e = bcone.theta_e;
+
+        leaf_emitters[offset].axis[0] = bcone.axis[0];
+        leaf_emitters[offset].axis[1] = bcone.axis[1];
+        leaf_emitters[offset].axis[2] = bcone.axis[2];
+        leaf_emitters[offset].energy = energy;
+        offset += 3;
+      }
+    }
+
+    if (progress.get_cancel())
+      return;
+
+    /* create CDF for distant lights, background lights and light tree */
+    float tree_energy = (nodes.size() > 0) ? nodes[0].energy : 0.0f;
+    float distant_energy = distant_lights_energy(scene, emissive_prims);
+    float background_energy = background_light_energy(
+        device, dscene, scene, progress, emissive_prims);
+
+    /* stores the function that the CDF will be generated from */
+    float3 func = make_float3(tree_energy, distant_energy, background_energy);
+
+    /* probs stores the probability of sampling each of the light groups.
+     * probs[0] corresponds to the probability to sample the tree, etc. */
+    float3 probs;
+    float4 cdf = make_float4(0.0f);
+    const int num_func_values = LIGHTGROUP_NUM;
+    const int num_cdf_values = num_func_values + 1;
+    for (int i = 1; i < num_cdf_values; ++i) {
+      cdf[i] = cdf[i - 1] + func[i - 1];
+    }
+    float func_integral = cdf[num_func_values];
+    if (func_integral == 0.0f) {  // Sample uniformly if no energy
+      for (int i = 1; i < num_cdf_values; ++i) {
+        cdf[i] = (float)i / num_func_values;
+      }
+      probs = make_float3(1.0f / (float)num_func_values);
+    }
+    else {
+      for (int i = 0; i < num_cdf_values; ++i) {
+        cdf[i] /= func_integral;
+      }
+      probs = func / func_integral;
+    }
+
+    /* create and fill device arrays for the light group probabilities and CDF */
+    float *type_cdf = dscene->light_group_sample_cdf.alloc(num_cdf_values);
+    for (int i = 0; i < num_cdf_values; ++i) {
+      type_cdf[i] = cdf[i];
+    }
+
+    float *type_prob = dscene->light_group_sample_prob.alloc(num_func_values);
+    for (int i = 0; i < num_func_values; ++i) {
+      type_prob[i] = probs[i];
+    }
+
+    if (progress.get_cancel())
+      return;
+
+    /* find mapping between distribution_id to node_id, used for MIS */
+    uint *distribution_to_node = dscene->light_distribution_to_node.alloc(num_distribution);
+
+    for (int i = 0; i < nodes.size(); ++i) {
+      const CompactNode &node = nodes[i];
+      if (node.right_child_offset != -1)
+        continue;  // Skip interior nodes
+
+      int start = node.first_prim_offset;  // distribution id
+      int end = start + node.num_lights;
+      for (int j = start; j < end; ++j) {
+        distribution_to_node[j] = 4 * i;
+      }
+    }
+  }
+
+  if (progress.get_cancel())
+    return;
+
+  /* find mapping between lamp_id to distribution_id, used for MIS */
+  uint *lamp_to_distribution = dscene->lamp_to_distribution.alloc(num_lights);
+  for (int i = 0; i < emissive_prims.size(); ++i) {
+    const Primitive &prim = emissive_prims[i];
+    if (prim.prim_id >= 0)
+      continue;                       // Skip triangles
+    int lamp_id = -prim.prim_id - 1;  // This should not use prim.lamp_id
+    lamp_to_distribution[lamp_id] = i;
+  }
+
+  /* find mapping between [triangle_id, object_id] to distribution_id, used for MIS */
+  /* tri_to_distr has the following format:
+   * [triangle_id0, object_id0, distrib_id0, triangle_id1,..]
+   * where [triangle_idX, object_idX] is mapped to distrib_idX. */
+  vector<std::tuple<uint, uint, uint>> tri_to_distr;
+  tri_to_distr.reserve(num_triangles);
+  for (int i = 0; i < emissive_prims.size(); ++i) {
+    const Primitive &prim = emissive_prims[i];
+    if (prim.prim_id < 0)
+      continue;  // Skip lamps
+    tri_to_distr.push_back(std::make_tuple(prim.prim_id, prim.object_id, i));
+  }
+
+  std::sort(tri_to_distr.begin(), tri_to_distr.end());
+
+  assert(num_triangles == tri_to_distr.size());
+  uint *triangle_to_distribution = dscene->triangle_to_distribution.alloc(num_triangles * 3);
+  for (int i = 0; i < tri_to_distr.size(); ++i) {
+    triangle_to_distribution[3 * i] = std::get<0>(tri_to_distr[i]);
+    triangle_to_distribution[3 * i + 1] = std::get<1>(tri_to_distr[i]);
+    triangle_to_distribution[3 * i + 2] = std::get<2>(tri_to_distr[i]);
+  }
+
+  if (progress.get_cancel())
+    return;
+
+  /* create light distribution in same order as the emissive_prims */
 
   /* emission area */
   KernelLightDistribution *distribution = dscene->light_distribution.alloc(num_distribution + 1);
@@ -339,21 +665,22 @@ void LightManager::device_update_distribution(Device *,
 
   /* triangles */
   size_t offset = 0;
-  int j = 0;
 
-  foreach (Object *object, scene->objects) {
+  assert(emissive_prims.size() == num_distribution);
+
+  /* create distributions for mesh lights */
+  foreach (Primitive prim, emissive_prims) {
     if (progress.get_cancel())
       return;
 
-    if (!object_usable_as_light(object)) {
-      j++;
+    if (prim.prim_id < 0) {  // Early exit for lights
+      offset++;
       continue;
     }
+
+    const Object *object = scene->objects[prim.object_id];
     /* Sum area. */
     Mesh *mesh = static_cast<Mesh *>(object->get_geometry());
-    bool transform_applied = mesh->transform_applied;
-    Transform tfm = object->get_tfm();
-    int object_id = j;
     int shader_flag = 0;
 
     if (!(object->get_visibility() & PATH_RAY_DIFFUSE)) {
@@ -373,39 +700,16 @@ void LightManager::device_update_distribution(Device *,
       use_light_visibility = true;
     }
 
-    size_t mesh_num_triangles = mesh->num_triangles();
-    for (size_t i = 0; i < mesh_num_triangles; i++) {
-      int shader_index = mesh->get_shader()[i];
-      Shader *shader = (shader_index < mesh->get_used_shaders().size()) ?
-                           static_cast<Shader *>(mesh->get_used_shaders()[shader_index]) :
-                           scene->default_surface;
+    int triangle_id = prim.prim_id - mesh->prim_offset;
+    const float area = mesh->compute_triangle_area(triangle_id, object->get_tfm());
+    distribution[offset].area = area;
+    distribution[offset].totarea = totarea;
+    distribution[offset].prim = prim.prim_id;
+    distribution[offset].mesh_light.shader_flag = shader_flag;
+    distribution[offset].mesh_light.object_id = prim.object_id;
+    offset++;
 
-      if (shader->get_use_mis() && shader->has_surface_emission) {
-        distribution[offset].totarea = totarea;
-        distribution[offset].prim = i + mesh->prim_offset;
-        distribution[offset].mesh_light.shader_flag = shader_flag;
-        distribution[offset].mesh_light.object_id = object_id;
-        offset++;
-
-        Mesh::Triangle t = mesh->get_triangle(i);
-        if (!t.valid(&mesh->get_verts()[0])) {
-          continue;
-        }
-        float3 p1 = mesh->get_verts()[t.v[0]];
-        float3 p2 = mesh->get_verts()[t.v[1]];
-        float3 p3 = mesh->get_verts()[t.v[2]];
-
-        if (!transform_applied) {
-          p1 = transform_point(&tfm, p1);
-          p2 = transform_point(&tfm, p2);
-          p3 = transform_point(&tfm, p3);
-        }
-
-        totarea += triangle_area(p1, p2, p3);
-      }
-    }
-
-    j++;
+    totarea += area;
   }
 
   float trianglearea = totarea;
@@ -413,19 +717,29 @@ void LightManager::device_update_distribution(Device *,
   /* point lights */
   float lightarea = (totarea > 0.0f) ? totarea / num_lights : 1.0f;
   bool use_lamp_mis = false;
+  offset = 0;
 
-  int light_index = 0;
-  foreach (Light *light, scene->lights) {
-    if (!light->is_enabled)
+  /* create distributions for lights */
+  foreach (Primitive prim, emissive_prims) {
+    if (progress.get_cancel())
+      return;
+
+    if (prim.prim_id >= 0) {  // Early exit for mesh lights
+      offset++;
       continue;
+    }
 
+    const Light *light = scene->lights[prim.lamp_id];
+
+    distribution[offset].area = lightarea;
     distribution[offset].totarea = totarea;
-    distribution[offset].prim = ~light_index;
+    distribution[offset].prim = prim.prim_id;
     distribution[offset].lamp.pad = 1.0f;
     distribution[offset].lamp.size = light->size;
     totarea += lightarea;
 
     if (light->light_type == LIGHT_DISTANT) {
+      num_distant_lights++;
       use_lamp_mis |= (light->angle > 0.0f && light->use_mis);
     }
     else if (light->light_type == LIGHT_POINT || light->light_type == LIGHT_SPOT) {
@@ -439,11 +753,11 @@ void LightManager::device_update_distribution(Device *,
       background_mis |= light->use_mis;
     }
 
-    light_index++;
     offset++;
   }
 
   /* normalize cumulative distribution functions */
+  distribution[num_distribution].area = 0.0f;
   distribution[num_distribution].totarea = totarea;
   distribution[num_distribution].prim = 0.0f;
   distribution[num_distribution].lamp.pad = 0.0f;
@@ -465,12 +779,34 @@ void LightManager::device_update_distribution(Device *,
   kintegrator->use_direct_light = (totarea > 0.0f);
 
   if (kintegrator->use_direct_light) {
+
+    /* update light tree */
+    kintegrator->use_light_tree = scene->integrator->get_use_light_tree();
+    kintegrator->splitting_threshold = scene->integrator->get_splitting_threshold();
+
+    dscene->light_tree_nodes.copy_to_device();
+    dscene->light_distribution_to_node.copy_to_device();
+    dscene->lamp_to_distribution.copy_to_device();
+    dscene->triangle_to_distribution.copy_to_device();
+    dscene->light_group_sample_cdf.copy_to_device();
+    dscene->light_group_sample_prob.copy_to_device();
+    dscene->leaf_to_first_emitter.copy_to_device();
+    dscene->light_tree_leaf_emitters.copy_to_device();
+    kintegrator->num_light_nodes = dscene->light_tree_nodes.size() / LIGHT_TREE_NODE_SIZE;
+    // TODO: Currently this is only the correct offset when using light tree
+    kintegrator->distant_lights_offset = num_distribution - num_distant_lights;
+    kintegrator->background_light_index = background_index;
+
     /* number of emissives */
     kintegrator->num_distribution = num_distribution;
+    kintegrator->num_triangle_lights = num_triangles;
+    kintegrator->num_distant_lights = num_distant_lights;
+    kintegrator->inv_num_distant_lights = 1.0f / (float)num_distant_lights;
 
     /* precompute pdfs */
     kintegrator->pdf_triangles = 0.0f;
     kintegrator->pdf_lights = 0.0f;
+    kintegrator->pdf_inv_totarea = 1.0f / totarea;
 
     /* sample one, with 0.5 probability of light or triangle */
     kintegrator->num_all_lights = num_lights;
@@ -518,10 +854,24 @@ void LightManager::device_update_distribution(Device *,
     kbackground->map_weight = background_mis ? 1.0f : 0.0f;
   }
   else {
+    dscene->light_group_sample_cdf.free();
+    dscene->light_group_sample_prob.free();
+    dscene->leaf_to_first_emitter.free();
+    dscene->light_tree_leaf_emitters.free();
     dscene->light_distribution.free();
+    dscene->light_tree_nodes.free();
+    dscene->light_distribution_to_node.free();
+    dscene->lamp_to_distribution.free();
+    dscene->triangle_to_distribution.free();
 
+    kintegrator->pdf_inv_totarea = 0.0f;
+    kintegrator->num_light_nodes = 0;
+    kintegrator->num_triangle_lights = 0;
+    kintegrator->use_light_tree = false;
     kintegrator->num_distribution = 0;
     kintegrator->num_all_lights = 0;
+    kintegrator->num_distant_lights = 0;
+    kintegrator->inv_num_distant_lights = 0.0f;
     kintegrator->pdf_triangles = 0.0f;
     kintegrator->pdf_lights = 0.0f;
     kintegrator->use_lamp_mis = false;
@@ -530,8 +880,9 @@ void LightManager::device_update_distribution(Device *,
     kbackground->portal_offset = 0;
     kbackground->portal_weight = 0.0f;
     kbackground->sun_weight = 0.0f;
+    kintegrator->distant_lights_offset = 0;
+    kintegrator->background_light_index = 0;
     kbackground->map_weight = 0.0f;
-
     kfilm->pass_shadow_scale = 1.0f;
   }
 }
@@ -673,14 +1024,6 @@ void LightManager::device_update_background(Device *device,
   /* If the resolution isn't set manually, try to find an environment texture. */
   if (res.x == 0) {
     res = environment_res;
-    if (res.x > 0 && res.y > 0) {
-      VLOG(2) << "Automatically set World MIS resolution to " << res.x << " by " << res.y << "\n";
-    }
-  }
-  /* If it's still unknown, just use the default. */
-  if (res.x == 0 || res.y == 0) {
-    res = make_int2(1024, 512);
-    VLOG(2) << "Setting World MIS resolution to default\n";
   }
   kbackground->map_res_x = res.x;
   kbackground->map_res_y = res.y;
@@ -1025,11 +1368,19 @@ void LightManager::device_update(Device *device,
 void LightManager::device_free(Device *, DeviceScene *dscene, const bool free_background)
 {
   dscene->light_distribution.free();
+  dscene->light_tree_nodes.free();
+  dscene->light_distribution_to_node.free();
+  dscene->lamp_to_distribution.free();
+  dscene->triangle_to_distribution.free();
   dscene->lights.free();
   if (free_background) {
     dscene->light_background_marginal_cdf.free();
     dscene->light_background_conditional_cdf.free();
   }
+  dscene->light_group_sample_prob.free();
+  dscene->light_group_sample_cdf.free();
+  dscene->leaf_to_first_emitter.free();
+  dscene->light_tree_leaf_emitters.free();
   dscene->ies_lights.free();
 }
 
@@ -1161,6 +1512,34 @@ void LightManager::device_update_ies(DeviceScene *dscene)
 
     dscene->ies_lights.copy_to_device();
   }
+}
+
+int2 LightManager::get_background_map_resolution(const Light *background_light, const Scene *scene)
+{
+  int2 res = make_int2(background_light->map_resolution, background_light->map_resolution / 2);
+  /* If the resolution isn't set manually, try to find an environment texture. */
+  if (res.x == 0) {
+    Shader *shader = (scene->background->get_shader()) ? scene->background->get_shader() :
+                                                   scene->default_background;
+    foreach (ShaderNode *node, shader->graph->nodes) {
+      if (node->type == EnvironmentTextureNode::node_type) {
+        EnvironmentTextureNode *env = (EnvironmentTextureNode *)node;
+        ImageMetaData metadata = env->handle.metadata();
+        res.x = max(res.x, metadata.width);
+        res.y = max(res.y, metadata.height);
+      }
+    }
+    if (res.x > 0 && res.y > 0) {
+      VLOG(2) << "Automatically set World MIS resolution to " << res.x << " by " << res.y << "\n";
+    }
+  }
+  /* If it's still unknown, just use the default. */
+  if (res.x == 0 || res.y == 0) {
+    res = make_int2(1024, 512);
+    VLOG(2) << "Setting World MIS resolution to default\n";
+  }
+
+  return res;
 }
 
 CCL_NAMESPACE_END

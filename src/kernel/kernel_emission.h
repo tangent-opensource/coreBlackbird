@@ -234,6 +234,7 @@ ccl_device_noinline_cpu float3 indirect_primitive_emission(
     /* multiple importance sampling, get triangle light pdf,
      * and compute weight with respect to BSDF pdf */
     float pdf = triangle_light_pdf(kg, sd, t);
+    pdf *= light_distribution_pdf(kg, sd->P_pick, sd->V_pick, sd->t_pick, sd->prim, sd->object);
     float mis_weight = power_heuristic(bsdf_pdf, pdf);
 
     return L * mis_weight;
@@ -282,11 +283,16 @@ ccl_device_noinline_cpu void indirect_lamp_emission(KernelGlobals *kg,
       kernel_volume_shadow(kg, emission_sd, state, &volume_ray, &volume_tp);
       lamp_L *= volume_tp;
     }
+
 #endif
 
     if (!(state->flag & PATH_RAY_MIS_SKIP)) {
       /* multiple importance sampling, get regular light pdf,
        * and compute weight with respect to BSDF pdf */
+
+      /* multiply with light picking probablity to pdf */
+      ls.pdf *= light_distribution_pdf(
+          kg, emission_sd->P_pick, emission_sd->V_pick, emission_sd->t_pick, ~ls.lamp, -1);
       float mis_weight = power_heuristic(state->ray_pdf, ls.pdf);
       lamp_L *= mis_weight;
     }
@@ -338,10 +344,14 @@ ccl_device_noinline_cpu float3 indirect_background(KernelGlobals *kg,
   /* Background MIS weights. */
 #  ifdef __BACKGROUND_MIS__
   /* Check if background light exists or if we should skip pdf. */
+
+  /* consider shading point at previous non-transparent bounce */
+  float3 P_pick = ray->P - state->ray_t * ray->D;
+
   if (!(state->flag & PATH_RAY_MIS_SKIP) && kernel_data.background.use_mis) {
     /* multiple importance sampling, get background light pdf for ray
      * direction, and compute weight with respect to BSDF pdf */
-    float pdf = background_light_pdf(kg, ray->P, ray->D);
+    float pdf = background_light_pdf(kg, P_pick, ray->D);
     float mis_weight = power_heuristic(state->ray_pdf, pdf);
 
     return L * mis_weight;

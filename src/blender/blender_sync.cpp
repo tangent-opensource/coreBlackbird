@@ -317,8 +317,13 @@ void BlenderSync::sync_integrator()
   SamplingPattern sampling_pattern = (SamplingPattern)get_enum(
       cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_SOBOL);
 
+  integrator->set_use_light_tree(get_boolean(cscene, "use_light_tree"));
+  integrator->set_splitting_threshold(get_float(cscene, "splitting_threshold"));
+  integrator->set_sample_all_lights_direct(get_boolean(cscene, "sample_all_lights_direct"));
+  integrator->set_sample_all_lights_indirect(get_boolean(cscene, "sample_all_lights_indirect"));
+  integrator->set_light_sampling_threshold(get_float(cscene, "light_sampling_threshold"));
+  
   int adaptive_min_samples = INT_MAX;
-
   if (RNA_boolean_get(&cscene, "use_adaptive_sampling")) {
     sampling_pattern = SAMPLING_PATTERN_PMJ;
     adaptive_min_samples = get_int(cscene, "adaptive_min_samples");

@@ -643,6 +643,16 @@ enum MotionPosition {
   MOTION_NUM_POSITIONS,
 };
 
+/* Light Sampling Group */
+
+enum LightGroup {
+  LIGHTGROUP_TREE,
+  LIGHTGROUP_DISTANT,
+  LIGHTGROUP_BACKGROUND,
+
+  LIGHTGROUP_NUM,
+};
+
 /* Differential */
 
 typedef struct differential3 {
@@ -978,6 +988,12 @@ typedef ccl_addr_space struct ccl_align(16) ShaderData
   float3 N;
   /* true geometric normal */
   float3 Ng;
+  /* position used in light picking */
+  float3 P_pick;
+  /* normal or ray direction used in light picking */
+  float3 V_pick;
+  /* ray dist used for light picking */
+  float t_pick;
   /* view/incoming direction */
   float3 I;
   /* shader id */
@@ -1366,13 +1382,22 @@ static_assert_align(KernelBackground, 16);
 
 typedef struct KernelIntegrator {
   /* emission */
+  int use_light_tree;
+  float splitting_threshold;
   int use_direct_light;
   int use_ambient_occlusion;
   int num_distribution;
   int num_all_lights;
+  int num_light_nodes;
+  int num_triangle_lights;
+  int num_distant_lights;
+  float inv_num_distant_lights;
   float pdf_triangles;
   float pdf_lights;
+  float pdf_inv_totarea;
   float light_inv_rr_threshold;
+  int distant_lights_offset;
+  int background_light_index;
 
   /* bounces */
   int min_bounce;
@@ -1435,7 +1460,7 @@ typedef struct KernelIntegrator {
 
   int max_closures;
 
-  int pad1, pad2;
+  int pad1;
 } KernelIntegrator;
 static_assert_align(KernelIntegrator, 16);
 
@@ -1585,8 +1610,10 @@ typedef struct KernelLight {
 static_assert_align(KernelLight, 16);
 
 typedef struct KernelLightDistribution {
+  float area;
   float totarea;
   int prim;
+  float pad1, pad2, pad3;
   union {
     struct {
       int shader_flag;
@@ -1599,6 +1626,16 @@ typedef struct KernelLightDistribution {
   };
 } KernelLightDistribution;
 static_assert_align(KernelLightDistribution, 16);
+
+typedef struct KernelLightTreeLeaf {
+  float bbox_min[3];
+  float theta_o;
+  float bbox_max[3];
+  float theta_e;
+  float axis[3];
+  float energy;
+} KernelLightTreeLeaf;
+static_assert_align(KernelLightTreeLeaf, 16);
 
 typedef struct KernelParticle {
   int index;

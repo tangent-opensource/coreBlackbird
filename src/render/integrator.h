@@ -74,6 +74,8 @@ class Integrator : public Node {
   NODE_SOCKET_API(bool, sample_all_lights_direct)
   NODE_SOCKET_API(bool, sample_all_lights_indirect)
   NODE_SOCKET_API(float, light_sampling_threshold)
+  NODE_SOCKET_API(bool, use_light_tree)
+  NODE_SOCKET_API(float, splitting_threshold)
 
   NODE_SOCKET_API(int, adaptive_min_samples)
   NODE_SOCKET_API(float, adaptive_threshold)

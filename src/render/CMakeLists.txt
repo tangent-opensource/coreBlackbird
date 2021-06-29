@@ -47,6 +47,7 @@ set(SRC
   integrator.cpp
   jitter.cpp
   light.cpp
+  light_tree.cpp
   merge.cpp
   mesh.cpp
   mesh_displace.cpp

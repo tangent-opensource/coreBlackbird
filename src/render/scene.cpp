@@ -88,7 +88,15 @@ DeviceScene::DeviceScene(Device *device)
       shaders(device, "__shaders", MEM_GLOBAL),
       lookup_table(device, "__lookup_table", MEM_GLOBAL),
       sample_pattern_lut(device, "__sample_pattern_lut", MEM_GLOBAL),
-      ies_lights(device, "__ies", MEM_GLOBAL)
+      ies_lights(device, "__ies", MEM_GLOBAL),
+      light_tree_nodes(device, "__light_tree_nodes", MEM_GLOBAL),
+      light_distribution_to_node(device, "__light_distribution_to_node", MEM_GLOBAL),
+      lamp_to_distribution(device, "__lamp_to_distribution", MEM_GLOBAL),
+      triangle_to_distribution(device, "__triangle_to_distribution", MEM_GLOBAL),
+      light_group_sample_cdf(device, "__light_group_sample_cdf", MEM_GLOBAL),
+      light_group_sample_prob(device, "__light_group_sample_prob", MEM_GLOBAL),
+      leaf_to_first_emitter(device, "__leaf_to_first_emitter", MEM_GLOBAL),
+      light_tree_leaf_emitters(device, "__light_tree_leaf_emitters", MEM_GLOBAL)
 {
   memset((void *)&data, 0, sizeof(data));
 }

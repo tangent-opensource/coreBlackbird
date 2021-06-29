@@ -81,6 +81,9 @@ ccl_device_noinline void compute_light_pass(
               kg, sd, emission_sd, L, &state, &ray, &throughput, &ss_indirect)) {
         while (ss_indirect.num_rays) {
           kernel_path_subsurface_setup_indirect(kg, &ss_indirect, &state, &ray, L, &throughput);
+          indirect_sd.P_pick = sd->P_pick;
+          indirect_sd.V_pick = sd->V_pick;
+          indirect_sd.t_pick = sd->t_pick;
           kernel_path_indirect(kg, &indirect_sd, emission_sd, &ray, throughput, &state, L);
         }
         is_sss_sample = true;
@@ -97,6 +100,9 @@ ccl_device_noinline void compute_light_pass(
         state.ray_t = 0.0f;
 #  endif
         /* compute indirect light */
+        indirect_sd.P_pick = sd->P_pick;
+        indirect_sd.V_pick = sd->V_pick;
+        indirect_sd.t_pick = sd->t_pick;
         kernel_path_indirect(kg, &indirect_sd, emission_sd, &ray, throughput, &state, L);
 
         /* sum and reset indirect light pass variables for the next samples */

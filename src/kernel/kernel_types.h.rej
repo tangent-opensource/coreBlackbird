@@ -1,0 +1,18 @@
+diff a/src/kernel/kernel_types.h b/src/kernel/kernel_types.h	(rejected hunks)
+@@ -620,6 +620,16 @@ enum PanoramaType {
+   PANORAMA_NUM_TYPES,
+ };
+ 
++/* Light Sampling Group */
++
++enum LightGroup {
++  LIGHTGROUP_TREE,
++  LIGHTGROUP_DISTANT,
++  LIGHTGROUP_BACKGROUND,
++
++  LIGHTGROUP_NUM,
++};
++
+ /* Differential */
+ 
+ typedef struct differential3 {

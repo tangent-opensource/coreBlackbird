@@ -108,6 +108,8 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
     shader_setup_from_volume(kg, sd, &volume_ray);
     kernel_volume_decoupled_record(kg, state, &volume_ray, sd, &volume_segment, step_size);
 
+    kernel_update_light_picking(sd, &volume_ray);
+
     /* direct light sampling */
     if (volume_segment.closure_flag & SD_SCATTER) {
       volume_segment.sampling_method = volume_stack_sampling_method(kg, state->volume_stack);
@@ -140,6 +142,9 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
 
         if (result == VOLUME_PATH_SCATTERED &&
             kernel_path_volume_bounce(kg, sd, &tp, &ps, &L->state, &pray)) {
+          indirect_sd->P_pick = sd->P_pick;
+          indirect_sd->V_pick = sd->V_pick;
+          indirect_sd->t_pick = sd->t_pick;
           kernel_path_indirect(kg, indirect_sd, emission_sd, &pray, tp * num_samples_inv, &ps, L);
 
           /* for render passes, sum and reset indirect light pass variables
@@ -179,6 +184,8 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
       VolumeIntegrateResult result = kernel_volume_integrate(
           kg, &ps, sd, &volume_ray, L, &tp, step_size);
 
+      kernel_update_light_picking(sd, &volume_ray);
+
 #      ifdef __VOLUME_SCATTER__
       if (result == VOLUME_PATH_SCATTERED) {
         /* todo: support equiangular, MIS and all light sampling.
@@ -186,6 +193,9 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
         kernel_path_volume_connect_light(kg, sd, emission_sd, tp, state, L);
 
         if (kernel_path_volume_bounce(kg, sd, &tp, &ps, &L->state, &pray)) {
+          indirect_sd->P_pick = sd->P_pick;
+          indirect_sd->V_pick = sd->V_pick;
+          indirect_sd->t_pick = sd->t_pick;
           kernel_path_indirect(kg, indirect_sd, emission_sd, &pray, tp, &ps, L);
 
           /* for render passes, sum and reset indirect light pass variables
@@ -271,7 +281,9 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_indirect_light(KernelG
       }
 
       ps.rng_hash = state->rng_hash;
-
+      indirect_sd->P_pick = sd->P_pick;
+      indirect_sd->V_pick = sd->V_pick;
+      indirect_sd->t_pick = sd->t_pick;
       kernel_path_indirect(kg, indirect_sd, emission_sd, &bsdf_ray, tp * num_samples_inv, &ps, L);
 
       /* for render passes, sum and reset indirect light pass variables
@@ -399,6 +411,7 @@ ccl_device void kernel_branched_path_integrate(KernelGlobals *kg,
    * Indirect bounces are handled in kernel_branched_path_surface_indirect_light().
    */
   for (;;) {
+
     /* Find intersection with objects in scene. */
     Intersection isect;
     bool hit = kernel_path_scene_intersect(kg, &state, &ray, &isect, L);
@@ -450,6 +463,8 @@ ccl_device void kernel_branched_path_integrate(KernelGlobals *kg,
           throughput /= probability;
         }
       }
+
+      kernel_update_light_picking(&sd, NULL);
 
 #    ifdef __DENOISING_FEATURES__
       kernel_update_denoising_features(kg, &sd, &state, L);
