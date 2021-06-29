@@ -849,12 +849,12 @@ ccl_device float calc_light_importance(
     KernelGlobals *kg, float3 P, float3 V, float t_max, int node_offset, int light_offset)
 {
   /* find offset into light_tree_leaf_emitters array */
-  int first_emitter = kernel_tex_fetch(__leaf_to_first_emitter, node_offset / 4);
+  int first_emitter = kernel_tex_fetch(__leaf_to_first_emitter, node_offset);
   kernel_assert(first_emitter != -1);
-  int offset = first_emitter + light_offset * 3;
+  int offset = first_emitter + light_offset;
 
   /* get relevant information to be able to calculate the importance */
-  const KernelLightTreeLeaf leaf = kernel_tex_fetch(__light_tree_leaf_emitters, offset + 0);
+  const KernelLightTreeLeaf leaf = kernel_tex_fetch(__light_tree_leaf_emitters, offset);
 
   /* decode data for this light */
   const float3 bbox_min = make_float3(leaf.bbox_min[0], leaf.bbox_min[1], leaf.bbox_min[2]);
@@ -873,41 +873,26 @@ ccl_device float calc_light_importance(
 ccl_device float calc_node_importance(
     KernelGlobals *kg, float3 P, float3 V, float t_max, int node_offset)
 {
-  /* load the data for this node */
-  const float4 node0 = kernel_tex_fetch(__light_tree_nodes, node_offset + 0);
-  const float4 node1 = kernel_tex_fetch(__light_tree_nodes, node_offset + 1);
-  const float4 node2 = kernel_tex_fetch(__light_tree_nodes, node_offset + 2);
-  const float4 node3 = kernel_tex_fetch(__light_tree_nodes, node_offset + 3);
+  const KernelLightTreeNode node = kernel_tex_fetch(__light_tree_nodes, node_offset);
 
-  /* decode the data so it can be used to calculate the importance */
-  const float energy = node0.x;
-  const float3 bbox_min = make_float3(node1.x, node1.y, node1.z);
-  const float3 bbox_max = make_float3(node1.w, node2.x, node2.y);
-  const float theta_o = node2.z;
-  const float theta_e = node2.w;
-  const float3 axis = make_float3(node3.x, node3.y, node3.z);
+  const float3 bbox_min = make_float3(node.bbox_min[0], node.bbox_min[1], node.bbox_min[2]);
+  const float3 bbox_max = make_float3(node.bbox_max[0], node.bbox_max[1], node.bbox_max[2]);
+  const float3 axis = make_float3(node.axis[0], node.axis[1], node.axis[2]);
   const float3 centroid = 0.5f * (bbox_max + bbox_min);
 
   return calc_importance(
-      kg, P, V, t_max, bbox_max, bbox_min, theta_o, theta_e, axis, energy, centroid);
+      kg, P, V, t_max, bbox_max, bbox_min, node.theta_o, node.theta_e, axis, node.energy, centroid);
 }
 
-/* given a node offset, this function loads and decodes the minimum amount of
- * data needed for a the given node to be able to only either identify if it is
- * a leaf node or how to find its two children
- *
- * child_o  ffset is an offset into the nodes array to this nodes right child. the
- * left child has index node_offset+4.
- * distribution_id corresponds to an offset into the distribution array for the
- * first light contained in this node. num_emitters is how many lights there are
- * in this node. */
+/* Loads the data required to identify if the node is a leaf or how to find 
+ * its two children. */
 ccl_device void update_node(
     KernelGlobals *kg, int node_offset, int *child_offset, int *distribution_id, int *num_emitters)
 {
-  float4 node = kernel_tex_fetch(__light_tree_nodes, node_offset);
-  (*child_offset) = __float_as_int(node.y);
-  (*distribution_id) = __float_as_int(node.z);
-  (*num_emitters) = __float_as_int(node.w);
+  KernelLightTreeNode node = kernel_tex_fetch(__light_tree_nodes, node_offset);
+  (*child_offset) = node.right_child_offset;
+  (*distribution_id) = node.first_prim_offset;
+  (*num_emitters) = node.num_lights;
 }
 
 /* picks one of the distant lights and computes the probability of picking it */
@@ -1017,10 +1002,11 @@ ccl_device void light_tree_sample(KernelGlobals *kg,
     else {  // Interior node, pick left or right randomly
 
       /* calculate probability of going down left node */
-      int child_offsetL = offset + 4;
-      int child_offsetR = 4 * right_child_offset;
+      int child_offsetL = offset + 1;
+      int child_offsetR = right_child_offset;
       float I_L = calc_node_importance(kg, P, V, t_max, child_offsetL);
-      float I_R = calc_node_importance(kg, P, V, t_max, child_offsetR);
+      float I_R = calc_node_importance(kg, P, V, t_max, right_child_offset);      
+
       if ((I_L == 0.0f) && (I_R == 0.0f)) {
         *pdf_factor = 0.0f;
         break;
@@ -1112,10 +1098,9 @@ ccl_device bool split(KernelGlobals *kg, float3 P, int node_offset)
   }
 
   /* extract bounding box of cluster */
-  const float4 node1 = kernel_tex_fetch(__light_tree_nodes, node_offset + 1);
-  const float4 node2 = kernel_tex_fetch(__light_tree_nodes, node_offset + 2);
-  const float3 bboxMin = make_float3(node1.x, node1.y, node1.z);
-  const float3 bboxMax = make_float3(node1.w, node2.x, node2.y);
+  const KernelLightTreeNode node = kernel_tex_fetch(__light_tree_nodes, node_offset);
+  const float3 bboxMin = make_float3(node.bbox_min[0], node.bbox_min[1], node.bbox_min[2]);
+  const float3 bboxMax = make_float3(node.bbox_max[0], node.bbox_max[1], node.bbox_max[2]);
 
   /* if P is inside bounding sphere then split */
   const float3 centroid = 0.5f * (bboxMax + bboxMin);
@@ -1144,15 +1129,10 @@ ccl_device bool split(KernelGlobals *kg, float3 P, int node_offset)
   const float g_variance = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - g_mean_squared;
 
   /* eq. 10 */
-  const float4 node0 = kernel_tex_fetch(__light_tree_nodes, node_offset);
-  const float4 node3 = kernel_tex_fetch(__light_tree_nodes, node_offset + 3);
-  const float energy = node0.x;
-  const float e_variance = node3.w;
-  const float num_emitters = (float)__float_as_int(node0.w);
-  const float num_emitters_squared = num_emitters * num_emitters;
-  const float e_mean = energy / num_emitters;
+  const float num_emitters_squared = node.num_lights * node.num_lights;
+  const float e_mean = node.energy / node.num_lights;
   const float e_mean_squared = e_mean * e_mean;
-  const float variance = (e_variance * (g_variance + g_mean_squared) +
+  const float variance = (node.energy_variance * (g_variance + g_mean_squared) +
                           e_mean_squared * g_variance) *
                          num_emitters_squared;
 
@@ -1207,8 +1187,8 @@ ccl_device float light_tree_pdf(KernelGlobals *kg,
   update_node(kg, offset, &right_child_offset, &first_distribution_id, &num_emitters);
 
   while (right_child_offset != -1) {
-    int child_offsetL = offset + 4;
-    int child_offsetR = 4 * right_child_offset;
+    int child_offsetL = offset + 1;
+    int child_offsetR = right_child_offset;
 
     /* choose whether to go down both(split) or only one of the children */
     if (can_split && split(kg, P, offset)) {
