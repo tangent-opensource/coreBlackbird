@@ -1916,16 +1916,6 @@ VolumeTextureNode::VolumeTextureNode() : TextureNode(node_type)
 {
 }
 
-VolumeTextureNode::~VolumeTextureNode()
-{
-  if (vdb_loader) {
-    vdb_loader->cleanup();
-    vdb_loader.reset();
-  }
-
-  handle.clear();
-}
-
 ShaderNode *VolumeTextureNode::clone() const
 {
   /* Similar to PointTexture node this should avoid add_image */
@@ -1934,12 +1924,11 @@ ShaderNode *VolumeTextureNode::clone() const
   return node;
 }
 
-void VolumeTextureNode::load_file(ImageManager* image_manager)
+void VolumeTextureNode::load_file(ImageManager *image_manager)
 {
 #ifdef WITH_OPENVDB
   if (!filename.empty() && !grid.empty()) {
-    vdb_loader.reset();
-    vdb_loader = std::make_shared<VDBImageLoader>(grid.string());
+    vdb_loader = new VDBImageLoader(grid.string());
 
     try {
       openvdb::io::File vdb_file(filename.string());
@@ -1964,7 +1953,7 @@ void VolumeTextureNode::load_file(ImageManager* image_manager)
   }
 #endif
   if (vdb_loader) {
-    handle = image_manager->add_image(vdb_loader.get(), image_params());
+    handle = image_manager->add_image(vdb_loader, image_params());
   }
 }
 

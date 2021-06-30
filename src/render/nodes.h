@@ -401,7 +401,6 @@ class VolumeTextureNode : public TextureNode {
  public:
   SHADER_NODE_NO_CLONE_CLASS(VolumeTextureNode)
 
-  ~VolumeTextureNode();
   ShaderNode *clone() const;
   void load_file(ImageManager *image_manager);
   void attributes(Shader *shader, AttributeRequestSet *attributes);
@@ -431,7 +430,7 @@ class VolumeTextureNode : public TextureNode {
 
   /* Runtime. */
   ImageHandle handle;
-  std::shared_ptr<VDBImageLoader> vdb_loader;
+  VDBImageLoader* vdb_loader;
 
   virtual bool equals(const ShaderNode &other)
   {
