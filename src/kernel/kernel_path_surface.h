@@ -23,13 +23,15 @@ ccl_device void accum_light_contribution(KernelGlobals *kg,
                                          ShaderData *emission_sd,
                                          LightSample *ls,
                                          ccl_addr_space PathState *state,
+                                         ccl_global float *buffer,
                                          Ray *light_ray,
                                          BsdfEval *L_light,
                                          PathRadiance *L,
                                          bool *is_lamp,
                                          float terminate,
                                          float3 throughput,
-                                         float scale)
+                                         float scale,
+                                         uint lightgroup)
 {
   if (direct_emission(kg, sd, emission_sd, ls, state, light_ray, L_light, is_lamp, terminate)) {
     /* trace shadow ray */
@@ -38,7 +40,7 @@ ccl_device void accum_light_contribution(KernelGlobals *kg,
     if (!shadow_blocked(kg, sd, emission_sd, state, light_ray, &shadow)) {
       /* accumulate */
       path_radiance_accum_light(
-          kg, L, state, throughput * scale, L_light, shadow, scale, *is_lamp);
+          kg, L, state, buffer, throughput * scale, L_light, shadow, scale, lightgroup, *is_lamp);
     }
     else {
       path_radiance_accum_total_light(L, state, throughput * scale, L_light);
@@ -61,6 +63,7 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
                                               float scale_factor,
                                               PathRadiance *L,
                                               ccl_addr_space PathState *state,
+                                              ccl_global float *buffer,
                                               ShaderData *sd,
                                               ShaderData *emission_sd)
 {
@@ -159,13 +162,15 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
                                emission_sd,
                                &ls,
                                state,
+                               buffer,
                                &light_ray,
                                &L_light,
                                L,
                                &is_lamp,
                                terminate,
                                throughput,
-                               scale_factor);
+                               scale_factor,
+                               ls.group);
 
       --stack_idx;
       can_split = true;
@@ -239,6 +244,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
     ShaderData *sd,
     ShaderData *emission_sd,
     ccl_addr_space PathState *state,
+    ccl_global float *buffer,
     float3 throughput,
     float num_samples_adjust,
     PathRadiance *L,
@@ -279,6 +285,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
                                     num_samples_adjust,
                                     L,  // todo: is num_samples_adjust correct here?
                                     state,
+                                    buffer,
                                     sd,
                                     emission_sd);
 
@@ -314,13 +321,15 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
                              emission_sd,
                              &ls,
                              state,
+                             buffer,
                              &light_ray,
                              &L_light,
                              L,
                              &is_lamp,
                              terminate,
                              throughput,
-                             num_samples_adjust);
+                             num_samples_adjust,
+                             ls.group);
   }
   else {
     int num_lights = 0;
@@ -408,13 +417,15 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
                                      emission_sd,
                                      &ls,
                                      state,
+                                     buffer,
                                      &light_ray,
                                      &L_light,
                                      L,
                                      &is_lamp,
                                      terminate,
                                      throughput,
-                                     num_samples_inv);
+                                     num_samples_inv,
+                                     ls.group);
           }
         }
       }
@@ -500,6 +511,7 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
                                                          ShaderData *emission_sd,
                                                          float3 throughput,
                                                          ccl_addr_space PathState *state,
+                                                         ccl_global float *buffer,
                                                          PathRadiance *L)
 {
   PROFILING_INIT(kg, PROFILING_CONNECT_LIGHT);
@@ -507,13 +519,15 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
 #ifdef __EMISSION__
 #  ifdef __SHADOW_TRICKS__
   int all = (state->flag & PATH_RAY_SHADOW_CATCHER);
-  kernel_branched_path_surface_connect_light(kg, sd, emission_sd, state, throughput, 1.0f, L, all);
+  kernel_branched_path_surface_connect_light(
+      kg, sd, emission_sd, state, buffer, throughput, 1.0f, L, all);
 #  else
 
   /* sample illumination from lights to find path contribution */
   Ray light_ray ccl_optional_struct_init;
   BsdfEval L_light ccl_optional_struct_init;
   bool is_lamp = false;
+  uint lightgroup;
 
   light_ray.t = 0.0f;
 #    ifdef __OBJECT_MOTION__
@@ -541,16 +555,17 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
                                emission_sd,
                                &ls,
                                state,
+                               buffer,
                                &light_ray,
                                &L_light,
                                L,
                                &is_lamp,
                                terminate,
                                throughput,
-                               1.0f);
+                               1.0f,
+                               ls.group);
     }
   }
-
 #  endif
 #endif
 }

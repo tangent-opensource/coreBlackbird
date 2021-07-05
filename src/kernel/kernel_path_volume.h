@@ -23,6 +23,7 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
                                                         ShaderData *emission_sd,
                                                         float3 throughput,
                                                         ccl_addr_space PathState *state,
+                                                        ccl_global float *buffer,
                                                         PathRadiance *L)
 {
 #  ifdef __EMISSION__
@@ -31,6 +32,7 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
   BsdfEval L_light ccl_optional_struct_init;
   bool is_lamp = false;
   bool has_emission = false;
+  uint lightgroup;
 
   light_ray.t = 0.0f;
 #    ifdef __OBJECT_MOTION__
@@ -53,6 +55,7 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
                      sd->t_pick,
                      state->bounce,
                      &ls)) {
+      lightgroup = ls.group;
       float terminate = path_state_rng_light_termination(kg, state);
       has_emission = direct_emission(
           kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
@@ -66,7 +69,8 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
 
   if (has_emission && !blocked) {
     /* accumulate */
-    path_radiance_accum_light(kg, L, state, throughput, &L_light, shadow, 1.0f, is_lamp);
+    path_radiance_accum_light(
+        kg, L, state, buffer, throughput, &L_light, shadow, 1.0f, lightgroup, is_lamp);
   }
 #  endif /* __EMISSION__ */
 }
@@ -147,6 +151,7 @@ ccl_device void accum_light_tree_contribution_volume(KernelGlobals *kg,
                                                      float scale_factor,
                                                      PathRadiance *L,
                                                      ccl_addr_space PathState *state,
+                                                     ccl_global float *buffer,
                                                      ShaderData *sd,
                                                      ShaderData *emission_sd,
                                                      Ray *ray,
@@ -255,6 +260,8 @@ ccl_device void accum_light_tree_contribution_volume(KernelGlobals *kg,
                                                                      (ls.t != FLT_MAX) ? &ls.P :
                                                                                          NULL,
                                                                      false);
+      uint lightgroup;
+
       if (result == VOLUME_PATH_SCATTERED) {
         light_point_sample(kg, -1, randu, randv, time, sd->P_pick, bounce, distribution_id, &ls);
         if (ls.pdf <= 0.0f) {
@@ -266,6 +273,7 @@ ccl_device void accum_light_tree_contribution_volume(KernelGlobals *kg,
             kg, state->rng_hash, state, distribution_id, 1.0f);
         has_emission = direct_emission(
             kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
+        lightgroup = ls.group;
       }
 
       /* trace shadow ray */
@@ -275,7 +283,7 @@ ccl_device void accum_light_tree_contribution_volume(KernelGlobals *kg,
 
       if (has_emission && !blocked) {
         /* accumulate */
-        path_radiance_accum_light(kg, L, state, tp, &L_light, shadow, 1.0f, is_lamp);
+        path_radiance_accum_light(kg, L, state, buffer, tp, &L_light, shadow, 1.0f, lightgroup, is_lamp);
       }
 
       --stack_idx;
@@ -346,6 +354,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                                                           ShaderData *emission_sd,
                                                           float3 throughput,
                                                           ccl_addr_space PathState *state,
+                                                          ccl_global float *buffer,
                                                           PathRadiance *L,
                                                           bool sample_all_lights,
                                                           Ray *ray,
@@ -385,6 +394,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                                            1.0f,
                                            L,  // todo: is num_samples_adjust correct here?
                                            state,
+                                           buffer,
                                            sd,
                                            emission_sd,
                                            ray,
@@ -434,6 +444,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                                                                    (ls.t != FLT_MAX) ? &ls.P :
                                                                                        NULL,
                                                                    false);
+    uint lightgroup;
     if (result == VOLUME_PATH_SCATTERED) {
       light_point_sample(kg, -1, randu, randv, sd->time, sd->P_pick, state->bounce, index, &ls);
       /* sample random light */
@@ -441,6 +452,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
           kg, state->rng_hash, state, index, 1.0f);
       has_emission = direct_emission(
           kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
+      lightgroup = ls.group;
     }
 
     /* trace shadow ray */
@@ -450,7 +462,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
 
     if (has_emission && !blocked) {
       /* accumulate */
-      path_radiance_accum_light(kg, L, state, tp, &L_light, shadow, 1.0f, is_lamp);
+      path_radiance_accum_light(kg, L, state, buffer, tp, &L_light, shadow, 1.0f, lightgroup, is_lamp);
     }
   }
   else {
@@ -496,6 +508,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
         light_ray.time = sd->time;
 #      endif
         bool has_emission = false;
+        uint lightgroup;
 
         float3 tp = throughput;
 
@@ -557,6 +570,8 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                 ls.pdf *= 2.0f;
               }
 
+              lightgroup = ls.group;
+
               /* sample random light */
               float terminate = path_branched_rng_light_termination(
                   kg, state->rng_hash, state, j, num_samples);
@@ -574,7 +589,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
         if (has_emission && !blocked) {
           /* accumulate */
           path_radiance_accum_light(
-              kg, L, state, tp * num_samples_inv, &L_light, shadow, num_samples_inv, is_lamp);
+              kg, L, state, buffer, tp * num_samples_inv, &L_light, shadow, num_samples_inv, lightgroup, is_lamp);
         }
       }
     }

@@ -96,6 +96,7 @@ NODE_DEFINE(Object)
   SOCKET_TRANSFORM_ARRAY(motion, "Motion", array<Transform>());
   SOCKET_FLOAT(shadow_terminator_offset, "Terminator Offset", 0.0f);
   SOCKET_STRING(asset_name, "Asset Name", ustring());
+  SOCKET_STRING(lightgroup, "Light Group", ustring());
 
   SOCKET_BOOLEAN(is_shadow_catcher, "Shadow Catcher", false);
 
@@ -399,7 +400,8 @@ static float object_volume_density(const Transform &tfm, Geometry *geom)
 
 void ObjectManager::device_update_object_transform(UpdateObjectTransformState *state,
                                                    Object *ob,
-                                                   bool update_all)
+                                                   bool update_all,
+                                                   const Scene *scene)
 {
   KernelObject &kobject = state->objects[ob->index];
   Transform *object_motion_pass = state->object_motion_pass;
@@ -497,8 +499,11 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.dupli_uv[1] = ob->dupli_uv[1];
   int totalsteps = geom->get_motion_steps();
   kobject.num_dfm_steps = (totalsteps - 1) / 2;
-  kobject.num_tfm_steps = ob->get_motion().size();
-  kobject.numverts = (geom->geometry_type == Geometry::MESH) ? (static_cast<Mesh *>(geom)->get_verts().size()) : 0;
+  kobject.num_tfm_steps = ob->motion.size();
+  kobject.numverts = (geom->geometry_type == Geometry::MESH ||
+                      geom->geometry_type == Geometry::VOLUME) ?
+                         static_cast<Mesh *>(geom)->get_verts().size() :
+                         0;
   kobject.patch_map_offset = 0;
   kobject.attribute_map_offset = 0;
 
@@ -524,6 +529,14 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   /* Have curves. */
   if (geom->geometry_type == Geometry::HAIR) {
     state->have_curves = true;
+  }
+
+  /* Light group. */
+  auto it = scene->lightgroups.find(ob->lightgroup);
+  if (it != scene->lightgroups.end()) {
+    kobject.lightgroup = it->second;
+  } else {
+    kobject.lightgroup = LIGHTGROUPS_NONE;
   }
 }
 
@@ -582,7 +595,7 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
                [&](const blocked_range<size_t> &r) {
                  for (size_t i = r.begin(); i != r.end(); i++) {
                    Object *ob = state.scene->objects[i];
-                   device_update_object_transform(&state, ob, update_all);
+                   device_update_object_transform(&state, ob, update_all, scene);
                  }
                });
 

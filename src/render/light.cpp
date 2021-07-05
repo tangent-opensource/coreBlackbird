@@ -154,6 +154,7 @@ NODE_DEFINE(Light)
   SOCKET_BOOLEAN(is_enabled, "Is Enabled", true);
 
   SOCKET_NODE(shader, "Shader", Shader::get_node_type());
+  SOCKET_STRING(lightgroup, "Light Group", ustring());
 
   return type;
 }
@@ -381,6 +382,7 @@ void LightManager::device_update_distribution(Device *device,
   size_t num_triangles = 0;
 
   bool background_mis = false;
+  uint lightgroup = LIGHTGROUPS_NONE;
 
   /* The emissive_prims vector contains all emissive primitives in the scene,
    * i.e., all mesh light triangles and all lamps. The order of the primitives
@@ -432,6 +434,14 @@ void LightManager::device_update_distribution(Device *device,
   /* the light index of the background light */
   int background_index = -1;
   foreach (Light *light, scene->lights) {
+    if (light->light_type == LIGHT_BACKGROUND) {
+      /* Light group. */
+      auto it = scene->lightgroups.find(light->lightgroup);
+      if (it != scene->lightgroups.end()) {
+        lightgroup = it->second;
+      }
+    }
+
     if (light->is_enabled) {
       emissive_prims.push_back(Primitive(~light_index, light_id));
       num_lights++;
@@ -845,6 +855,8 @@ void LightManager::device_update_distribution(Device *device,
 
     /* Map */
     kbackground->map_weight = background_mis ? 1.0f : 0.0f;
+
+    kbackground->lightgroup = lightgroup;
   }
   else {
     dscene->light_group_sample_cdf.free();
@@ -1260,6 +1272,14 @@ void LightManager::device_update_points(Device *, DeviceScene *dscene, Scene *sc
 
     klights[light_index].tfm = light->tfm;
     klights[light_index].itfm = transform_inverse(light->tfm);
+
+    auto it = scene->lightgroups.find(light->lightgroup);
+    if (it != scene->lightgroups.end()) {
+      klights[light_index].lightgroup = it->second;
+    }
+    else {
+      klights[light_index].lightgroup = LIGHTGROUPS_NONE;
+    }
 
     light_index++;
   }
