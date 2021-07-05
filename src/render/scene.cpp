@@ -96,7 +96,8 @@ DeviceScene::DeviceScene(Device *device)
       light_group_sample_cdf(device, "__light_group_sample_cdf", MEM_GLOBAL),
       light_group_sample_prob(device, "__light_group_sample_prob", MEM_GLOBAL),
       leaf_to_first_emitter(device, "__leaf_to_first_emitter", MEM_GLOBAL),
-      light_tree_leaf_emitters(device, "__light_tree_leaf_emitters", MEM_GLOBAL)
+      light_tree_leaf_emitters(device, "__light_tree_leaf_emitters", MEM_GLOBAL),
+      light_tree_leaf_to_light(device, "__light_tree_leaf_to_light", MEM_GLOBAL)
 {
   memset((void *)&data, 0, sizeof(data));
 }

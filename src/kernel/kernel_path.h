@@ -109,7 +109,11 @@ ccl_device_forceinline void kernel_path_lamp_emission(KernelGlobals *kg,
     light_ray.dP = ray->dP;
 
     /* intersect with lamp */
-    indirect_lamp_emission(kg, emission_sd, state, buffer, L, &light_ray, throughput);
+    if (kernel_data.integrator.use_light_tree) {
+      indirect_lamp_emission_light_tree(kg, emission_sd, state, buffer, L, &light_ray, throughput);
+    } else {
+      indirect_lamp_emission(kg, emission_sd, state, buffer, L, &light_ray, throughput);
+    }
   }
 #endif /* __LAMP_MIS__ */
 }

@@ -291,6 +291,7 @@ ccl_device_noinline_cpu void indirect_lamp_emission(KernelGlobals *kg,
       /* multiple importance sampling, get regular light pdf,
        * and compute weight with respect to BSDF pdf */
 
+
       /* multiply with light picking probablity to pdf */
       ls.pdf *= light_distribution_pdf(
           kg, emission_sd->P_pick, emission_sd->V_pick, emission_sd->t_pick, ~ls.lamp, -1);
@@ -300,6 +301,144 @@ ccl_device_noinline_cpu void indirect_lamp_emission(KernelGlobals *kg,
 
     path_radiance_accum_emission(kg, L, state, buffer, throughput, lamp_L, ls.group);
   }
+}
+
+#define LIGHT_TREE_MAX_DEPTH 12
+#define LIGHT_TREE_BVH_STACK_SIZE (1 + 4 * LIGHT_TREE_MAX_DEPTH + 3)
+
+ccl_device_forceinline int intersect_ray_aabb(
+  const float3 P,
+  const float3 inv_D,
+  const float t,
+  const float3 bb_min0,
+  const float3 bb_max0,
+  float* t_out
+  ) {
+  const float3 c0lo = (bb_min0 - P) * inv_D;
+  const float3 c0hi = (bb_max0 - P) * inv_D;
+  const float c0min = max4(0.0, min(c0lo.x, c0hi.x), min(c0lo.y, c0hi.y), min(c0lo.z, c0hi.z));
+  const float c0max = min4(t, max(c0lo.x, c0hi.x), max(c0lo.y, c0hi.y), max(c0lo.z, c0hi.z));
+  *t_out = c0min;
+  return (c0max >= c0min) ? 1 : 0;
+}
+
+/* Traverse the scene and find the intersection with any light */
+ccl_device_noinline_cpu void indirect_lamp_emission_light_tree(KernelGlobals *kg,
+                                                        ShaderData *emission_sd,
+                                                        ccl_addr_space PathState *state,
+                                                        ccl_global float *buffer,
+                                                        PathRadiance *L,
+                                                        Ray *ray,
+                                                        float3 throughput)
+{
+    /* Precompute values for intersection */
+    float3 D_inv = rcp(ray->D); // todo: safe
+
+    /* Initialize traversal stack */
+    int stack[LIGHT_TREE_BVH_STACK_SIZE];
+    int stack_ptr = 0;
+    stack[stack_ptr] = 0; /* root */
+
+    KernelLightTreeNode node, childl, childr;
+
+    while (true) pop:
+    {
+      if (stack_ptr < 0) {
+        break;
+      }
+
+      /* Pop the node */
+      int cur = stack[stack_ptr];
+      --stack_ptr;
+
+      /* Keep traversing children  */
+      while (true) {
+        /* Fetch current node and check if its interior */        
+        node = kernel_tex_fetch(__light_tree_nodes, cur);
+        if (node.right_child_offset == -1) {
+          break;
+        }
+
+        /* Calculate intersection with children */
+        childl = kernel_tex_fetch(__light_tree_nodes, node.right_child_offset);
+        childr = kernel_tex_fetch(__light_tree_nodes, node.right_child_offset + 1);
+
+        bbminl = make_float3(childl.bbox_min.x, childl.bbox_min.y, childl.bbox_min.z);
+        bbmaxl = make_float3(childl.bbox_max.x, childl.bbox_max.y, childl.bbox_max.z);
+        bbminr = make_float3(childr.bbox_min.x, childr.bbox_min.y, childr.bbox_min.z);
+        bbmaxr = make_float3(childr.bbox_max.x, childr.bbox_max.y, childr.bbox_max.z);
+
+        float intersect_t[2];
+        int intersect = intersect_ray_aabb(ray->P, D_inv, ray->t, bbminl, bbmaxl, intersect_t);
+        intersect |= (intersect_ray_aabb(ray->P, D_inv, ray->t, bbminr, bbmaxr, intersect_t + 1) ? 2 : 0);
+
+        if (intersect == 3) {
+          ++stack_ptr;
+          kernel_assert(stack_ptr < LIGHT_TREE_BVH_STACK_SIZE);
+
+          /* Both intersected, choose closest and push the other */
+          if (intersect[0] < intersect[1]) {
+            cur = node.right_child_offset;
+            stack[stack_ptr] = node.right_child_offset + 1;
+          } else {
+            cur = node.right_child_offset + 1;
+            stack[stack_ptr] = node.right_child_offset;
+          }
+        } else if (intersect == 2) {
+          cur = node.right_child_offset + 1;
+        } else if (intersect == 1) {
+          cur = node.right_child_offset;
+        } else {
+          /* Go to the next item in the stack */
+          goto pop;
+        }
+      }
+
+      /* Processing a leaf node */
+      kernel_assert(node.right_child_offset == -1);
+
+      /* Find the range of emitters for this leaf */
+      int emitters_start = kernel_tex_fetch(__leaf_to_first_emitter, cur);
+      int emitters_end = emitters_start + node.num_lights;
+
+      for (int i = emitters_start; i < emitters_end; ++i) {
+        /* Fetch the bounding box */
+        KernelLightTreeLeaf leaf = kernel_tex_fetch(__light_tree_leaf_emitters, i);
+
+        float intersect_t;
+        if (intersect_ray_aabb(ray->P, D_inv, ray->t, leaf.bbox_min, leaf.bbox_max, &intersect_t)) {
+          /* It's time to look up the real light */
+          int light_idx = kernel_tex_fetch(__light_tree_emitter_to_light);
+
+          /* We skip emitters which correspond to emissive triangles
+           * as they are already intersected in the geometry bvh */
+          if (light_idx < 0) {
+            continue;
+          }
+
+          KernelLight light = kernel_tex_fetch(__lights, -light_idx - 1);
+          LightType type = (LightType)light.type
+          if (type == LIGHT_DISTANT) {
+            // float3 lightD = make_float3(klight->co[0], klight->co[1], klight->co[2]);
+            // float costheta = dot(-lightD, D);
+            // float cosangle = klight->distant.cosangle;
+
+            if (costheta < cosangle) {
+              continue;
+            }
+
+            /* intersection successful */
+          } else if (type == LIGHT_POINT || type == LIGHT_SPOT) {
+
+
+          } else if (type == LIGHT_AREA) {
+
+          }
+        }
+      }
+
+      break;
+    }
 }
 
 /* Indirect Background */

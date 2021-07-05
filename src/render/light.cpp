@@ -431,6 +431,8 @@ void LightManager::device_update_distribution(Device *device,
   /* light_id is the index of this lamp in the scene lights array */
   int light_id = 0;
 
+  printf("LIGHTS %d\n", (int)scene->lights.size());
+
   /* the light index of the background light */
   int background_index = -1;
   foreach (Light *light, scene->lights) {
@@ -443,6 +445,7 @@ void LightManager::device_update_distribution(Device *device,
     }
 
     if (light->is_enabled) {
+      // printf("saving light %d as %d\n", light_index, ~light_index);
       emissive_prims.push_back(Primitive(~light_index, light_id));
       num_lights++;
       if (light->light_type == LIGHT_BACKGROUND) {
@@ -618,6 +621,12 @@ void LightManager::device_update_distribution(Device *device,
       for (int j = start; j < end; ++j) {
         distribution_to_node[j] = i;
       }
+    }
+
+    /* Mapping between emitter leaf and index into device lights */
+    int* leaf_to_light = dscene->light_tree_emitter_to_light.alloc(nodes.size());
+    for (size_t i = 0; i < emissive_prims.size(); ++i) {
+      leaf_to_light[i] = emissive_prims[i].prim_id;
     }
   }
 
@@ -1394,6 +1403,7 @@ void LightManager::device_free(Device *, DeviceScene *dscene, const bool free_ba
   dscene->light_group_sample_cdf.free();
   dscene->leaf_to_first_emitter.free();
   dscene->light_tree_leaf_emitters.free();
+  dscene->light_tree_emitter_to_light.free();
   dscene->ies_lights.free();
 }
 
