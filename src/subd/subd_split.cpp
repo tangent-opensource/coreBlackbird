@@ -39,7 +39,7 @@ DiagSplit::DiagSplit(const SubdParams &params_) : params(params_)
 {
 }
 
-float3 DiagSplit::to_world(Patch *patch, float2 uv)
+float3 DiagSplit::to_world(const Patch *patch, float2 uv) const
 {
   float3 P;
 
@@ -57,7 +57,7 @@ static void order_float2(float2 &a, float2 &b)
   }
 }
 
-int DiagSplit::T(Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve)
+int DiagSplit::T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve) const
 {
   order_float2(Pstart, Pend); /* May not be necessary, but better to be safe. */
 
@@ -77,7 +77,7 @@ int DiagSplit::T(Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolv
       L = len(P - Plast);
     }
     else {
-      Camera *cam = params.camera;
+      const Camera *cam = params.camera;
 
       float pixel_width = cam->world_to_raster_size((P + Plast) * 0.5f);
       L = len(P - Plast) / pixel_width;
@@ -109,7 +109,7 @@ int DiagSplit::T(Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolv
 }
 
 void DiagSplit::partition_edge(
-    Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t)
+    const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t) const
 {
   if (t == DSPLIT_NON_UNIFORM) {
     *P = (Pstart + Pend) * 0.5f;
@@ -126,12 +126,12 @@ void DiagSplit::partition_edge(
   }
 }
 
-void DiagSplit::limit_edge_factor(int &T, Patch *patch, float2 Pstart, float2 Pend)
+void DiagSplit::limit_edge_factor(int &T, const Patch *patch, float2 Pstart, float2 Pend) const
 {
   int max_t = 1 << params.max_level;
   int max_t_for_edge = int(max_t * len(Pstart - Pend));
 
-  if (patch->from_ngon) {
+  if (patch->is_from_ngon()) {
     max_t_for_edge >>= 1; /* Initial split of ngon causes edges to extend half the distance. */
   }
 
@@ -337,33 +337,6 @@ Edge *DiagSplit::alloc_edge()
   return &edges.back();
 }
 
-void DiagSplit::split_patches(Patch *patches, size_t patches_byte_stride)
-{
-  int patch_index = 0;
-
-  for (int f = 0; f < params.mesh->subd_faces.size(); f++) {
-    Mesh::SubdFace &face = params.mesh->subd_faces[f];
-
-    Patch *patch = (Patch *)(((char *)patches) + patch_index * patches_byte_stride);
-
-    if (face.is_quad()) {
-      patch_index++;
-
-      split_quad(face, patch);
-    }
-    else {
-      patch_index += face.num_corners;
-
-      split_ngon(face, patch, patches_byte_stride);
-    }
-  }
-
-  params.mesh->vert_to_stitching_key_map.clear();
-  params.mesh->vert_stitching_map.clear();
-
-  post_split();
-}
-
 static Edge *create_edge_from_corner(DiagSplit *split,
                                      const Mesh *mesh,
                                      const Mesh::SubdFace &face,
@@ -396,7 +369,7 @@ static Edge *create_edge_from_corner(DiagSplit *split,
   return edge;
 }
 
-void DiagSplit::split_quad(const Mesh::SubdFace &face, Patch *patch)
+void DiagSplit::split_quad(const Mesh::SubdFace &face, const Patch *patch)
 {
   Subpatch subpatch(patch);
 
@@ -477,132 +450,130 @@ static Edge *create_split_edge_from_corner(DiagSplit *split,
   return edge;
 }
 
-void DiagSplit::split_ngon(const Mesh::SubdFace &face, Patch *patches, size_t patches_byte_stride)
+void DiagSplit::split_ngon(const Mesh::SubdFace &face,
+                           const Patch *patch,
+                           Edge *&prev_edge_u0,
+                           Edge *&first_edge_v0,
+                           int corner)
 {
-  Edge *prev_edge_u0 = nullptr;
-  Edge *first_edge_v0 = nullptr;
+  Subpatch subpatch(patch);
 
-  for (int corner = 0; corner < face.num_corners; corner++) {
-    Patch *patch = (Patch *)(((char *)patches) + corner * patches_byte_stride);
+  int v = alloc_verts(4);
 
-    Subpatch subpatch(patch);
+  /* Setup edges. */
+  Edge *edge_u1 = alloc_edge();
+  Edge *edge_v1 = alloc_edge();
 
-    int v = alloc_verts(4);
+  edge_v1->is_stitch_edge = true;
+  edge_u1->is_stitch_edge = true;
 
-    /* Setup edges. */
-    Edge *edge_u1 = alloc_edge();
-    Edge *edge_v1 = alloc_edge();
+  edge_u1->stitch_start_vert_index = -(face.start_corner + mod(corner + 0, face.num_corners)) - 1;
+  edge_u1->stitch_end_vert_index = STITCH_NGON_CENTER_VERT_INDEX_OFFSET + face.ptex_offset;
 
-    edge_v1->is_stitch_edge = true;
-    edge_u1->is_stitch_edge = true;
+  edge_u1->start_vert_index = v + 3;
+  edge_u1->end_vert_index = v + 2;
 
-    edge_u1->stitch_start_vert_index = -(face.start_corner + mod(corner + 0, face.num_corners)) -
-                                       1;
-    edge_u1->stitch_end_vert_index = STITCH_NGON_CENTER_VERT_INDEX_OFFSET + face.ptex_offset;
+  edge_u1->stitch_edge_key = {edge_u1->stitch_start_vert_index, edge_u1->stitch_end_vert_index};
 
-    edge_u1->start_vert_index = v + 3;
-    edge_u1->end_vert_index = v + 2;
+  edge_v1->stitch_start_vert_index = -(face.start_corner + mod(corner + 1, face.num_corners)) - 1;
+  edge_v1->stitch_end_vert_index = STITCH_NGON_CENTER_VERT_INDEX_OFFSET + face.ptex_offset;
 
-    edge_u1->stitch_edge_key = {edge_u1->stitch_start_vert_index, edge_u1->stitch_end_vert_index};
+  edge_v1->start_vert_index = v + 1;
+  edge_v1->end_vert_index = v + 2;
 
-    edge_v1->stitch_start_vert_index = -(face.start_corner + mod(corner + 1, face.num_corners)) -
-                                       1;
-    edge_v1->stitch_end_vert_index = STITCH_NGON_CENTER_VERT_INDEX_OFFSET + face.ptex_offset;
+  edge_v1->stitch_edge_key = {edge_v1->stitch_start_vert_index, edge_v1->stitch_end_vert_index};
 
-    edge_v1->start_vert_index = v + 1;
-    edge_v1->end_vert_index = v + 2;
+  bool v0_reversed, u0_reversed;
 
-    edge_v1->stitch_edge_key = {edge_v1->stitch_start_vert_index, edge_v1->stitch_end_vert_index};
+  subpatch.edge_v0.edge = create_split_edge_from_corner(this,
+                                                        params.mesh,
+                                                        face,
+                                                        corner - 1,
+                                                        0,
+                                                        v0_reversed,
+                                                        v + 3,
+                                                        v + 0,
+                                                        STITCH_NGON_SPLIT_EDGE_CENTER_VERT_TAG);
 
-    bool v0_reversed, u0_reversed;
+  subpatch.edge_u1.edge = edge_u1;
+  subpatch.edge_v1.edge = edge_v1;
 
-    subpatch.edge_v0.edge = create_split_edge_from_corner(this,
-                                                          params.mesh,
-                                                          face,
-                                                          corner - 1,
-                                                          0,
-                                                          v0_reversed,
-                                                          v + 3,
-                                                          v + 0,
-                                                          STITCH_NGON_SPLIT_EDGE_CENTER_VERT_TAG);
+  subpatch.edge_u0.edge = create_split_edge_from_corner(this,
+                                                        params.mesh,
+                                                        face,
+                                                        corner + 0,
+                                                        1,
+                                                        u0_reversed,
+                                                        v + 0,
+                                                        v + 1,
+                                                        STITCH_NGON_SPLIT_EDGE_CENTER_VERT_TAG);
 
-    subpatch.edge_u1.edge = edge_u1;
-    subpatch.edge_v1.edge = edge_v1;
+  subpatch.edge_v0.sub_edges_created_in_reverse_order = !v0_reversed;
+  subpatch.edge_u1.sub_edges_created_in_reverse_order = false;
+  subpatch.edge_v1.sub_edges_created_in_reverse_order = true;
+  subpatch.edge_u0.sub_edges_created_in_reverse_order = !u0_reversed;
 
-    subpatch.edge_u0.edge = create_split_edge_from_corner(this,
-                                                          params.mesh,
-                                                          face,
-                                                          corner + 0,
-                                                          1,
-                                                          u0_reversed,
-                                                          v + 0,
-                                                          v + 1,
-                                                          STITCH_NGON_SPLIT_EDGE_CENTER_VERT_TAG);
+  subpatch.edge_v0.indices_decrease_along_edge = v0_reversed;
+  subpatch.edge_u1.indices_decrease_along_edge = false;
+  subpatch.edge_v1.indices_decrease_along_edge = true;
+  subpatch.edge_u0.indices_decrease_along_edge = u0_reversed;
 
-    subpatch.edge_v0.sub_edges_created_in_reverse_order = !v0_reversed;
-    subpatch.edge_u1.sub_edges_created_in_reverse_order = false;
-    subpatch.edge_v1.sub_edges_created_in_reverse_order = true;
-    subpatch.edge_u0.sub_edges_created_in_reverse_order = !u0_reversed;
+  /* Perfrom split. */
+  {
+    subpatch.edge_u0.T = T(subpatch.patch, subpatch.c00, subpatch.c10);
+    subpatch.edge_u1.T = T(subpatch.patch, subpatch.c01, subpatch.c11);
+    subpatch.edge_v0.T = T(subpatch.patch, subpatch.c00, subpatch.c01);
+    subpatch.edge_v1.T = T(subpatch.patch, subpatch.c10, subpatch.c11);
 
-    subpatch.edge_v0.indices_decrease_along_edge = v0_reversed;
-    subpatch.edge_u1.indices_decrease_along_edge = false;
-    subpatch.edge_v1.indices_decrease_along_edge = true;
-    subpatch.edge_u0.indices_decrease_along_edge = u0_reversed;
+    resolve_edge_factors(subpatch);
 
-    /* Perfrom split. */
-    {
-      subpatch.edge_u0.T = T(subpatch.patch, subpatch.c00, subpatch.c10);
-      subpatch.edge_u1.T = T(subpatch.patch, subpatch.c01, subpatch.c11);
-      subpatch.edge_v0.T = T(subpatch.patch, subpatch.c00, subpatch.c01);
-      subpatch.edge_v1.T = T(subpatch.patch, subpatch.c10, subpatch.c11);
-
-      resolve_edge_factors(subpatch);
-
-      split(subpatch, 0);
-    }
-
-    /* Update offsets after T is known from split. */
-    edge_u1->top = subpatch.edge_v0.edge;
-    edge_u1->stitch_top_offset = edge_u1->top->T * (v0_reversed ? -1 : 1);
-    edge_v1->top = subpatch.edge_u0.edge;
-    edge_v1->stitch_top_offset = edge_v1->top->T * (!u0_reversed ? -1 : 1);
-
-    if (corner == 0) {
-      first_edge_v0 = subpatch.edge_v0.edge;
-    }
-
-    if (prev_edge_u0) {
-      if (v0_reversed) {
-        subpatch.edge_v0.edge->stitch_offset = prev_edge_u0->T;
-      }
-      else {
-        prev_edge_u0->stitch_offset = subpatch.edge_v0.edge->T;
-      }
-
-      int T = subpatch.edge_v0.edge->T + prev_edge_u0->T;
-      subpatch.edge_v0.edge->stitch_edge_T = T;
-      prev_edge_u0->stitch_edge_T = T;
-    }
-
-    if (corner == face.num_corners - 1) {
-      if (v0_reversed) {
-        subpatch.edge_u0.edge->stitch_offset = first_edge_v0->T;
-      }
-      else {
-        first_edge_v0->stitch_offset = subpatch.edge_u0.edge->T;
-      }
-
-      int T = first_edge_v0->T + subpatch.edge_u0.edge->T;
-      first_edge_v0->stitch_edge_T = T;
-      subpatch.edge_u0.edge->stitch_edge_T = T;
-    }
-
-    prev_edge_u0 = subpatch.edge_u0.edge;
+    split(subpatch, 0);
   }
+
+  /* Update offsets after T is known from split. */
+  edge_u1->top = subpatch.edge_v0.edge;
+  edge_u1->stitch_top_offset = edge_u1->top->T * (v0_reversed ? -1 : 1);
+  edge_v1->top = subpatch.edge_u0.edge;
+  edge_v1->stitch_top_offset = edge_v1->top->T * (!u0_reversed ? -1 : 1);
+
+  if (corner == 0) {
+    first_edge_v0 = subpatch.edge_v0.edge;
+  }
+
+  if (prev_edge_u0) {
+    if (v0_reversed) {
+      subpatch.edge_v0.edge->stitch_offset = prev_edge_u0->T;
+    }
+    else {
+      prev_edge_u0->stitch_offset = subpatch.edge_v0.edge->T;
+    }
+
+    int T = subpatch.edge_v0.edge->T + prev_edge_u0->T;
+    subpatch.edge_v0.edge->stitch_edge_T = T;
+    prev_edge_u0->stitch_edge_T = T;
+  }
+
+  if (corner == face.num_corners - 1) {
+    if (v0_reversed) {
+      subpatch.edge_u0.edge->stitch_offset = first_edge_v0->T;
+    }
+    else {
+      first_edge_v0->stitch_offset = subpatch.edge_u0.edge->T;
+    }
+
+    int T = first_edge_v0->T + subpatch.edge_u0.edge->T;
+    first_edge_v0->stitch_edge_T = T;
+    subpatch.edge_u0.edge->stitch_edge_T = T;
+  }
+
+  prev_edge_u0 = subpatch.edge_u0.edge;
 }
 
-void DiagSplit::post_split()
+void DiagSplit::stitch()
 {
+  params.mesh->vert_to_stitching_key_map.clear();
+  params.mesh->vert_stitching_map.clear();
+
   int num_stitch_verts = 0;
 
   /* All patches are now split, and all T values known. */
@@ -714,8 +685,10 @@ void DiagSplit::post_split()
       }
     }
   }
+}
 
-  /* Dice; TODO(mai): Move this out of split. */
+void DiagSplit::dice()
+{
   QuadDice dice(params);
 
   int num_verts = num_alloced_verts;

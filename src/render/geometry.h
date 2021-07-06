@@ -95,6 +95,21 @@ class Geometry : public Node {
   virtual void compute_bounds() = 0;
   virtual void apply_transform(const Transform &tfm, const bool apply_to_motion) = 0;
 
+  /* Create necessary attributes for motion blur */
+  virtual void create_motion_blur_geometry(const Scene* scene);
+
+  /* Tessellate geometry */
+  virtual bool require_tessellation() const;
+  virtual void tessellate(const Scene* scene);
+
+ protected:
+  /* Default implementation to create motion blur attributes from velocity, acceleration etc */
+  void create_motion_blur_geometry(const Scene *scene,
+                                   const float3 *P,
+                                   const float *Pw,
+                                   int num_points);
+
+ public:
   /* Attribute Requests */
   bool need_attribute(Scene *scene, AttributeStandard std);
   bool need_attribute(Scene *scene, ustring name);
@@ -173,10 +188,6 @@ class GeometryManager {
   bool displace(Device *device, DeviceScene *dscene, Scene *scene, Mesh *mesh, Progress &progress);
 
   void create_volume_mesh(Mesh *mesh, Progress &progress);
-
-  void create_motion_blur_geometry(
-      const Scene *scene, Geometry *geom, const float3 *P, const float *Pw, int num_points);
-  void create_motion_blur_geometry(const Scene *scene, Geometry *geom, Progress &progress);
 
   /* Attributes */
   void update_osl_attributes(Device *device,

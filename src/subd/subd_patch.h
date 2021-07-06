@@ -17,21 +17,47 @@
 #ifndef __SUBD_PATCH_H__
 #define __SUBD_PATCH_H__
 
-#include "util/util_boundbox.h"
 #include "util/util_types.h"
 
 CCL_NAMESPACE_BEGIN
 
+///
+/// Abstract interface to represent a patch used by DiagSplit to evaluate properties on the
+/// limit surface.
+///
 class Patch {
  public:
+
+  virtual ~Patch() = default;
+
+  /// Limit surface evaluation
+  virtual void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const = 0;
+
+  ///
+  int get_patch_index() const {
+    return patch_index;
+  }
+
+  int get_shader() const {
+    return shader;
+  }
+
+  bool is_from_ngon() const {
+    return from_ngon;
+  }
+
+ protected:
   Patch() : patch_index(0), shader(0), from_ngon(false)
   {
   }
 
-  virtual ~Patch() = default;
+  Patch(const Patch&) = default;
+  Patch(Patch&&) = default;
 
-  virtual void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) = 0;
+  Patch& operator=(const Patch&) = default;
+  Patch& operator=(Patch&&) = default;
 
+ public: // TODO: make protected to follow RAII and const correctness
   int patch_index;
   int shader;
   bool from_ngon;
@@ -44,7 +70,7 @@ class LinearQuadPatch : public Patch {
   float3 hull[4];
   float3 normals[4];
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v);
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override;
   BoundBox bound();
 };
 
@@ -54,7 +80,7 @@ class BicubicPatch : public Patch {
  public:
   float3 hull[16];
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v);
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override;
   BoundBox bound();
 };
 

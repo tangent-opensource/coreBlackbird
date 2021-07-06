@@ -313,6 +313,12 @@ void PointCloud::pack(Scene *scene, float4 *packed_points, uint *packed_shader)
   }
 }
 
+/*virtual*/
+void PointCloud::create_motion_blur_geometry(const Scene* scene)
+{
+  Geometry::create_motion_blur_geometry(scene, points.data(), radius.data(), points.size());
+}
+
 #if 0
 void PointCloud::pack_primitives(PackedBVH &pack, int object, uint visibility)
 {

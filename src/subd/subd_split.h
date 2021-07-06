@@ -43,14 +43,14 @@ class DiagSplit {
   /* deque is used so that element pointers remain vaild when size is changed. */
   deque<Edge> edges;
 
-  float3 to_world(Patch *patch, float2 uv);
-  int T(Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve = false);
+  float3 to_world(const Patch *patch, float2 uv) const;
+  int T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve = false) const;
 
-  void limit_edge_factor(int &T, Patch *patch, float2 Pstart, float2 Pend);
+  void limit_edge_factor(int &T, const Patch *patch, float2 Pstart, float2 Pend) const;
   void resolve_edge_factors(Subpatch &sub);
 
   void partition_edge(
-      Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t);
+      const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t) const;
 
   void split(Subpatch &sub, int depth = 0);
 
@@ -62,12 +62,53 @@ class DiagSplit {
 
   explicit DiagSplit(const SubdParams &params);
 
-  void split_patches(Patch *patches, size_t patches_byte_stride);
+  template<typename T> void split(const ccl::vector<T> &patches)
+  {
+    const Mesh *mesh = params.mesh;
 
-  void split_quad(const Mesh::SubdFace &face, Patch *patch);
-  void split_ngon(const Mesh::SubdFace &face, Patch *patches, size_t patches_byte_stride);
+    for (size_t f = 0, p = 0; f < mesh->subd_faces.size(); ++f) {
+      const Mesh::SubdFace &face = mesh->subd_faces[f];
+      const T &patch = patches[p];
 
-  void post_split();
+      if (face.is_quad()) {
+        split_quad(face, &patch);
+        ++p;
+      }
+      else {
+        split_ngon(face, &patch, patches);
+        p += face.num_corners;
+      }
+    }
+
+    // stitch & dice
+    stitch();
+    dice();
+  }
+
+ public:
+  void split_quad(const Mesh::SubdFace &face, const Patch *patch);
+  template<typename T>
+  void split_ngon(const Mesh::SubdFace &face, const T *input_patch, const ccl::vector<T> &patches)
+  {
+    Edge *prev_edge_u0 = nullptr;
+    Edge *first_edge_v0 = nullptr;
+
+    auto patch_index = input_patch->get_patch_index();
+
+    for (int corner = 0; corner < face.num_corners; corner++) {
+      const T *patch = &patches[patch_index + corner];
+      split_ngon(face, patch, prev_edge_u0, first_edge_v0, corner);
+    }
+  }
+
+  void split_ngon(const Mesh::SubdFace &face,
+                  const Patch *patch,
+                  Edge *&prev_edge_u0,
+                  Edge *&first_edge_v0,
+                  int corner);
+
+  void stitch();
+  void dice();
 };
 
 CCL_NAMESPACE_END

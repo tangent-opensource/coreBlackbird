@@ -55,7 +55,7 @@ struct PackedPatchTable {
   /* calculated size from num_* members */
   size_t total_size();
 
-  void pack(Far::PatchTable *patch_table, int offset = 0);
+  void pack(const Far::PatchTable *patch_table, int offset = 0);
   void copy_adjusting_offsets(uint *dest, int doffset);
 };
 

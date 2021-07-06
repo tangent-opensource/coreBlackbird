@@ -653,48 +653,15 @@ void Mesh::pack_verts(const vector<uint> &tri_prim_index,
 
 void Mesh::pack_patches(uint *patch_data, uint vert_offset, uint face_offset, uint corner_offset)
 {
-  size_t num_faces = subd_faces.size();
-  int ngons = 0;
-
-  for (size_t f = 0; f < num_faces; f++) {
-    SubdFace face = subd_faces[f];
-
-    if (face.is_quad()) {
-      int c[4];
-      memcpy(c, &subd_face_corners[face.start_corner], sizeof(int) * 4);
-
-      *(patch_data++) = c[0] + vert_offset;
-      *(patch_data++) = c[1] + vert_offset;
-      *(patch_data++) = c[2] + vert_offset;
-      *(patch_data++) = c[3] + vert_offset;
-
-      *(patch_data++) = f + face_offset;
-      *(patch_data++) = face.num_corners;
-      *(patch_data++) = face.start_corner + corner_offset;
-      *(patch_data++) = 0;
-    }
-    else {
-      for (int i = 0; i < face.num_corners; i++) {
-        int c[4];
-        c[0] = subd_face_corners[face.start_corner + mod(i + 0, face.num_corners)];
-        c[1] = subd_face_corners[face.start_corner + mod(i + 1, face.num_corners)];
-        c[2] = verts.size() - num_subd_verts + ngons;
-        c[3] = subd_face_corners[face.start_corner + mod(i - 1, face.num_corners)];
-
-        *(patch_data++) = c[0] + vert_offset;
-        *(patch_data++) = c[1] + vert_offset;
-        *(patch_data++) = c[2] + vert_offset;
-        *(patch_data++) = c[3] + vert_offset;
-
-        *(patch_data++) = f + face_offset;
-        *(patch_data++) = face.num_corners | (i << 16);
-        *(patch_data++) = face.start_corner + corner_offset;
-        *(patch_data++) = subd_face_corners.size() + ngons + corner_offset;
-      }
-
-      ngons++;
-    }
+  if(patch_data_builder) {
+    patch_data_builder->pack(this, patch_data, vert_offset, face_offset, corner_offset);
   }
+}
+
+/* virtual */
+void Mesh::create_motion_blur_geometry(const Scene* scene)
+{
+  Geometry::create_motion_blur_geometry(scene, verts.data(), nullptr, verts.size());
 }
 
 CCL_NAMESPACE_END

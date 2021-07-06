@@ -99,7 +99,7 @@ class Mesh : public Geometry {
     bool smooth;
     int ptex_offset;
 
-    bool is_quad()
+    bool is_quad() const
     {
       return num_corners == 4;
     }
@@ -119,6 +119,21 @@ class Mesh : public Geometry {
     SUBDIVISION_NONE,
     SUBDIVISION_LINEAR,
     SUBDIVISION_CATMULL_CLARK,
+  };
+
+
+  class PatchDataBuilder {
+   public:
+    virtual ~PatchDataBuilder() = default;
+
+    virtual void pack(const Mesh *mesh,
+                      uint *patch_data,
+                      uint vert_offset,
+                      uint face_offset,
+                      uint corner_offset) const = 0;
+
+   protected:
+    PatchDataBuilder() = default;
   };
 
   SubdivisionType subdivision_type;
@@ -148,6 +163,7 @@ class Mesh : public Geometry {
   AttributeSet subd_attributes;
 
   PackedPatchTable *patch_table;
+  std::unique_ptr<const PatchDataBuilder> patch_data_builder;
 
   /* BVH */
   size_t vert_offset;
@@ -204,6 +220,12 @@ class Mesh : public Geometry {
                   size_t tri_offset);
   void pack_patches(uint *patch_data, uint vert_offset, uint face_offset, uint corner_offset);
 
+  void create_motion_blur_geometry(const Scene* scene) override;
+
+  bool require_tessellation() const override;
+  void tessellate(const Scene* scene) override;
+
+ private:
   void tessellate(DiagSplit *split);
 };
 

@@ -643,7 +643,7 @@ BoundBox Camera::viewplane_bounds_get()
   return bounds;
 }
 
-float Camera::world_to_raster_size(float3 P)
+float Camera::world_to_raster_size(float3 P) const
 {
   float res = 1.0f;
 

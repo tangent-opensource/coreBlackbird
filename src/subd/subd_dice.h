@@ -41,7 +41,7 @@ struct SubdParams {
   int split_threshold;
   float dicing_rate;
   int max_level;
-  Camera *camera;
+  const Camera *camera;
   Transform objecttoworld;
 
   SubdParams(Mesh *mesh_, bool ptex_ = false)
@@ -71,10 +71,10 @@ class EdgeDice {
 
   void reserve(int num_verts, int num_triangles);
 
-  void set_vert(Patch *patch, int index, float2 uv);
-  void add_triangle(Patch *patch, int v0, int v1, int v2);
+  void set_vert(const Patch *patch, int index, float2 uv);
+  void add_triangle(const Patch *patch, int v0, int v1, int v2);
 
-  void stitch_triangles(Subpatch &sub, int edge);
+  void stitch_triangles(const Subpatch &sub, int edge);
 };
 
 /* Quad EdgeDice */
@@ -83,19 +83,19 @@ class QuadDice : public EdgeDice {
  public:
   explicit QuadDice(const SubdParams &params);
 
-  float3 eval_projected(Subpatch &sub, float u, float v);
+  float3 eval_projected(const Subpatch &sub, float u, float v) const;
 
-  float2 map_uv(Subpatch &sub, float u, float v);
-  void set_vert(Subpatch &sub, int index, float u, float v);
+  float2 map_uv(const Subpatch &sub, float u, float v) const;
+  void set_vert(const Subpatch &sub, int index, float u, float v);
 
-  void add_grid(Subpatch &sub, int Mu, int Mv, int offset);
+  void add_grid(const Subpatch &sub, int Mu, int Mv, int offset);
 
-  void set_side(Subpatch &sub, int edge);
+  void set_side(const Subpatch &sub, int edge);
 
   float quad_area(const float3 &a, const float3 &b, const float3 &c, const float3 &d);
-  float scale_factor(Subpatch &sub, int Mu, int Mv);
+  float scale_factor(const Subpatch &sub, int Mu, int Mv);
 
-  void dice(Subpatch &sub);
+  void dice(const Subpatch &sub);
 };
 
 CCL_NAMESPACE_END

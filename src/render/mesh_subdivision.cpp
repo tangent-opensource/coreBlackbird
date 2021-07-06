@@ -22,19 +22,19 @@
 #include "subd/subd_patch_table.h"
 #include "subd/subd_split.h"
 
+#include "scene.h"
 #include "util/util_algorithm.h"
-#include "util/util_foreach.h"
 #include "util/util_hash.h"
-
-CCL_NAMESPACE_BEGIN
+#include "util/util_math.h"
 
 #ifdef WITH_OPENSUBDIV
-
-CCL_NAMESPACE_END
 
 #  include <opensubdiv/far/patchMap.h>
 #  include <opensubdiv/far/patchTableFactory.h>
 #  include <opensubdiv/far/primvarRefiner.h>
+#  include <opensubdiv/far/ptexIndices.h>
+#  include <opensubdiv/far/stencilTable.h>
+#  include <opensubdiv/far/stencilTableFactory.h>
 #  include <opensubdiv/far/topologyRefinerFactory.h>
 
 /* specializations of TopologyRefinerFactory for ccl::Mesh */
@@ -46,14 +46,18 @@ template<>
 bool TopologyRefinerFactory<ccl::Mesh>::resizeComponentTopology(TopologyRefiner &refiner,
                                                                 ccl::Mesh const &mesh)
 {
-  setNumBaseVertices(refiner, mesh.verts.size());
-  setNumBaseFaces(refiner, mesh.subd_faces.size());
-
   const ccl::Mesh::SubdFace *face = mesh.subd_faces.data();
+  size_t total_num_corners = 0;
 
+  // uniform
+  setNumBaseFaces(refiner, mesh.subd_faces.size());
   for (int i = 0; i < mesh.subd_faces.size(); i++, face++) {
     setNumBaseFaceVertices(refiner, i, face->num_corners);
+    total_num_corners += face->num_corners;
   }
+
+  // face-vertex
+  setNumBaseVertices(refiner, mesh.verts.size());
 
   return true;
 }
@@ -67,7 +71,7 @@ bool TopologyRefinerFactory<ccl::Mesh>::assignComponentTopology(TopologyRefiner 
   for (int i = 0; i < mesh.subd_faces.size(); i++, face++) {
     IndexArray face_verts = getBaseFaceVertices(refiner, i);
 
-    int *corner = &mesh.subd_face_corners[face->start_corner];
+    const int *corner = &mesh.subd_face_corners[face->start_corner];
 
     for (int j = 0; j < face->num_corners; j++, corner++) {
       face_verts[j] = *corner;
@@ -91,6 +95,7 @@ bool TopologyRefinerFactory<ccl::Mesh>::assignComponentTags(TopologyRefiner &ref
     }
   }
 
+  // TODO what is this doing here?
   for (int i = 0; i < mesh.verts.size(); i++) {
     ConstIndexArray vert_edges = getBaseVertexEdges(refiner, i);
 
@@ -106,9 +111,26 @@ bool TopologyRefinerFactory<ccl::Mesh>::assignComponentTags(TopologyRefiner &ref
 }
 
 template<>
-bool TopologyRefinerFactory<ccl::Mesh>::assignFaceVaryingTopology(TopologyRefiner & /*refiner*/,
-                                                                  ccl::Mesh const & /*mesh*/)
+bool TopologyRefinerFactory<ccl::Mesh>::assignFaceVaryingTopology(TopologyRefiner &refiner,
+                                                                  const ccl::Mesh &mesh)
 {
+  int total_num_corners = 0;
+  for (size_t i = 0; i < mesh.subd_faces.size(); ++i) {
+    total_num_corners += mesh.subd_faces[i].num_corners;
+  }
+
+  createBaseFVarChannel(refiner, total_num_corners);
+
+  int off = 0;
+  for (int face = 0; face < mesh.subd_faces.size(); ++face) {
+    setNumBaseFaceVertices(refiner, face, mesh.subd_faces[face].num_corners);
+
+    auto index_array = getBaseFaceFVarValues(refiner, face);
+    for (auto it = index_array.begin(); it != index_array.end(); ++it, ++off) {
+      *it = off;
+    }
+  }
+
   return true;
 }
 
@@ -156,61 +178,112 @@ template<> void OsdValue<uchar4>::AddWithWeight(OsdValue<uchar4> const &src, flo
 /* class for holding OpenSubdiv data used during tessellation */
 
 class OsdData {
-  Mesh *mesh;
-  vector<OsdValue<float3>> verts;
-  Far::TopologyRefiner *refiner;
-  Far::PatchTable *patch_table;
-  Far::PatchMap *patch_map;
-
  public:
-  OsdData() : mesh(NULL), refiner(NULL), patch_table(NULL), patch_map(NULL)
+  explicit OsdData(ccl::Mesh *mesh_) : mesh{mesh_}
   {
+    if (mesh->subdivision_type == Mesh::SUBDIVISION_CATMULL_CLARK) {
+      initialize_adaptive(Sdc::SchemeType::SCHEME_CATMARK);
+    }
+
+    if (mesh->subdivision_type == Mesh::SUBDIVISION_LINEAR) {
+      initialize_adaptive(Sdc::SchemeType::SCHEME_BILINEAR);
+    }
   }
 
-  ~OsdData()
+  const Far::PatchTable *get_patch_table() const
   {
-    delete refiner;
-    delete patch_table;
-    delete patch_map;
+    return patch_table.get();
   }
 
-  void build_from_mesh(Mesh *mesh_)
+  const Far::PatchMap *get_patch_map() const
   {
-    mesh = mesh_;
+    return patch_map.get();
+  }
 
-    /* type and options */
-    Sdc::SchemeType type = Sdc::SCHEME_CATMARK;
+  const vector<OsdValue<float3>> &get_vertices() const
+  {
+    return verts;
+  }
 
-    Sdc::Options options;
-    options.SetVtxBoundaryInterpolation(Sdc::Options::VTX_BOUNDARY_EDGE_ONLY);
+  int get_face_index(int ptex_index) const
+  {
+    return ptex_to_face_index_map[ptex_index];
+  }
 
-    /* create refiner */
-    refiner = Far::TopologyRefinerFactory<Mesh>::Create(
-        *mesh, Far::TopologyRefinerFactory<Mesh>::Options(type, options));
+  int get_face_size() const
+  {
+    return Sdc::SchemeTypeTraits::GetRegularFaceSize(refiner->GetSchemeType());
+  }
+
+  const Mesh *get_mesh() const
+  {
+    return mesh;
+  }
+
+  const Far::TopologyRefiner *get_refiner() const
+  {
+    return refiner.get();
+  }
+
+ private:
+  void initialize_adaptive(Sdc::SchemeType scheme_type)
+  {
+    /* scheme type type and options */
+    Sdc::Options scheme_options;
+    scheme_options.SetVtxBoundaryInterpolation(Sdc::Options::VTX_BOUNDARY_EDGE_AND_CORNER);
+    scheme_options.SetFVarLinearInterpolation(Sdc::Options::FVAR_LINEAR_ALL);
+
+    /* create topology refiner */
+    Far::TopologyRefinerFactory<Mesh>::Options refiner_options(scheme_type, scheme_options);
+    auto refiner_ptr = Far::TopologyRefinerFactory<Mesh>::Create(*mesh, refiner_options);
+    refiner = std::unique_ptr<Far::TopologyRefiner>(refiner_ptr);
 
     /* adaptive refinement */
-    int max_isolation = calculate_max_isolation();
-    refiner->RefineAdaptive(Far::TopologyRefiner::AdaptiveOptions(max_isolation));
+    int max_isolation_level = calculate_max_isolation();
+    Far::TopologyRefiner::AdaptiveOptions adaptive_options(max_isolation_level);
+    adaptive_options.considerFVarChannels = true;
+    refiner->RefineAdaptive(adaptive_options);
+
+    // Ptex Index Face -> Coarse Index Face mapping
+    // In this code path Osd works with quadrangular patches and it 0 topology level(base_level)
+    // is quadrangulated version of the input mesh. To find original coarse face index, where
+    // ptex patches were generated from, we build an offset table:
+    // * input face is a quad then 1 quadrangular patch is generated
+    // * input face is not a quad then num_corners quadrangular patches are generated.
+    const Far::TopologyLevel &base_level = refiner->GetLevel(0);
+    int face_size = Sdc::SchemeTypeTraits::GetRegularFaceSize(refiner->GetSchemeType());
+
+    // worst case, if all input faces have to be quadrangulated
+    ptex_to_face_index_map.reserve(base_level.GetNumFaces() * face_size);
+
+    for (int coarse_face = 0; coarse_face < base_level.GetNumFaces(); ++coarse_face) {
+      int num_base_vertices = base_level.GetFaceVertices(coarse_face).size();
+      int num_ptex_faces = (num_base_vertices == face_size) ? 1 : num_base_vertices;
+      for (int i = 0; i < num_ptex_faces; ++i) {
+        ptex_to_face_index_map.push_back(coarse_face);
+      }
+    }
+    ptex_to_face_index_map.shrink_to_fit();
 
     /* create patch table */
     Far::PatchTableFactory::Options patch_options;
-    patch_options.endCapType = Far::PatchTableFactory::Options::ENDCAP_GREGORY_BASIS;
+    patch_options.SetEndCapType(Far::PatchTableFactory::Options::ENDCAP_GREGORY_BASIS);
+    patch_table = std::unique_ptr<Far::PatchTable>(
+        Far::PatchTableFactory::Create(*refiner, patch_options));
 
-    patch_table = Far::PatchTableFactory::Create(*refiner, patch_options);
-
-    /* interpolate verts */
+    /* subdivide vertices */
     int num_refiner_verts = refiner->GetNumVerticesTotal();
     int num_local_points = patch_table->GetNumLocalPoints();
-
     verts.resize(num_refiner_verts + num_local_points);
-    for (int i = 0; i < mesh->verts.size(); i++) {
+    for (size_t i = 0; i < mesh->verts.size(); i++) {
       verts[i].value = mesh->verts[i];
     }
 
+    Far::PrimvarRefiner primvar_refiner{*refiner};
     OsdValue<float3> *src = verts.data();
     for (int i = 0; i < refiner->GetMaxLevel(); i++) {
       OsdValue<float3> *dest = src + refiner->GetLevel(i).GetNumVertices();
-      Far::PrimvarRefiner(*refiner).Interpolate(i + 1, src, dest);
+      primvar_refiner.Interpolate(i + 1, src, dest);
       src = dest;
     }
 
@@ -219,9 +292,10 @@ class OsdData {
     }
 
     /* create patch map */
-    patch_map = new Far::PatchMap(*patch_table);
+    patch_map = std::make_unique<Far::PatchMap>(*patch_table);
   }
 
+ public:
   void subdivide_attribute(Attribute &attr)
   {
     Far::PrimvarRefiner primvar_refiner(*refiner);
@@ -269,8 +343,36 @@ class OsdData {
         }
       }
     }
-    else if (attr.element == ATTR_ELEMENT_CORNER || attr.element == ATTR_ELEMENT_CORNER_BYTE) {
-      // TODO(mai): fvar interpolation
+    else if (attr.std == ATTR_STD_UV) {
+      // size is equal to number of
+      auto num_frav_values_total = refiner->GetNumFVarValuesTotal();
+
+      attr.resize(num_frav_values_total);
+      attr.flags |= ATTR_FINAL_SIZE;
+
+      char *src = attr.buffer.data();
+
+      for (int level = 0; level < refiner->GetMaxLevel(); ++level) {
+        const Far::TopologyLevel &topology_level = refiner->GetLevel(level);
+
+        auto num_fvar_values = topology_level.GetNumFVarValues();
+        char *dest = src + num_fvar_values * attr.data_sizeof();
+
+        if (attr.same_storage(attr.type, TypeDesc::TypeFloat)) {
+          primvar_refiner.InterpolateFaceVarying(
+              level + 1, (OsdValue<float> *)src, (OsdValue<float> *&)dest);
+        }
+        else if (attr.same_storage(attr.type, TypeFloat2)) {
+          primvar_refiner.InterpolateFaceVarying(
+              level + 1, (OsdValue<float2> *)src, (OsdValue<float2> *&)dest);
+        }
+        else {
+          primvar_refiner.InterpolateFaceVarying(
+              level + 1, (OsdValue<float4> *)src, (OsdValue<float4> *&)dest);
+        }
+
+        src = dest;
+      }
     }
   }
 
@@ -279,7 +381,7 @@ class OsdData {
     /* loop over all edges to find longest in screen space */
     const Far::TopologyLevel &level = refiner->GetLevel(0);
     Transform objecttoworld = mesh->subd_params->objecttoworld;
-    Camera *cam = mesh->subd_params->camera;
+    const Camera *cam = mesh->subd_params->camera;
 
     float longest_edge = 0.0f;
 
@@ -310,51 +412,81 @@ class OsdData {
     return min(isolation, 10);
   }
 
-  friend struct OsdPatch;
-  friend class Mesh;
+ private:
+  Mesh *mesh;
+  vector<OsdValue<float3>> verts;
+
+  std::unique_ptr<Far::TopologyRefiner> refiner;
+  std::unique_ptr<Far::PatchTable> patch_table;
+  std::unique_ptr<Far::PatchMap> patch_map;
+
+  ccl::vector<int> ptex_to_face_index_map;
 };
 
 /* ccl::Patch implementation that uses OpenSubdiv for eval */
 
-struct OsdPatch : Patch {
-  OsdData *osd_data;
+class OsdPatch final : public Patch {
+ public:
+  OsdPatch(const OsdData *data, const Far::PatchParam &patch_param) : osd_data{data}
+  {
+    patch_index = patch_param.GetFaceId();
 
-  OsdPatch()
-  {
-  }
-  OsdPatch(OsdData *data) : osd_data(data)
-  {
+    // ptex index -> input face
+    const Mesh::SubdFace &face = get_face();
+
+    shader = face.shader;
+    from_ngon = face.num_corners != osd_data->get_face_size();
   }
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v)
+  OsdPatch(const OsdData *data, int ptex_index) : osd_data{data}
   {
-    const Far::PatchTable::PatchHandle *handle = osd_data->patch_map->FindPatch(patch_index, u, v);
+    patch_index = ptex_index;
+
+    const Mesh::SubdFace &face = get_face();
+    shader = face.shader;
+    from_ngon = face.num_corners != osd_data->get_face_size();
+  }
+
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override
+  {
+    // search for a patch within top level ptex patch
+    const Far::PatchMap *patch_map = osd_data->get_patch_map();
+    auto ptex_index = get_ptex_index();
+    const Far::PatchTable::PatchHandle *handle = patch_map->FindPatch(ptex_index, u, v);
     assert(handle);
 
-    float p_weights[20], du_weights[20], dv_weights[20];
-    osd_data->patch_table->EvaluateBasis(*handle, u, v, p_weights, du_weights, dv_weights);
+    const Far::PatchTable *patch_table = osd_data->get_patch_table();
 
-    Far::ConstIndexArray cv = osd_data->patch_table->GetPatchVertices(*handle);
+    float p_weights[20]{}, du_weights[20]{}, dv_weights[20]{};
+    patch_table->EvaluateBasis(*handle, u, v, p_weights, du_weights, dv_weights);
 
-    float3 du, dv;
-    if (P)
+    float3 du{}, dv{};
+    if (P) {
       *P = make_float3(0.0f, 0.0f, 0.0f);
+    }
     du = make_float3(0.0f, 0.0f, 0.0f);
     dv = make_float3(0.0f, 0.0f, 0.0f);
 
+    Far::ConstIndexArray cv = patch_table->GetPatchVertices(*handle);
     for (int i = 0; i < cv.size(); i++) {
-      float3 p = osd_data->verts[cv[i]].value;
+      float3 p = osd_data->get_vertices()[cv[i]].value;
 
-      if (P)
+      if (P) {
         *P += p * p_weights[i];
+      }
+
       du += p * du_weights[i];
       dv += p * dv_weights[i];
     }
 
-    if (dPdu)
+    if (dPdu) {
       *dPdu = du;
-    if (dPdv)
+    }
+
+    if (dPdv) {
       *dPdv = dv;
+    }
+
     if (N) {
       *N = cross(du, dv);
 
@@ -362,279 +494,350 @@ struct OsdPatch : Patch {
       *N = (t != 0.0f) ? *N / t : make_float3(0.0f, 0.0f, 1.0f);
     }
   }
+
+  int get_ptex_index() const
+  {
+    return get_patch_index();
+  }
+
+  const Mesh::SubdFace &get_face() const
+  {
+    auto ptex_index = get_patch_index();
+    auto face_index = osd_data->get_face_index(ptex_index);
+    assert(face_index < osd_data->get_mesh()->subd_faces.size());
+    return osd_data->get_mesh()->subd_faces[face_index];
+  }
+
+ private:
+  const OsdData *osd_data;
 };
 
-#endif
-
-void Mesh::tessellate(DiagSplit *split)
-{
-#ifdef WITH_OPENSUBDIV
-  OsdData osd_data;
-  bool need_packed_patch_table = false;
-
-  if (subdivision_type == SUBDIVISION_CATMULL_CLARK) {
-    if (subd_faces.size()) {
-      osd_data.build_from_mesh(this);
-    }
-  }
-  else
-#endif
+class OsdPatchDataBuilder final : public Mesh::PatchDataBuilder {
+ public:
+  OsdPatchDataBuilder(const OsdData &osd_data, const Mesh *mesh)
   {
-    /* force linear subdivision if OpenSubdiv is unavailable to avoid
-     * falling into catmull-clark code paths by accident
-     */
-    subdivision_type = SUBDIVISION_LINEAR;
-
-    /* force disable attribute subdivision for same reason as above */
-    foreach (Attribute &attr, subd_attributes.attributes) {
-      attr.flags &= ~ATTR_SUBDIVIDED;
-    }
+    build_vertex_indices(osd_data, mesh);
   }
 
-  int num_faces = subd_faces.size();
+  void pack(const Mesh *mesh,
+            uint *patch_data,
+            uint vert_offset,
+            uint face_offset,
+            uint corner_offset) const override
+  {
+    size_t num_faces = mesh->subd_faces.size();
+    int ngons = 0;
+    size_t patch_index = 0;
 
-  Attribute *attr_vN = subd_attributes.find(ATTR_STD_VERTEX_NORMAL);
-  float3 *vN = (attr_vN) ? attr_vN->data_float3() : NULL;
-
-  /* count patches */
-  int num_patches = 0;
-  for (int f = 0; f < num_faces; f++) {
-    SubdFace &face = subd_faces[f];
-
-    if (face.is_quad()) {
-      num_patches++;
-    }
-    else {
-      num_patches += face.num_corners;
-    }
-  }
-
-  /* build patches from faces */
-#ifdef WITH_OPENSUBDIV
-  if (subdivision_type == SUBDIVISION_CATMULL_CLARK) {
-    vector<OsdPatch> osd_patches(num_patches, &osd_data);
-    OsdPatch *patch = osd_patches.data();
-
-    for (int f = 0; f < num_faces; f++) {
-      SubdFace &face = subd_faces[f];
+    for (size_t f = 0; f < num_faces; f++) {
+      const Mesh::SubdFace &face = mesh->subd_faces[f];
 
       if (face.is_quad()) {
-        patch->patch_index = face.ptex_offset;
-        patch->from_ngon = false;
-        patch->shader = face.shader;
-        patch++;
+        *(patch_data++) = vertex_data[patch_index * 4 + 0] + vert_offset;
+        *(patch_data++) = vertex_data[patch_index * 4 + 1] + vert_offset;
+        *(patch_data++) = vertex_data[patch_index * 4 + 2] + vert_offset;
+        *(patch_data++) = vertex_data[patch_index * 4 + 3] + vert_offset;
+
+        *(patch_data++) = corner_data[patch_index * 4 + 0] + face_offset;
+        *(patch_data++) = corner_data[patch_index * 4 + 1];
+        *(patch_data++) = corner_data[patch_index * 4 + 2] + corner_offset;
+        *(patch_data++) = corner_data[patch_index * 4 + 3];
+
+        ++patch_index;
       }
       else {
-        for (int corner = 0; corner < face.num_corners; corner++) {
-          patch->patch_index = face.ptex_offset + corner;
-          patch->from_ngon = true;
-          patch->shader = face.shader;
-          patch++;
+        for (int i = 0; i < face.num_corners; i++) {
+
+          // vertex data indices
+          *(patch_data++) = vertex_data[patch_index * 4 + 0] + vert_offset;
+          *(patch_data++) = vertex_data[patch_index * 4 + 1] + vert_offset;
+          *(patch_data++) = vertex_data[patch_index * 4 + 2] + vert_offset;
+          *(patch_data++) = vertex_data[patch_index * 4 + 3] + vert_offset;
+
+          *(patch_data++) = corner_data[patch_index * 4 + 0] + face_offset;
+          *(patch_data++) = corner_data[patch_index * 4 + 1];
+          *(patch_data++) = corner_data[patch_index * 4 + 2] + corner_offset;
+          *(patch_data++) = corner_data[patch_index * 4 + 3] + corner_offset;
+
+          ++patch_index;
+        }
+
+        ngons++;
+      }
+    }
+  }
+
+ private:
+  void build_vertex_indices(const OsdData &osd_data, const Mesh *mesh)
+  {
+    const Far::TopologyRefiner *osd_refiner = osd_data.get_refiner();
+    const Far::PatchTable *osd_patch_table = osd_data.get_patch_table();
+    const Far::TopologyLevel &osd_base_level = osd_refiner->GetLevel(0);
+    const Far::TopologyLevel &osd_subd_level = osd_refiner->GetLevel(1);
+
+    // construct vertex data lookup
+    vertex_data.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
+    corner_data.resize(osd_patch_table->GetNumPtexFaces() * 4, 0);
+
+    for (int face = 0, patch_index = 0; face < osd_base_level.GetNumFaces(); ++face) {
+      const Mesh::SubdFace &subd_face = mesh->subd_faces[face];
+
+      Far::ConstIndexArray face_vertices = osd_base_level.GetFaceVertices(face);
+
+      if (face_vertices.size() == 4) {
+        vertex_data[patch_index * 4 + 0] = face_vertices[0];
+        vertex_data[patch_index * 4 + 1] = face_vertices[1];
+        vertex_data[patch_index * 4 + 2] = face_vertices[2];
+        vertex_data[patch_index * 4 + 3] = face_vertices[3];
+
+        corner_data[patch_index * 4 + 0] = face;
+        corner_data[patch_index * 4 + 1] = subd_face.num_corners;
+        corner_data[patch_index * 4 + 2] = subd_face.start_corner;
+        corner_data[patch_index * 4 + 3] = 0;
+
+        ++patch_index;
+      }
+      else {
+        // special case of n-gon being
+
+        const int num_face_vertices = osd_base_level.GetNumVertices();
+        const int num_fvar_vertices = osd_base_level.GetNumFVarValues();
+
+        Far::ConstIndexArray child_faces = osd_base_level.GetFaceChildFaces(face);
+        for (int i = 0; i < child_faces.size(); ++i) {
+          int child_face = child_faces[i];
+
+          Far::ConstIndexArray child_face_vertices = osd_subd_level.GetFaceVertices(child_face);
+          Far::ConstIndexArray child_fvar_vertices = osd_subd_level.GetFaceFVarValues(child_face);
+          assert(child_face_vertices.size() == child_fvar_vertices.size());
+
+          // vertex
+          int m;
+          m = mod(i + 0, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 0] = face_vertices[m];
+
+          m = mod(i + 1, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 1] = face_vertices[m];
+
+          m = 2;
+          vertex_data[patch_index * 4 + 2] = num_face_vertices + child_face_vertices[2];
+
+          m = mod(i - 1, subd_face.num_corners);
+          vertex_data[patch_index * 4 + 3] = face_vertices[m];
+
+          // corner
+          corner_data[patch_index * 4 + 0] = face;
+          corner_data[patch_index * 4 + 1] = subd_face.num_corners | (i << 16);
+          corner_data[patch_index * 4 + 2] = subd_face.start_corner;
+          corner_data[patch_index * 4 + 3] = num_fvar_vertices + child_fvar_vertices[2];
+
+          ++patch_index;
         }
       }
     }
-
-    /* split patches */
-    split->split_patches(osd_patches.data(), sizeof(OsdPatch));
   }
-  else
-#endif
-  {
-    vector<LinearQuadPatch> linear_patches(num_patches);
-    LinearQuadPatch *patch = linear_patches.data();
 
-    for (int f = 0; f < num_faces; f++) {
-      SubdFace &face = subd_faces[f];
+  array<int> vertex_data;
+  array<int> corner_data;
+};
 
-      if (face.is_quad()) {
+//
+// Process of adaptive subdivision is separated into following steps:
+// * adaptive subdivision - osd patch generation
+// * tessellation:
+//    - splitting to sub-patches
+//    - dicing - uniform subdivision in dicing camera space
+//
+
+static void osd_tessellate(Mesh *mesh, DiagSplit *split)
+{
+  OsdData osd_data{mesh};
+  bool need_packed_patch_table = false;
+
+  // OsdPatch implementation abstracts OpenSubdiv patches. OsdPatch is created for each Ptex Patch
+  //
+  // we don't create OsdPatch of each OpenSubdiv patch.
+  // Instead, during eval, lookup for Osd patches happens. Vector of OsdPatches represents
+  // base level that comes from the refiner.
+
+  const Far::TopologyRefiner *osd_refiner = osd_data.get_refiner();
+  const Far::TopologyLevel &osd_base_level = osd_refiner->GetLevel(0);
+  const int face_size = Sdc::SchemeTypeTraits::GetRegularFaceSize(osd_refiner->GetSchemeType());
+
+  ccl::vector<OsdPatch> patches;
+  patches.reserve(osd_base_level.GetNumFaces() * face_size);  // worse case scenario
+  for (int base_face = 0, ptex_index = 0; base_face < osd_base_level.GetNumFaces(); ++base_face) {
+    int num_face_vertices = osd_base_level.GetFaceVertices(base_face).size();
+    int num_ptex_faces = (num_face_vertices == face_size) ? 1 : num_face_vertices;
+    for (int i = 0; i < num_ptex_faces; ++i, ++ptex_index) {
+      patches.emplace_back(&osd_data, ptex_index);
+    }
+  }
+
+  // split patches
+  split->split(patches);
+
+  // attributes
+  for (Attribute &attr : mesh->subd_attributes.attributes) {
+    osd_data.subdivide_attribute(attr);
+    need_packed_patch_table = true;
+  }
+
+  // packed patch table
+  if (need_packed_patch_table) {
+    delete mesh->patch_table;
+    mesh->patch_table = new PackedPatchTable;
+    mesh->patch_table->pack(osd_data.get_patch_table());
+
+    mesh->patch_data_builder = std::make_unique<OsdPatchDataBuilder>(osd_data, mesh);
+  }
+}
+
+#endif  // WITH_OPENSUBDIV
+
+// build in tessellation when osd is not available
+static void ccl_linear_tessellate(Mesh *mesh, DiagSplit *split)
+{
+  auto verts = mesh->verts.data();
+  auto subd_faces = mesh->subd_faces;
+  auto subd_face_corners = mesh->subd_face_corners.data();
+  const AttributeSet &subd_attributes = mesh->subd_attributes;
+
+  const Attribute *attr_vN = subd_attributes.find(ATTR_STD_VERTEX_NORMAL);
+  const float3 *vN = (attr_vN) ? attr_vN->data_float3() : nullptr;
+
+  size_t num_faces = subd_faces.size();
+
+  /* count patches */
+  size_t num_patches = 0;
+  for (size_t f = 0; f < num_faces; f++) {
+    const Mesh::SubdFace &face = subd_faces[f];
+    num_patches += face.is_quad() ? 1 : face.num_corners;
+  }
+
+  vector<LinearQuadPatch> linear_patches(num_patches);
+  auto *patch = linear_patches.data();
+
+  for (size_t f = 0; f < num_faces; f++) {
+    const Mesh::SubdFace &face = subd_faces[f];
+
+    if (face.is_quad()) {
+      float3 *hull = patch->hull;
+      float3 *normals = patch->normals;
+
+      patch->patch_index = face.ptex_offset;
+      patch->from_ngon = false;
+
+      for (int i = 0; i < 4; i++) {
+        hull[i] = verts[subd_face_corners[face.start_corner + i]];
+      }
+
+      if (face.smooth) {
+        for (int i = 0; i < 4; i++) {
+          normals[i] = vN[subd_face_corners[face.start_corner + i]];
+        }
+      }
+      else {
+        float3 N = face.normal(mesh);
+        for (int i = 0; i < 4; i++) {
+          normals[i] = N;
+        }
+      }
+
+      swap(hull[2], hull[3]);
+      swap(normals[2], normals[3]);
+
+      patch->shader = face.shader;
+      patch++;
+    }
+    else {
+      /* ngon */
+      float3 center_vert = make_float3(0.0f, 0.0f, 0.0f);
+      float3 center_normal = make_float3(0.0f, 0.0f, 0.0f);
+
+      float inv_num_corners = 1.0f / float(face.num_corners);
+      for (int corner = 0; corner < face.num_corners; corner++) {
+        center_vert += verts[subd_face_corners[face.start_corner + corner]] * inv_num_corners;
+        center_normal += vN[subd_face_corners[face.start_corner + corner]] * inv_num_corners;
+      }
+
+      for (int corner = 0; corner < face.num_corners; corner++) {
         float3 *hull = patch->hull;
         float3 *normals = patch->normals;
 
-        patch->patch_index = face.ptex_offset;
-        patch->from_ngon = false;
+        patch->patch_index = face.ptex_offset + corner;
+        patch->from_ngon = true;
 
-        for (int i = 0; i < 4; i++) {
-          hull[i] = verts[subd_face_corners[face.start_corner + i]];
-        }
+        patch->shader = face.shader;
+
+        hull[0] = verts[subd_face_corners[face.start_corner + mod(corner + 0, face.num_corners)]];
+        hull[1] = verts[subd_face_corners[face.start_corner + mod(corner + 1, face.num_corners)]];
+        hull[2] = verts[subd_face_corners[face.start_corner + mod(corner - 1, face.num_corners)]];
+        hull[3] = center_vert;
+
+        hull[1] = (hull[1] + hull[0]) * 0.5;
+        hull[2] = (hull[2] + hull[0]) * 0.5;
 
         if (face.smooth) {
-          for (int i = 0; i < 4; i++) {
-            normals[i] = vN[subd_face_corners[face.start_corner + i]];
-          }
+          normals[0] =
+              vN[subd_face_corners[face.start_corner + mod(corner + 0, face.num_corners)]];
+          normals[1] =
+              vN[subd_face_corners[face.start_corner + mod(corner + 1, face.num_corners)]];
+          normals[2] =
+              vN[subd_face_corners[face.start_corner + mod(corner - 1, face.num_corners)]];
+          normals[3] = center_normal;
+
+          normals[1] = (normals[1] + normals[0]) * 0.5;
+          normals[2] = (normals[2] + normals[0]) * 0.5;
         }
         else {
-          float3 N = face.normal(this);
+          float3 N = face.normal(mesh);
           for (int i = 0; i < 4; i++) {
             normals[i] = N;
           }
         }
 
-        swap(hull[2], hull[3]);
-        swap(normals[2], normals[3]);
-
-        patch->shader = face.shader;
         patch++;
       }
-      else {
-        /* ngon */
-        float3 center_vert = make_float3(0.0f, 0.0f, 0.0f);
-        float3 center_normal = make_float3(0.0f, 0.0f, 0.0f);
-
-        float inv_num_corners = 1.0f / float(face.num_corners);
-        for (int corner = 0; corner < face.num_corners; corner++) {
-          center_vert += verts[subd_face_corners[face.start_corner + corner]] * inv_num_corners;
-          center_normal += vN[subd_face_corners[face.start_corner + corner]] * inv_num_corners;
-        }
-
-        for (int corner = 0; corner < face.num_corners; corner++) {
-          float3 *hull = patch->hull;
-          float3 *normals = patch->normals;
-
-          patch->patch_index = face.ptex_offset + corner;
-          patch->from_ngon = true;
-
-          patch->shader = face.shader;
-
-          hull[0] =
-              verts[subd_face_corners[face.start_corner + mod(corner + 0, face.num_corners)]];
-          hull[1] =
-              verts[subd_face_corners[face.start_corner + mod(corner + 1, face.num_corners)]];
-          hull[2] =
-              verts[subd_face_corners[face.start_corner + mod(corner - 1, face.num_corners)]];
-          hull[3] = center_vert;
-
-          hull[1] = (hull[1] + hull[0]) * 0.5;
-          hull[2] = (hull[2] + hull[0]) * 0.5;
-
-          if (face.smooth) {
-            normals[0] =
-                vN[subd_face_corners[face.start_corner + mod(corner + 0, face.num_corners)]];
-            normals[1] =
-                vN[subd_face_corners[face.start_corner + mod(corner + 1, face.num_corners)]];
-            normals[2] =
-                vN[subd_face_corners[face.start_corner + mod(corner - 1, face.num_corners)]];
-            normals[3] = center_normal;
-
-            normals[1] = (normals[1] + normals[0]) * 0.5;
-            normals[2] = (normals[2] + normals[0]) * 0.5;
-          }
-          else {
-            float3 N = face.normal(this);
-            for (int i = 0; i < 4; i++) {
-              normals[i] = N;
-            }
-          }
-
-          patch++;
-        }
-      }
     }
-
-    /* split patches */
-    split->split_patches(linear_patches.data(), sizeof(LinearQuadPatch));
   }
 
-  /* interpolate center points for attributes */
-  foreach (Attribute &attr, subd_attributes.attributes) {
-#ifdef WITH_OPENSUBDIV
-    if (subdivision_type == SUBDIVISION_CATMULL_CLARK && attr.flags & ATTR_SUBDIVIDED) {
-      if (attr.element == ATTR_ELEMENT_CORNER || attr.element == ATTR_ELEMENT_CORNER_BYTE) {
-        /* keep subdivision for corner attributes disabled for now */
-        attr.flags &= ~ATTR_SUBDIVIDED;
-      }
-      else if (subd_faces.size()) {
-        osd_data.subdivide_attribute(attr);
+  // split to sub-patches
+  split->split(linear_patches);
 
-        need_packed_patch_table = true;
-        continue;
-      }
-    }
-#endif
+  // attributes
+}
 
-    char *data = attr.data();
-    size_t stride = attr.data_sizeof();
-    int ngons = 0;
+static void ccl_tessellate(Mesh *mesh, DiagSplit *split)
+{
+  // TODO: implement catmull
+  ccl_linear_tessellate(mesh, split);
+}
 
-    switch (attr.element) {
-      case ATTR_ELEMENT_VERTEX: {
-        for (int f = 0; f < num_faces; f++) {
-          SubdFace &face = subd_faces[f];
+/* virtual */
+bool Mesh::require_tessellation() const
+{
+  return subdivision_type != Mesh::SUBDIVISION_NONE && num_subd_verts == 0 && subd_params;
+}
 
-          if (!face.is_quad()) {
-            char *center = data + (verts.size() - num_subd_verts + ngons) * stride;
-            attr.zero_data(center);
+/* virtual */
+void Mesh::tessellate(const Scene *scene)
+{
+  subd_params->camera = scene->dicing_camera;
+  DiagSplit diag_split{*subd_params};
+  tessellate(&diag_split);
+}
 
-            float inv_num_corners = 1.0f / float(face.num_corners);
-
-            for (int corner = 0; corner < face.num_corners; corner++) {
-              attr.add_with_weight(center,
-                                   data + subd_face_corners[face.start_corner + corner] * stride,
-                                   inv_num_corners);
-            }
-
-            ngons++;
-          }
-        }
-      } break;
-      case ATTR_ELEMENT_VERTEX_MOTION: {
-        // TODO(mai): implement
-      } break;
-      case ATTR_ELEMENT_CORNER: {
-        for (int f = 0; f < num_faces; f++) {
-          SubdFace &face = subd_faces[f];
-
-          if (!face.is_quad()) {
-            char *center = data + (subd_face_corners.size() + ngons) * stride;
-            attr.zero_data(center);
-
-            float inv_num_corners = 1.0f / float(face.num_corners);
-
-            for (int corner = 0; corner < face.num_corners; corner++) {
-              attr.add_with_weight(
-                  center, data + (face.start_corner + corner) * stride, inv_num_corners);
-            }
-
-            ngons++;
-          }
-        }
-      } break;
-      case ATTR_ELEMENT_CORNER_BYTE: {
-        for (int f = 0; f < num_faces; f++) {
-          SubdFace &face = subd_faces[f];
-
-          if (!face.is_quad()) {
-            uchar *center = (uchar *)data + (subd_face_corners.size() + ngons) * stride;
-
-            float inv_num_corners = 1.0f / float(face.num_corners);
-            float4 val = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-
-            for (int corner = 0; corner < face.num_corners; corner++) {
-              for (int i = 0; i < 4; i++) {
-                val[i] += float(*(data + (face.start_corner + corner) * stride + i)) *
-                          inv_num_corners;
-              }
-            }
-
-            for (int i = 0; i < 4; i++) {
-              center[i] = uchar(min(max(val[i], 0.0f), 255.0f));
-            }
-
-            ngons++;
-          }
-        }
-      } break;
-      default:
-        break;
-    }
+void Mesh::tessellate(DiagSplit *split)
+{
+  if (subdivision_type == SUBDIVISION_NONE) {
+    return;
   }
 
 #ifdef WITH_OPENSUBDIV
-  /* pack patch tables */
-  if (need_packed_patch_table) {
-    delete patch_table;
-    patch_table = new PackedPatchTable;
-    patch_table->pack(osd_data.patch_table);
-  }
+  osd_tessellate(this, split);
+#else
+  ccl_tessellate(this, split);
 #endif
 }
 
