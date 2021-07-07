@@ -434,7 +434,7 @@ class VolumeTextureNode : public TextureNode {
 
   virtual bool equals(const ShaderNode &other)
   {
-    const PointDensityTextureNode &other_node = (const PointDensityTextureNode &)other;
+    const VolumeTextureNode &other_node = (const VolumeTextureNode &)other;
     return ShaderNode::equals(other) && handle == other_node.handle;
   }
 };
