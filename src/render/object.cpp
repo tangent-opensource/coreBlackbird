@@ -535,6 +535,8 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   auto it = scene->lightgroups.find(ob->lightgroup);
   if (it != scene->lightgroups.end()) {
     kobject.lightgroup = it->second;
+  } else {
+    kobject.lightgroup = LIGHTGROUPS_NONE;
   }
 }
 

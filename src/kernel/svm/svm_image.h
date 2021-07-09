@@ -30,6 +30,11 @@ ccl_device float4 svm_image_texture(KernelGlobals *kg,
         TEX_IMAGE_MISSING_R, TEX_IMAGE_MISSING_G, TEX_IMAGE_MISSING_B, TEX_IMAGE_MISSING_A);
   }
 
+  if (id >= kernel_tex_width(__texture_info)) {
+    return make_float4(
+        TEX_IMAGE_MISSING_R, TEX_IMAGE_MISSING_G, TEX_IMAGE_MISSING_B, TEX_IMAGE_MISSING_A);
+  }
+
   float4 r = kernel_tex_image_interp(kg, id, x, y, ds, dt, path_flag);
   const float alpha = r.w;
 

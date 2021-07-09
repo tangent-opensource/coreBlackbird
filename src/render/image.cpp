@@ -473,7 +473,7 @@ int ImageManager::add_image_slot(ImageLoader *loader,
   img->params = params;
   img->loader = loader;
   img->need_metadata = true;
-  img->need_load = !(oiio_texture_system && !img->loader->osl_filepath().empty());
+  img->need_load = true;
   img->builtin = builtin;
   img->users = 1;
   img->mem = NULL;

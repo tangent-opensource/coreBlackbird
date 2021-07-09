@@ -298,7 +298,7 @@ void LightManager::device_update_distribution(Device *,
   size_t num_triangles = 0;
 
   bool background_mis = false;
-  uint lightgroup = 0;
+  uint lightgroup = LIGHTGROUPS_NONE;
 
   foreach (Light *light, scene->lights) {
     if (light->is_enabled) {
@@ -943,7 +943,7 @@ void LightManager::device_update_points(Device *, DeviceScene *dscene, Scene *sc
       klights[light_index].lightgroup = it->second;
     }
     else {
-      klights[light_index].lightgroup = 0;
+      klights[light_index].lightgroup = LIGHTGROUPS_NONE;
     }
 
     light_index++;
