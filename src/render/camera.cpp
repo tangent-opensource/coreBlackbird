@@ -161,6 +161,8 @@ NODE_DEFINE(Camera)
 
   SOCKET_BOOLEAN(use_perspective_motion, "Use Perspective Motion", false);
 
+  SOCKET_FLOAT(overscan, "Overscan", 0);
+
   return type;
 }
 

@@ -149,6 +149,9 @@ class Camera : public Node {
   NODE_SOCKET_API(float, fov_pre)
   NODE_SOCKET_API(float, fov_post)
 
+  /* overscan */
+  NODE_SOCKET_API(float, overscan)
+
   /* computed camera parameters */
   ProjectionTransform screentoworld;
   ProjectionTransform rastertoworld;
@@ -175,8 +178,6 @@ class Camera : public Node {
   float3 frustum_top_normal;
   float3 frustum_left_normal;
   float3 frustum_bottom_normal;
-
-  float overscan;
 
   /* update */
   bool need_device_update;
