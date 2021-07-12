@@ -401,22 +401,30 @@ class VolumeTextureNode : public TextureNode {
  public:
   SHADER_NODE_NO_CLONE_CLASS(VolumeTextureNode)
 
-  ShaderNode *clone() const;
+  explicit VolumeTextureNode(const VolumeTextureNode &copy);
+  ShaderNode *clone() const override;
   void load_file(ImageManager *image_manager);
-  void attributes(Shader *shader, AttributeRequestSet *attributes);
-  bool has_attribute_dependency()
+  void attributes(Shader *shader, AttributeRequestSet *attributes) override;
+  
+  bool has_attribute_dependency() override
   {
     return true;
   }
 
-  bool has_spatial_varying()
+  bool has_spatial_varying() override
   {
     return true;
   }
 
-  virtual int get_group()
+  int get_group() override
   {
     return NODE_GROUP_LEVEL_4;
+  }
+
+  bool equals(const ShaderNode &other) override
+  {
+    const VolumeTextureNode &other_node = (const VolumeTextureNode &)other;
+    return ShaderNode::equals(other) && handle == other_node.handle;
   }
 
   ImageParams image_params() const;
@@ -431,12 +439,6 @@ class VolumeTextureNode : public TextureNode {
   /* Runtime. */
   ImageHandle handle;
   VDBImageLoader* vdb_loader;
-
-  virtual bool equals(const ShaderNode &other)
-  {
-    const VolumeTextureNode &other_node = (const VolumeTextureNode &)other;
-    return ShaderNode::equals(other) && handle == other_node.handle;
-  }
 };
 
 class IESLightNode : public TextureNode {

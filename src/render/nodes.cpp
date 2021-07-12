@@ -1916,11 +1916,16 @@ VolumeTextureNode::VolumeTextureNode() : TextureNode(node_type)
 {
 }
 
+VolumeTextureNode::VolumeTextureNode(const VolumeTextureNode &copy) : TextureNode(node_type)
+{
+  this->handle = copy.handle;
+  this->vdb_loader = copy.vdb_loader;
+}
+
 ShaderNode *VolumeTextureNode::clone() const
 {
   /* Similar to PointTexture node this should avoid add_image */
   VolumeTextureNode *node = new VolumeTextureNode(*this);
-  node->handle = handle; /* TODO: not needed? */
   return node;
 }
 
