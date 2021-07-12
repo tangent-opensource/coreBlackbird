@@ -192,7 +192,9 @@ void ColorSpaceManager::is_builtin_colorspace(ustring colorspace,
     return;
   }
 
+#if OCIO_VERSION_HEX >= (2 << 24)
   OCIO::ConstCPUProcessorRcPtr device_processor = processor->getDefaultCPUProcessor();
+#endif
   is_scene_linear = true;
   is_srgb = true;
   for (int i = 0; i < 256; i++) {
@@ -202,10 +204,17 @@ void ColorSpaceManager::is_builtin_colorspace(ustring colorspace,
     float cG[3] = {0, v, 0};
     float cB[3] = {0, 0, v};
     float cW[3] = {v, v, v};
+#if OCIO_VERSION_HEX >= (2 << 24)
     device_processor->applyRGB(cR);
     device_processor->applyRGB(cG);
     device_processor->applyRGB(cB);
     device_processor->applyRGB(cW);
+#else
+    processor->applyRGB(cR);
+    processor->applyRGB(cG);
+    processor->applyRGB(cB);
+    processor->applyRGB(cW);
+#endif
 
     /* Make sure that there is no channel crosstalk. */
     if (fabsf(cR[1]) > 1e-5f || fabsf(cR[2]) > 1e-5f || fabsf(cG[0]) > 1e-5f ||
@@ -268,7 +277,9 @@ inline void processor_apply_pixels(const OCIO::Processor *processor, T *pixels, 
   /* TODO: implement faster version for when we know the conversion
    * is a simple matrix transform between linear spaces. In that case
    * un-premultiply is not needed. */
+#if OCIO_VERSION_HEX >= (2 << 24)
   OCIO::ConstCPUProcessorRcPtr device_processor = processor->getDefaultCPUProcessor();
+#endif
 
   /* Process large images in chunks to keep temporary memory requirement down. */
   const size_t chunk_size = std::min((size_t)(16 * 1024 * 1024), num_pixels);
@@ -291,7 +302,11 @@ inline void processor_apply_pixels(const OCIO::Processor *processor, T *pixels, 
     }
 
     OCIO::PackedImageDesc desc((float *)float_pixels.data(), width, 1, 4);
+#if OCIO_VERSION_HEX >= (2 << 24)
     device_processor->apply(desc);
+#else
+    processor->apply(desc);
+#endif
 
     for (size_t i = 0; i < width; i++) {
       float4 value = float_pixels[i];
@@ -347,14 +362,24 @@ void ColorSpaceManager::to_scene_linear(ColorSpaceProcessor *processor_,
   const OCIO::Processor *processor = (const OCIO::Processor *)processor_;
 
   if (processor) {
+#if OCIO_VERSION_HEX >= (2 << 24)
     OCIO::ConstCPUProcessorRcPtr device_processor = processor->getDefaultCPUProcessor();
+#endif
     if (channels == 3) {
+#if OCIO_VERSION_HEX >= (2 << 24)
       device_processor->applyRGB(pixel);
+#else
+      processor->applyRGB(pixel);
+#endif
     }
     else if (channels == 4) {
       if (pixel[3] == 1.0f || pixel[3] == 0.0f) {
         /* Fast path for RGBA. */
+#if OCIO_VERSION_HEX >= (2 << 24)
         device_processor->applyRGB(pixel);
+#else
+        processor->applyRGB(pixel);
+#endif
       }
       else {
         /* Un-associate and associate alpha since color management should not
@@ -366,7 +391,11 @@ void ColorSpaceManager::to_scene_linear(ColorSpaceProcessor *processor_,
         pixel[1] *= inv_alpha;
         pixel[2] *= inv_alpha;
 
+#if OCIO_VERSION_HEX >= (2 << 24)
         device_processor->applyRGB(pixel);
+#else
+        processor->applyRGB(pixel);
+#endif
 
         pixel[0] *= alpha;
         pixel[1] *= alpha;

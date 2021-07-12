@@ -862,15 +862,23 @@ static bool to_scene_linear_transform(OCIO::ConstConfigRcPtr &config,
     return false;
   }
 
+#if OCIO_VERSION_HEX >= (2 << 24)
   OCIO::ConstCPUProcessorRcPtr device_processor = processor->getDefaultCPUProcessor();
   if (!device_processor) {
     return false;
   }
+#endif
 
   to_scene_linear = transform_identity();
+#if OCIO_VERSION_HEX >= (2 << 24)
   device_processor->applyRGB(&to_scene_linear.x.x);
   device_processor->applyRGB(&to_scene_linear.y.x);
   device_processor->applyRGB(&to_scene_linear.z.x);
+#else
+  processor->applyRGB(&to_scene_linear.x.x);
+  processor->applyRGB(&to_scene_linear.y.x);
+  processor->applyRGB(&to_scene_linear.z.x);
+#endif
   to_scene_linear = transform_transposed_inverse(to_scene_linear);
   return true;
 }
