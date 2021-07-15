@@ -209,6 +209,7 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
 ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg,
                                                                ShaderData *sd,
                                                                PathState *state,
+                                                               ccl_global float *buffer,
                                                                Ray *ray,
                                                                float3 *throughput,
                                                                ccl_addr_space Intersection *isect,
@@ -243,11 +244,11 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
 
     /* Get the probabilistic volume scatter result */
     VolumeIntegrateResult result = kernel_volume_traverse_octree(
-        kg, state, &volume_ray, L, &volume_sd, &tp);
+        kg, state, buffer, &volume_ray, L, &volume_sd, &tp);
 
 #        ifdef __VOLUME_SCATTER__
     if (result == VOLUME_PATH_SCATTERED) {
-      kernel_path_volume_connect_light(kg, &volume_sd, emission_sd, tp, state, L);
+      kernel_path_volume_connect_light(kg, &volume_sd, emission_sd, tp, state, buffer, L);
 
       if (kernel_path_volume_bounce(kg, &volume_sd, &tp, &ps, &L->state, &volume_ray)) {
         ray->P = volume_ray.P;
@@ -489,7 +490,7 @@ ccl_device void kernel_branched_path_integrate(KernelGlobals *kg,
 		kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, &indirect_sd, emission_sd, L);
 #      else
     kernel_branched_path_volume_octree(
-        kg, &sd, &state, &ray, &throughput, &isect, emission_sd, L);
+        kg, &sd, &state, buffer, &ray, &throughput, &isect, emission_sd, L);
 #      endif  // !__VOLUME_OCTREE__
 #    endif /* __VOLUME__ */
 

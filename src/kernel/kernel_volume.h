@@ -1618,6 +1618,7 @@ ccl_device_inline void kernel_volume_clean_stack(KernelGlobals *kg,
 #  ifdef __VOLUME_OCTREE__
 ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg,
                                                                PathState *state,
+                                                               ccl_global float *buffer,
                                                                Ray *ray,
                                                                PathRadiance *L,
                                                                ShaderData *sd,
@@ -1700,7 +1701,7 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
     emission *= T_r;
 
     if (L && (sd->flag & SD_EMISSION)) {
-      path_radiance_accum_emission(kg, L, state, *throughput, emission);
+      path_radiance_accum_emission(kg, L, state, buffer, *throughput, emission, LIGHTGROUPS_NONE);
     }
 
     float zeta = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
