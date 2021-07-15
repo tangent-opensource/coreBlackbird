@@ -85,6 +85,11 @@ ccl_device_inline AttributeDescriptor find_attribute(KernelGlobals *kg,
   desc.type = (NodeAttributeType)(attr_map.w & 0xff);
   desc.flags = (AttributeFlag)(attr_map.w >> 8);
 
+  if (desc.flags & ATTR_INSTANCED) {
+    desc.offset += kernel_tex_fetch(__objects, sd->object).particle_index;
+    // printf("REQUESTING INSTANCED ATTRIBUTES %d particle id %d type %d size %d\n", (int)id, particle_id, desc.type,(int) size);
+  }
+
   return desc;
 }
 

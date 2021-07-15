@@ -829,6 +829,7 @@ typedef enum AttributeStandard {
 typedef enum AttributeFlag {
   ATTR_FINAL_SIZE = (1 << 0),
   ATTR_SUBDIVIDED = (1 << 1),
+  ATTR_INSTANCED = (1 << 2)
 } AttributeFlag;
 
 typedef struct AttributeDescriptor {

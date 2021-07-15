@@ -23,6 +23,7 @@
 #include "render/curves.h"
 #include "render/film.h"
 #include "render/integrator.h"
+#include "render/instance_group.h"
 #include "render/light.h"
 #include "render/mesh.h"
 #include "render/object.h"
@@ -140,9 +141,12 @@ void Scene::free_memory(bool final)
     delete l;
   foreach (ParticleSystem *p, particle_systems)
     delete p;
+  foreach (InstanceGroup* i, instance_groups)
+    delete i;
 
   shaders.clear();
   geometry.clear();
+  instance_groups.clear();
   objects.clear();
   lights.clear();
   particle_systems.clear();

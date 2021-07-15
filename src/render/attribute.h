@@ -53,12 +53,14 @@ class Attribute {
   vector<char> buffer;
   AttributeElement element;
   uint flags; /* enum AttributeFlag */
+  uint instances;
 
   Attribute(ustring name,
             TypeDesc type,
             AttributeElement element,
             Geometry *geom,
-            AttributePrimitive prim);
+            AttributePrimitive prim,
+            uint instances = 1);
   Attribute(Attribute &&other) = default;
   Attribute(const Attribute &other) = delete;
   Attribute &operator=(const Attribute &other) = delete;
@@ -179,7 +181,7 @@ class AttributeSet {
   AttributeSet(Geometry *geometry, AttributePrimitive prim);
   ~AttributeSet();
 
-  Attribute *add(ustring name, TypeDesc type, AttributeElement element);
+  Attribute *add(ustring name, TypeDesc type, AttributeElement element, uint instances = 1);
   Attribute *find(ustring name) const;
   void remove(ustring name);
 

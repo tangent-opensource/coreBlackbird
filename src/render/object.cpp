@@ -20,6 +20,7 @@
 #include "render/curves.h"
 #include "render/hair.h"
 #include "render/integrator.h"
+#include "render/instance_group.h"
 #include "render/light.h"
 #include "render/mesh.h"
 #include "render/particles.h"
@@ -472,7 +473,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.color[2] = color.z;
   kobject.pass_id = pass_id;
   kobject.random_number = random_number;
-  kobject.particle_index = particle_index;
+  kobject.particle_index = ob->particle_index;
   kobject.motion_offset = 0;
   
   if (geom->use_motion_blur) {
@@ -768,6 +769,7 @@ void ObjectManager::device_update_flags(
 
 void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Scene *scene)
 {
+  printf("Writing objects %d %d\n", (int)scene->objects.size(), (int)dscene->objects.size());
   if (dscene->objects.size() == 0) {
     return;
   }
@@ -782,6 +784,7 @@ void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Sc
     if (geom->type == Geometry::MESH) {
       Mesh *mesh = static_cast<Mesh *>(geom);
       if (mesh->patch_table) {
+        printf("Mesh has patch table\n");
         uint patch_map_offset = 2 * (mesh->patch_table_offset + mesh->patch_table->total_size() -
                                      mesh->patch_table->num_nodes * PATCH_NODE_SIZE) -
                                 mesh->patch_offset;
@@ -794,7 +797,14 @@ void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Sc
     }
 
     if (kobjects[object->index].attribute_map_offset != geom->attr_map_offset) {
-      kobjects[object->index].attribute_map_offset = geom->attr_map_offset;
+      printf("Object %d instance grou %p\n", (int)object->index, object->instance_group);
+      if (object->instance_group && object->instance_group->attr_map_offset > 0) {
+        printf("Binding instance attribute table\n");
+        kobjects[object->index].attribute_map_offset = object->instance_group->attr_map_offset;
+      } else {
+        printf("Binding geometry attribute table\n");
+        kobjects[object->index].attribute_map_offset = geom->attr_map_offset;
+      }
       update = true;
     }
   }

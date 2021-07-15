@@ -28,8 +28,8 @@ CCL_NAMESPACE_BEGIN
 /* Attribute */
 
 Attribute::Attribute(
-    ustring name, TypeDesc type, AttributeElement element, Geometry *geom, AttributePrimitive prim)
-    : name(name), std(ATTR_STD_NONE), type(type), element(element), flags(0)
+    ustring name, TypeDesc type, AttributeElement element, Geometry *geom, AttributePrimitive prim, uint instances)
+    : name(name), std(ATTR_STD_NONE), type(type), element(element), flags(0), instances(instances)
 {
   /* string and matrix not supported! */
   assert(type == TypeDesc::TypeFloat || type == TypeDesc::TypeColor ||
@@ -43,6 +43,10 @@ Attribute::Attribute(
   }
   else {
     resize(geom, prim, false);
+  }
+
+  if (instances > 1) {
+    flags |= ATTR_INSTANCED;
   }
 }
 
@@ -164,7 +168,13 @@ size_t Attribute::element_size(Geometry *geom, AttributePrimitive prim) const
 
 size_t Attribute::buffer_size(Geometry *geom, AttributePrimitive prim) const
 {
-  return element_size(geom, prim) * data_sizeof();
+  if (instances > 1) {
+  std::cout << "Allocating attribute " << name << 
+    " element size " << element_size(geom, prim) <<
+    " data size " << data_sizeof() << 
+    " instances " << instances << std::endl;;
+  }
+  return element_size(geom, prim) * data_sizeof() * instances;
 }
 
 bool Attribute::same_storage(TypeDesc a, TypeDesc b)
@@ -337,7 +347,7 @@ AttributeSet::~AttributeSet()
 {
 }
 
-Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement element)
+Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement element, uint instances)
 {
   Attribute *attr = find(name);
 
@@ -350,7 +360,7 @@ Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement eleme
     remove(name);
   }
 
-  Attribute new_attr(name, type, element, geometry, prim);
+  Attribute new_attr(name, type, element, geometry, prim, instances);
   attributes.emplace_back(std::move(new_attr));
   return &attributes.back();
 }

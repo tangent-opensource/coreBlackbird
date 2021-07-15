@@ -30,6 +30,7 @@
 
 CCL_NAMESPACE_BEGIN
 
+class AttributeSet;
 class Device;
 class DeviceScene;
 class Geometry;
@@ -71,6 +72,11 @@ class Object : public Node {
 
   ParticleSystem *particle_system;
   int particle_index;
+
+  /* Additional set of attributes that can be accessed using
+   * the instance_index */
+  InstanceGroup* instance_group;
+  int instance_index;
 
   Object();
   ~Object();

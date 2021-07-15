@@ -170,6 +170,8 @@ class GeometryManager {
   void collect_statistics(const Scene *scene, RenderStats *stats);
 
  protected:
+
+  /* Geometry  */
   bool displace(Device *device, DeviceScene *dscene, Scene *scene, Mesh *mesh, Progress &progress);
 
   void create_volume_mesh(Mesh *mesh, Progress &progress);
@@ -179,6 +181,12 @@ class GeometryManager {
   void create_motion_blur_geometry(const Scene *scene, Geometry *geom, Progress &progress);
 
   /* Attributes */
+  void fill_attributes_and_maps(Device *device,
+                                Scene *scene,
+                                DeviceScene *dscene,
+                                Progress &progress,
+                                vector<AttributeRequestSet> &attributes);
+
   void update_osl_attributes(Device *device,
                              Scene *scene,
                              vector<AttributeRequestSet> &geom_attributes);
