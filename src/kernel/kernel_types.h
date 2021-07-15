@@ -61,6 +61,8 @@ CCL_NAMESPACE_BEGIN
 #define BSSRDF_MAX_BOUNCES 256
 #define LOCAL_MAX_HITS 4
 
+#define LIGHTGROUPS_MAX 32
+
 #define VOLUME_BOUNDS_MAX 1024
 
 #define BECKMANN_TABLE_SIZE 256
@@ -70,6 +72,7 @@ CCL_NAMESPACE_BEGIN
 #define PRIM_NONE (~0)
 #define LAMP_NONE (~0)
 #define ID_NONE (0.0f)
+#define LIGHTGROUPS_NONE 0
 
 #define VOLUME_STACK_SIZE 32
 
@@ -410,6 +413,7 @@ typedef enum PassType {
   PASS_VOLUME_DIRECT = 50,
   PASS_VOLUME_INDIRECT,
   /* No Scatter color since it's tricky to define what it would even mean. */
+  PASS_LIGHTGROUP,
   PASS_CATEGORY_LIGHT_END = 63,
 
   PASS_BAKE_PRIMITIVE,
@@ -1319,6 +1323,8 @@ typedef struct KernelFilm {
   int pass_aov_value;
   int pass_aov_color_num;
   int pass_aov_value_num;
+  uint pass_lightgroup;
+  uint num_lightgroups;
   int pad1, pad2, pad3;
 
   /* XYZ to rendering color space transform. float4 instead of float3 to
@@ -1330,7 +1336,7 @@ typedef struct KernelFilm {
 
   int pass_bake_primitive;
   int pass_bake_differential;
-  int pad;
+  // int pad;
 
 #ifdef __KERNEL_DEBUG__
   int pass_bvh_traversed_nodes;
@@ -1346,7 +1352,7 @@ typedef struct KernelFilm {
   int use_display_exposure;
   int use_display_pass_alpha;
 
-  int pad4, pad5, pad6;
+  int pad4;
 } KernelFilm;
 static_assert_align(KernelFilm, 16);
 
@@ -1380,6 +1386,10 @@ typedef struct KernelBackground {
   int map_res_y;
 
   int use_mis;
+
+  uint lightgroup;
+
+  int pad1, pad2, pad3;
 } KernelBackground;
 static_assert_align(KernelBackground, 16);
 
@@ -1551,6 +1561,7 @@ typedef struct KernelObject {
   float random_number;
   float color[3];
   int particle_index;
+  uint lightgroup;
 
   float dupli_generated[3];
   float dupli_uv[2];
@@ -1571,7 +1582,7 @@ typedef struct KernelObject {
   float cryptomatte_asset;
 
   float shadow_terminator_offset;
-  float pad1, pad2, pad3;
+  float pad1, pad2;
 } KernelObject;
 static_assert_align(KernelObject, 16);
 
@@ -1610,7 +1621,7 @@ typedef struct KernelLight {
   float max_bounces;
   float random;
   float strength[3];
-  float pad1;
+  uint lightgroup;
   Transform tfm;
   Transform itfm;
   union {

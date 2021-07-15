@@ -104,6 +104,7 @@ NODE_DEFINE(Object)
   SOCKET_POINT2(dupli_uv, "Dupli UV", make_float2(0.0f, 0.0f));
   SOCKET_TRANSFORM_ARRAY(motion, "Motion", array<Transform>());
   SOCKET_FLOAT(shadow_terminator_offset, "Terminator Offset", 0.0f);
+  SOCKET_STRING(lightgroup, "Light Group", ustring());
 
   SOCKET_BOOLEAN(is_shadow_catcher, "Shadow Catcher", false);
 
@@ -443,7 +444,9 @@ static float object_surface_area(UpdateObjectTransformState *state,
   return surface_area;
 }
 
-void ObjectManager::device_update_object_transform(UpdateObjectTransformState *state, Object *ob)
+void ObjectManager::device_update_object_transform(UpdateObjectTransformState *state,
+                                                   Object *ob,
+                                                   const Scene *scene)
 {
   KernelObject &kobject = state->objects[ob->index];
   Transform *object_motion_pass = state->object_motion_pass;
@@ -562,6 +565,14 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   if (geom->type == Geometry::HAIR) {
     state->have_curves = true;
   }
+
+  /* Light group. */
+  auto it = scene->lightgroups.find(ob->lightgroup);
+  if (it != scene->lightgroups.end()) {
+    kobject.lightgroup = it->second;
+  } else {
+    kobject.lightgroup = LIGHTGROUPS_NONE;
+  }
 }
 
 void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, Progress &progress)
@@ -616,7 +627,7 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
                [&](const blocked_range<size_t> &r) {
                  for (size_t i = r.begin(); i != r.end(); i++) {
                    Object *ob = state.scene->objects[i];
-                   device_update_object_transform(&state, ob);
+                   device_update_object_transform(&state, ob, scene);
                  }
                });
 
