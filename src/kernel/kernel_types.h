@@ -1540,6 +1540,7 @@ typedef struct KernelObject {
   uint16_t num_tfm_steps;
   uint16_t num_dfm_steps;
 
+  uint instance_index;
   uint patch_map_offset;
   uint attribute_map_offset;
   uint motion_offset;
@@ -1551,7 +1552,6 @@ typedef struct KernelObject {
   float cryptomatte_asset;
 
   float shadow_terminator_offset;
-  float pad2;
 } KernelObject;
 static_assert_align(KernelObject, 16);
 

@@ -87,7 +87,8 @@ ccl_device_inline AttributeDescriptor find_attribute(KernelGlobals *kg,
 
   /* Offset the index by the instance number */
   if (desc.flags & ATTR_INSTANCED) {
-    const int instance_index = kernel_tex_fetch(__objects, sd->object).particle_index;
+    const int instance_index = kernel_tex_fetch(__objects, sd->object).instance_index;
+    
     if (desc.element == ATTR_ELEMENT_VERTEX || desc.element == ATTR_ELEMENT_VERTEX_MOTION) {
       desc.offset += instance_index * kernel_tex_fetch(__objects, sd->object).numverts;
     } else if (desc.element == ATTR_ELEMENT_CORNER || desc.element == ATTR_ELEMENT_CORNER_MOTION) {

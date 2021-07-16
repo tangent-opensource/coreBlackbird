@@ -473,9 +473,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.color[2] = color.z;
   kobject.pass_id = pass_id;
   kobject.random_number = random_number;
-  kobject.particle_index = ob->particle_index;
+  kobject.particle_index = particle_index;
+  kobject.instance_index = ob->instance_group ? ob->instance_index : 0;
   kobject.motion_offset = 0;
-  
+
   if (geom->use_motion_blur) {
     state->have_motion = true;
   }
