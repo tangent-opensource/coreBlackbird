@@ -53,6 +53,8 @@ class Attribute {
   vector<char> buffer;
   AttributeElement element;
   uint flags; /* enum AttributeFlag */
+
+  /* Multiplier on the size of the buffer */
   uint instances;
 
   Attribute(ustring name,

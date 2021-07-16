@@ -26,23 +26,15 @@ CCL_NAMESPACE_BEGIN
 // todo: forward declaration
 #include "geometry.h"
 
-/* Stores a set of attributes that can be indexed by individual objects 
- * through Object::instance_index.
- *
- * Note: All objects that reference a certain instance group need to have
- * the same geometry as stored in the instance group.
- * 
- * There is no InstanceManager, because the logic to upload attribute
- * and respective maps is interwined with the geometry manager.
- * */
+/* Set of attributes that can be indexed by individual objects 
+ * through Object::instance_index. */
 struct InstanceGroup {
-  // todo(Edo): An extra parameter might be needed once we have internal subdivision surfaces
-  InstanceGroup(Geometry* geom) : attributes(geom, ATTR_PRIM_GEOMETRY), geometry(geom) { }
+  // todo(Edo): subdivision surfaces
+  InstanceGroup(Geometry* geom) : attributes(geom, ATTR_PRIM_GEOMETRY) { }
 
   AttributeSet attributes;
-  Geometry* geometry = nullptr;
 
-  /* Used by the geometry manager */
+  /* Used internally by the geometry manager */
   size_t attr_map_offset = 0;
 };
 
