@@ -71,6 +71,12 @@ ccl_device_forceinline bool kernel_path_scene_intersect(KernelGlobals *kg,
 
   bool hit = scene_intersect(kg, ray, visibility, isect);
 
+#ifdef __VOLUME_OCTREE__
+  /* Volume intersection has to be checked after scene intersection
+     as the isect->volume_t is dependant on ray->t */
+  scene_intersect_octree(kg, ray, isect, visibility);
+#endif
+
 #ifdef __KERNEL_DEBUG__
   if (state->flag & PATH_RAY_CAMERA) {
     L->debug_data.num_bvh_traversed_nodes += isect->num_traversed_nodes;

@@ -202,10 +202,6 @@ ccl_device_intersect bool scene_intersect(KernelGlobals *kg,
     return false;
   }
 
-#  ifdef __VOLUME_OCTREE__
-  bvh_intersect_octree(kg, ray, isect, visibility);
-#  endif
-
 #  ifdef __EMBREE__
   if (kernel_data.bvh.scene) {
     isect->t = ray->t;
@@ -451,6 +447,17 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals *kg,
 #endif /* __SHADOW_RECORD_ALL__ */
 
 #ifdef __VOLUME__
+
+#ifdef __VOLUME_OCTREE__
+ccl_device_intersect bool scene_intersect_octree(KernelGlobals *kg,
+                                                 const Ray *ray,
+                                                 Intersection *isect,
+                                                 const uint visibility)
+{
+  return bvh_intersect_octree(kg, ray, isect, visibility);
+}
+#endif
+
 ccl_device_intersect bool scene_intersect_volume(KernelGlobals *kg,
                                                  const Ray *ray,
                                                  Intersection *isect,

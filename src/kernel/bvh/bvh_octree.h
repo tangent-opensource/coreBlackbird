@@ -32,8 +32,6 @@ ccl_device_inline
   float3 dir = bvh_clamp_direction(ray->D);
   float3 idir = bvh_inverse_direction(dir);
 
-  isect->prim = PRIM_NONE;
-  isect->object = OBJECT_NONE;
   isect->has_volume = false;
   isect->in_volume = false;
 
@@ -56,7 +54,7 @@ ccl_device_inline
   if (t_max <= 0.0f) {
     return false;  // box is behind
   }
-  if (t_min > ray->t) {
+  if (t_min > isect->t) {
     return false; // Object in between
   }
   if (t_min > t_max) {

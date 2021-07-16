@@ -257,10 +257,6 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
     }
 #        endif /* __VOLUME_SCATTER__ */
   }
-
-  /* TODO Emission integration 
-  kernel_volume_shadow_octree_rr(kg, emission_sd, state, &volume_ray, throughput);
-  */
 }
 #      endif /* __VOLUME_OCTREE__ */
 
@@ -487,7 +483,7 @@ ccl_device void kernel_branched_path_integrate(KernelGlobals *kg,
     /* Volume integration. */
 #      ifndef __VOLUME_OCTREE__
     kernel_branched_path_volume(
-		kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, &indirect_sd, emission_sd, L);
+        kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, &indirect_sd, emission_sd, L);
 #      else
     kernel_branched_path_volume_octree(
         kg, &sd, &state, buffer, &ray, &throughput, &isect, emission_sd, L);
