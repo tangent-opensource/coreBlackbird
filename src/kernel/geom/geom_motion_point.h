@@ -46,7 +46,7 @@ ccl_device_inline int find_attribute_point_motion(KernelGlobals *kg,
 
 ccl_device_inline float4 motion_point_attribute_for_step(KernelGlobals *kg,
                                                          int offset,
-                                                         int numkeys,
+                                                         int numverts,
                                                          int numsteps,
                                                          int step,
                                                          int prim,
@@ -62,7 +62,7 @@ ccl_device_inline float4 motion_point_attribute_for_step(KernelGlobals *kg,
     if (step > numsteps)
       step--;
 
-    offset += step * numkeys;
+    offset += step * numverts;
 
     return kernel_tex_fetch(__attributes_float3, offset + prim);
   }
@@ -78,8 +78,8 @@ ccl_device_inline float4 motion_point_attribute(KernelGlobals *kg,
                                                 int attr)
 {
   /* get motion info */
-  int numsteps, numkeys;
-  object_motion_info(kg, object, &numsteps, NULL, &numkeys);
+  int numsteps, numverts;
+  object_motion_info(kg, object, &numsteps, &numverts, NULL);
 
   /* figure out which steps we need to fetch and their interpolation factor */
   int maxstep = numsteps * 2;
@@ -93,9 +93,9 @@ ccl_device_inline float4 motion_point_attribute(KernelGlobals *kg,
 
   /* fetch key coordinates */
   float4 point_attr = motion_point_attribute_for_step(
-      kg, offset, numkeys, numsteps, step, prim, n_points_attrs, attr);
+      kg, offset, numverts, numsteps, step, prim, n_points_attrs, attr);
   float4 next_point_attr = motion_point_attribute_for_step(
-      kg, offset, numkeys, numsteps, step + 1, prim, n_points_attrs, attr);
+      kg, offset, numverts, numsteps, step + 1, prim, n_points_attrs, attr);
 
   /* interpolate between steps */
   return (1.0f - t) * point_attr + t * next_point_attr;

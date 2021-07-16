@@ -1535,7 +1535,8 @@ typedef struct KernelObject {
   float dupli_uv[2];
 
   int numkeys;
-  int numverts;
+  int numverts; /* Number of vertices in a mesh or points in a cloud */
+  int numfaces;
   uint16_t num_tfm_steps;
   uint16_t num_dfm_steps;
 
@@ -1550,7 +1551,7 @@ typedef struct KernelObject {
   float cryptomatte_asset;
 
   float shadow_terminator_offset;
-  float pad1, pad2;
+  float pad2;
 } KernelObject;
 static_assert_align(KernelObject, 16);
 

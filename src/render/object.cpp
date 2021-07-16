@@ -532,17 +532,15 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.dupli_generated[0] = ob->dupli_generated[0];
   kobject.dupli_generated[1] = ob->dupli_generated[1];
   kobject.dupli_generated[2] = ob->dupli_generated[2];
-  kobject.numkeys = (geom->type == Geometry::HAIR) ?
-                        static_cast<Hair *>(geom)->curve_keys.size() :
-                        (geom->type == Geometry::POINTCLOUD) ?
-                        static_cast<PointCloud *>(geom)->num_points() :
-                        0;
+  kobject.numkeys = (geom->type == Geometry::HAIR) ? static_cast<Hair *>(geom)->curve_keys.size() : 0;
   kobject.dupli_uv[0] = ob->dupli_uv[0];
   kobject.dupli_uv[1] = ob->dupli_uv[1];
   int totalsteps = geom->motion_steps;
   kobject.num_dfm_steps = (totalsteps - 1) / 2;
   kobject.num_tfm_steps = ob->motion.size();
-  kobject.numverts = (geom->type == Geometry::MESH) ? static_cast<Mesh *>(geom)->verts.size() : 0;
+  kobject.numverts = (geom->type == Geometry::MESH) ? static_cast<Mesh *>(geom)->verts.size() : 
+                     ((geom->type == Geometry::POINTCLOUD) ? static_cast<PointCloud *>(geom)->num_points() : 0);
+  kobject.numfaces = (geom->type == Geometry::MESH) ? static_cast<Mesh *>(geom)->num_triangles() : 0;
   kobject.patch_map_offset = 0;
   kobject.attribute_map_offset = 0;
   uint32_t hash_name = util_murmur_hash3(ob->name.c_str(), ob->name.length(), 0);
@@ -784,7 +782,6 @@ void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Sc
     if (geom->type == Geometry::MESH) {
       Mesh *mesh = static_cast<Mesh *>(geom);
       if (mesh->patch_table) {
-        printf("Mesh has patch table\n");
         uint patch_map_offset = 2 * (mesh->patch_table_offset + mesh->patch_table->total_size() -
                                      mesh->patch_table->num_nodes * PATCH_NODE_SIZE) -
                                 mesh->patch_offset;
@@ -796,15 +793,11 @@ void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Sc
       }
     }
 
-    if (kobjects[object->index].attribute_map_offset != geom->attr_map_offset) {
-      printf("Object %d instance grou %p\n", (int)object->index, object->instance_group);
-      if (object->instance_group && object->instance_group->attr_map_offset > 0) {
-        printf("Binding instance attribute table\n");
-        kobjects[object->index].attribute_map_offset = object->instance_group->attr_map_offset;
-      } else {
-        printf("Binding geometry attribute table\n");
-        kobjects[object->index].attribute_map_offset = geom->attr_map_offset;
-      }
+    if (object->instance_group && object->instance_group->attr_map_offset > 0) {
+      kobjects[object->index].attribute_map_offset = object->instance_group->attr_map_offset;
+      update = true;
+    } else if (kobjects[object->index].attribute_map_offset != geom->attr_map_offset) {
+      kobjects[object->index].attribute_map_offset = geom->attr_map_offset;
       update = true;
     }
   }
