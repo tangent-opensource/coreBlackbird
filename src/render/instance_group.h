@@ -30,7 +30,7 @@ CCL_NAMESPACE_BEGIN
 class InstanceGroup {
 public:
   // todo(Edo): Implement subdivision surfaces once they are internal
-  InstanceGroup(Geometry* geom, uint instances) : attributes(geom, ATTR_PRIM_GEOMETRY, instances) { }
+  InstanceGroup(Geometry* geom, uint instances) : attributes(geom, ATTR_PRIM_GEOMETRY, instances), attr_map_offset(~0) { }
 
   AttributeSet attributes;
 

@@ -769,7 +769,6 @@ void ObjectManager::device_update_flags(
 
 void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Scene *scene)
 {
-  printf("Writing objects %d %d\n", (int)scene->objects.size(), (int)dscene->objects.size());
   if (dscene->objects.size() == 0) {
     return;
   }
@@ -795,7 +794,7 @@ void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Sc
       }
     }
 
-    if (object->instance_group && object->instance_group->attr_map_offset > 0) {
+    if (object->instance_group && kobjects[object->index].attribute_map_offset != object->instance_group->attr_map_offset) {
       kobjects[object->index].attribute_map_offset = object->instance_group->attr_map_offset;
       update = true;
     } else if (kobjects[object->index].attribute_map_offset != geom->attr_map_offset) {

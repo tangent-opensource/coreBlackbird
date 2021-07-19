@@ -168,12 +168,6 @@ size_t Attribute::element_size(Geometry *geom, AttributePrimitive prim) const
 
 size_t Attribute::buffer_size(Geometry *geom, AttributePrimitive prim) const
 {
-  if (instances > 1) {
-  std::cout << "Allocating attribute " << name << 
-    " element size " << element_size(geom, prim) <<
-    " data size " << data_sizeof() << 
-    " instances " << instances << std::endl;;
-  }
   return element_size(geom, prim) * data_sizeof() * instances;
 }
 

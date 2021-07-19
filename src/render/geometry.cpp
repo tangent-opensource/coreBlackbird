@@ -1074,6 +1074,8 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
     }
   }
 
+  std::cout << "Instance groups " << scene->instance_groups.size() << std::endl;
+
   for (size_t i = 0; i < scene->instance_groups.size(); ++i) {
     const size_t attribute_map_idx = scene->geometry.size() + i;
     Geometry *geom = scene->instance_groups[i]->attributes.geometry;
@@ -1179,8 +1181,10 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
 
       /* If the attribute is authored on the geometry, avoid duplication */
       if (!attr) {
+        std::cout << "moo " << req.name << std::endl;
         req = attributes[geom->geometry_index].requests[attribute_req_idx];
       } else {
+        std::cout << "moo " << req.name << std::endl;
         update_attribute_element_offset(geom,
                                         dscene->attributes_float,
                                         attr_float_offset,
