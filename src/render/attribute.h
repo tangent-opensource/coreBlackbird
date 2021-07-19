@@ -179,11 +179,12 @@ class AttributeSet {
   Geometry *geometry;
   AttributePrimitive prim;
   list<Attribute> attributes;
+  uint instances;
 
-  AttributeSet(Geometry *geometry, AttributePrimitive prim);
+  AttributeSet(Geometry *geometry, AttributePrimitive prim, uint instances = 1);
   ~AttributeSet();
 
-  Attribute *add(ustring name, TypeDesc type, AttributeElement element, uint instances = 1);
+  Attribute *add(ustring name, TypeDesc type, AttributeElement element);
   Attribute *find(ustring name) const;
   void remove(ustring name);
 

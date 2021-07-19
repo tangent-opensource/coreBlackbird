@@ -23,14 +23,14 @@
 
 CCL_NAMESPACE_BEGIN
 
-// todo: forward declaration
-#include "geometry.h"
+#include "render/geometry.h"
 
 /* Set of attributes that can be indexed by individual objects 
  * through Object::instance_index. */
-struct InstanceGroup {
-  // todo(Edo): subdivision surfaces
-  InstanceGroup(Geometry* geom) : attributes(geom, ATTR_PRIM_GEOMETRY) { }
+class InstanceGroup {
+public:
+  // todo(Edo): Implement subdivision surfaces once they are internal
+  InstanceGroup(Geometry* geom, uint instances) : attributes(geom, ATTR_PRIM_GEOMETRY, instances) { }
 
   AttributeSet attributes;
 

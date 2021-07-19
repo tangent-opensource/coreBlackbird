@@ -75,6 +75,8 @@ Geometry::Geometry(const NodeType *node_type, const Type type)
   attr_map_offset = 0;
   optix_prim_offset = 0;
   prim_offset = 0;
+
+  geometry_index = -1;
 }
 
 Geometry::~Geometry()
@@ -979,6 +981,13 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
                               Progress &progress,
                               vector<AttributeRequestSet> &attributes)
 {
+  /* Handle partial scene updates */
+  for (size_t i = 0; i < scene->instance_groups.size(); ++i) {
+    if (scene->instance_groups[i]->attributes.geometry) {
+      scene->instance_groups[i]->attributes.geometry->geometry_index = -1;
+    }
+  }
+
    /* gather per mesh requested attributes. as meshes may have multiple
    * shaders assigned, this merges the requested attributes that have
    * been set per shader by the shader manager */
@@ -988,6 +997,7 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
   size_t attribute_map_idx = 0;
   for (size_t i = 0; i < scene->geometry.size(); ++i) {
     Geometry *geom = scene->geometry[i];
+    geom->geometry_index = (int)i;
 
     scene->need_global_attributes(attributes[i]);
 
@@ -1011,34 +1021,19 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
 
   /* Each instance group begins with the same set of requested attributes as
    * the geometry. */
-  /* todo(Edoardo): No need for this to be duplicated */
   for (size_t i = 0; i < scene->instance_groups.size(); ++i) {
     const size_t attribute_map_idx = scene->geometry.size() + i;
 
-    assert(scene->instance_groups[i]->attributes.geometry);
     Geometry *geom = scene->instance_groups[i]->attributes.geometry;
 
-    scene->need_global_attributes(attributes[attribute_map_idx]);
-
-    foreach (Shader *shader, geom->used_shaders) {
-      attributes[attribute_map_idx].add(shader->attributes);
-
-      /* Add a request for volume velocity if a volume attribute is
-      present and motion blur is on*/
-      if (scene->need_motion() == Scene::MOTION_BLUR) {
-        foreach (AttributeRequest &attr, attributes[attribute_map_idx].requests) {
-          if (attr.std == ATTR_STD_VOLUME_DENSITY || attr.std == ATTR_STD_VOLUME_COLOR ||
-              attr.std == ATTR_STD_VOLUME_FLAME || attr.std == ATTR_STD_VOLUME_HEAT ||
-              attr.std == ATTR_STD_VOLUME_TEMPERATURE) {
-            attributes[attribute_map_idx].add(ATTR_STD_VOLUME_VELOCITY);
-            break;
-          }
-        }
-      }
+    if (!geom || geom->geometry_index < 0) {
+      continue;
     }
-  }
 
-  printf("Attributes geometry %d instance groups %d\n", (int)scene->geometry.size(), (int)scene->instance_groups.size());
+    /* The set of requested attributes for the instance is the same
+     * as the geometry's, no need to recompute them */
+    attributes[attribute_map_idx] = attributes[geom->geometry_index];
+  }
 
   /* mesh attribute are stored in a single array per data type. here we fill
    * those arrays, and set the offset and element type to create attribute
@@ -1079,11 +1074,13 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
     }
   }
 
-  /* Now do the same for instanced attributes, but look for them in 
-   * the instanced attribute set */
   for (size_t i = 0; i < scene->instance_groups.size(); ++i) {
     const size_t attribute_map_idx = scene->geometry.size() + i;
     Geometry *geom = scene->instance_groups[i]->attributes.geometry;
+
+    if (!geom || geom->geometry_index < 0) {
+      continue;
+    }
 
     foreach (AttributeRequest &req, attributes[attribute_map_idx].requests) {
       Attribute *attr = scene->instance_groups[i]->attributes.find(req);
@@ -1167,34 +1164,24 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
     }
   }
 
+  /* Override attribute request offsets for each instance group */
   for (size_t i = 0; i < scene->instance_groups.size(); ++i) {
     Geometry *geom = scene->instance_groups[i]->attributes.geometry;
 
-    /* todo: we now store std and name attributes from requests even if
-     * they actually refer to the same mesh attributes, optimize */
+    if (!geom || geom->geometry_index < 0) {
+      continue;
+    }
+
     const size_t attribute_map_idx = scene->geometry.size() + i;
+    size_t attribute_req_idx = 0;
     foreach (AttributeRequest &req, attributes[attribute_map_idx].requests) {
       Attribute *attr = scene->instance_groups[i]->attributes.find(req);
 
-      update_attribute_element_offset(geom,
-                                      dscene->attributes_float,
-                                      attr_float_offset,
-                                      dscene->attributes_float2,
-                                      attr_float2_offset,
-                                      dscene->attributes_float3,
-                                      attr_float3_offset,
-                                      dscene->attributes_uchar4,
-                                      attr_uchar4_offset,
-                                      attr,
-                                      ATTR_PRIM_GEOMETRY,
-                                      req.type,
-                                      req.desc);
-
-      if (geom->type == Geometry::MESH) {
-        Mesh *mesh = static_cast<Mesh *>(geom);
-        Attribute *subd_attr = mesh->subd_attributes.find(req);
-
-        update_attribute_element_offset(mesh,
+      /* If the attribute is authored on the geometry, avoid duplication */
+      if (!attr) {
+        req = attributes[geom->geometry_index].requests[attribute_req_idx];
+      } else {
+        update_attribute_element_offset(geom,
                                         dscene->attributes_float,
                                         attr_float_offset,
                                         dscene->attributes_float2,
@@ -1203,11 +1190,32 @@ void GeometryManager::fill_attributes_and_maps(Device *device,
                                         attr_float3_offset,
                                         dscene->attributes_uchar4,
                                         attr_uchar4_offset,
-                                        subd_attr,
-                                        ATTR_PRIM_SUBD,
-                                        req.subd_type,
-                                        req.subd_desc);
+                                        attr,
+                                        ATTR_PRIM_GEOMETRY,
+                                        req.type,
+                                        req.desc);
+
+        if (geom->type == Geometry::MESH) {
+          Mesh *mesh = static_cast<Mesh *>(geom);
+          Attribute *subd_attr = mesh->subd_attributes.find(req);
+
+          update_attribute_element_offset(mesh,
+                                          dscene->attributes_float,
+                                          attr_float_offset,
+                                          dscene->attributes_float2,
+                                          attr_float2_offset,
+                                          dscene->attributes_float3,
+                                          attr_float3_offset,
+                                          dscene->attributes_uchar4,
+                                          attr_uchar4_offset,
+                                          subd_attr,
+                                          ATTR_PRIM_SUBD,
+                                          req.subd_type,
+                                          req.subd_desc);
+        }
       }
+
+      ++attribute_req_idx;
 
       if (progress.get_cancel())
         return;

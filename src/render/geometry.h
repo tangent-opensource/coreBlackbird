@@ -86,6 +86,9 @@ class Geometry : public Node {
   bool need_update;
   bool need_update_rebuild;
 
+  /* Used by the geometry manager */
+  int geometry_index;
+
   /* Constructor/Destructor */
   explicit Geometry(const NodeType *node_type, const Type type);
   virtual ~Geometry();

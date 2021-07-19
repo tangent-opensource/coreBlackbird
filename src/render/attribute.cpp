@@ -338,8 +338,8 @@ void Attribute::get_uv_tiles(Geometry *geom,
 
 /* Attribute Set */
 
-AttributeSet::AttributeSet(Geometry *geometry, AttributePrimitive prim)
-    : geometry(geometry), prim(prim)
+AttributeSet::AttributeSet(Geometry *geometry, AttributePrimitive prim, uint instances)
+    : geometry(geometry), prim(prim), instances(instances)
 {
 }
 
@@ -347,7 +347,7 @@ AttributeSet::~AttributeSet()
 {
 }
 
-Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement element, uint instances)
+Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement element)
 {
   Attribute *attr = find(name);
 
