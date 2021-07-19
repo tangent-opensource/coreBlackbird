@@ -1,8 +1,11 @@
-Cycles Render Engine
+Blackbird Render Engine
 ====================
 
-Cycles is a ray tracing renderer focused on interactivity and ease of use, while
+Blackbird is a ray tracing renderer focused on interactivity and ease of use, while
 still supporting many production features.
+
+Blackbird is a fork of the Cycles render engine by the Blender Foudation:
+http://blender.org
 
 = Building =
 ------------
@@ -16,9 +19,13 @@ Crucial dependencies:
 - Boost (version at least 1.48).
 - OpenImageIO (plus all the libraries which OIIO depends on).
 - PugiXML unless OpenImageIO is compiled with embedded version of this library.
+- Embree
 
 Optional dependencies:
 - OpenShadingLanguage
+- OpenImageDenoise
+- CUDA
+- OptiX
 
 == Precompiled libraries ==
 ---------------------------
@@ -51,7 +58,7 @@ to folder with Cycles sources.
 
 Once all the requirements are met, either invoke `cmake` with all desired
 parameters from a build folder, or simply type `make` in the root directory of
-Cycles repository.
+Blackbird repository.
 
 == Extra Dependencies ==
 ------------------------
@@ -70,38 +77,8 @@ It is possible to pass CMake configuration arguments to GNU Makefile, i.e.:
 
   make BUILD_CMAKE_ARGS="-DBOOST_ROOT=/opt/lib/boost"
 
-= Examples =
-------------
-
-The repository contains example xml scenes which could be used to test Cycles
-render engine.
-
-Example usage:
-
-  ./cycles scene_monkey.xml
-
-You can also use optional parameters (see ./cycles --help), like:
-
-  ./cycles --samples 100 --output ./image.png scene_monkey.xml
-
-For the OSL scene you need to enable the OSL shading system:
-
-  ./cycles --shadingsys osl scene_osl_stripes.xml
-
-= Known TODOs =
+= Known Limitations =
 ---------------
 
-- Installation target is not tested and would need more work.
-- Compiled .oso files are not put to the final location, so manual copy is
-  required for now.
-
-= Problems =
-------------
-
-If you encounter problems, please mail the blender's mailing list bf-cycles:
-
-  http://lists.blender.org/mailman/listinfo/bf-cycles
-
-or ask for help on
-
-  irc://irc.freenode.net/blendercoders
+- GPU rendering in Blackbrd is largely untested and may not be working
+- Blackbird is intended to be used with hdBlackbird and may not work in other applications
