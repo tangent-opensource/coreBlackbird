@@ -1946,7 +1946,8 @@ void VolumeTextureNode::load_file(ImageManager *image_manager)
 #  ifdef WITH_NANOVDB
       features.has_nanovdb = true;
 #  endif
-      vdb_loader->load_metadata(features, handle.metadata());
+      ImageMetaData metadata = handle.metadata();
+      vdb_loader->load_metadata(features, metadata);
     }
     catch (const openvdb::IoError &e) {
       VLOG(1) << "Unable to load grid %s from file %s" << grid.c_str() << filename.c_str()
