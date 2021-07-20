@@ -20,6 +20,7 @@
 #include "render/film.h"
 #include "render/image.h"
 #include "render/image_sky.h"
+#include "render/image_vdb.h"
 #include "render/integrator.h"
 #include "render/light.h"
 #include "render/mesh.h"
@@ -1888,6 +1889,138 @@ void PointDensityTextureNode::compile(OSLCompiler &compiler)
   }
 }
 
+/* Volume Texture */
+
+NODE_DEFINE(VolumeTextureNode)
+{
+  NodeType *type = NodeType::add("volume_texture", create, NodeType::SHADER);
+
+  SOCKET_STRING(filename, "Filename", ustring());
+  SOCKET_STRING(grid, "Grid", ustring());
+
+  static NodeEnum interpolation_enum;
+  interpolation_enum.insert("closest", INTERPOLATION_CLOSEST);
+  interpolation_enum.insert("linear", INTERPOLATION_LINEAR);
+  interpolation_enum.insert("cubic", INTERPOLATION_CUBIC);
+  interpolation_enum.insert("smart", INTERPOLATION_SMART);
+  SOCKET_ENUM(interpolation, "Interpolation", interpolation_enum, INTERPOLATION_LINEAR);
+
+  SOCKET_IN_VECTOR(position, "Position", make_float3(0.0f, 0.0f, 0.0f));
+
+  SOCKET_OUT_VECTOR(vector, "Vector");
+
+  return type;
+}
+
+VolumeTextureNode::VolumeTextureNode() : TextureNode(node_type)
+{
+}
+
+VolumeTextureNode::VolumeTextureNode(const VolumeTextureNode &copy) : TextureNode(node_type)
+{
+  this->handle = copy.handle;
+  this->vdb_loader = copy.vdb_loader;
+}
+
+ShaderNode *VolumeTextureNode::clone() const
+{
+  /* Similar to PointTexture node this should avoid add_image */
+  VolumeTextureNode *node = new VolumeTextureNode(*this);
+  return node;
+}
+
+void VolumeTextureNode::load_file(ImageManager *image_manager)
+{
+#ifdef WITH_OPENVDB
+  if (!filename.empty() && !grid.empty()) {
+    vdb_loader = new VDBImageLoader(grid.string());
+
+    try {
+      openvdb::io::File vdb_file(filename.string());
+      vdb_file.setCopyMaxBytes(0);
+      vdb_file.open();
+      vdb_loader->set_grid(vdb_file.readGrid(grid.string()));
+      vdb_file.close();
+
+      ImageDeviceFeatures features;
+#  ifdef WITH_NANOVDB
+      features.has_nanovdb = true;
+#  endif
+      ImageMetaData metadata = handle.metadata();
+      vdb_loader->load_metadata(features, metadata);
+    }
+    catch (const openvdb::IoError &e) {
+      VLOG(1) << "Unable to load grid %s from file %s" << grid.c_str() << filename.c_str()
+              << e.what();
+    }
+    catch (const std::exception &e) {
+      VLOG(1) << "Error loading vdb file!" << e.what();
+    }
+  }
+#endif
+  if (vdb_loader) {
+    handle = image_manager->add_image(vdb_loader, image_params());
+  }
+}
+
+void VolumeTextureNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+  if (shader->has_volume)
+    attributes->add(ATTR_STD_GENERATED_TRANSFORM);
+
+  ShaderNode::attributes(shader, attributes);
+}
+
+ImageParams VolumeTextureNode::image_params() const
+{
+  ImageParams params;
+  params.interpolation = interpolation;
+  return params;
+}
+
+void VolumeTextureNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *position_in = input("Position");
+  ShaderOutput *vector_out = output("Vector");
+
+  const bool use_vector = !vector_out->links.empty();
+  if (use_vector) {
+    if (handle.empty()) {
+      load_file(compiler.scene->image_manager);
+    }
+
+    const int slot = handle.svm_slot();
+    if (slot != -1) {
+      compiler.stack_assign(position_in);
+      compiler.add_node(NODE_TEX_VOLUME,
+                        slot,
+                        compiler.encode_uchar4(compiler.stack_assign(position_in),
+                                               compiler.stack_assign_if_linked(vector_out)));
+    }
+    else {
+      compiler.add_node(NODE_VALUE_V, compiler.stack_assign(vector_out));
+      compiler.add_node(NODE_VALUE_V, make_float3(0.0f, 0.0f, 0.0f));
+    }
+  }
+}
+
+void VolumeTextureNode::compile(OSLCompiler &compiler)
+{
+  ShaderOutput *vector_out = output("Vector");
+
+  const bool use_vector = !vector_out->links.empty();
+
+  if (use_vector) {
+    if (handle.empty()) {
+      load_file(compiler.scene->image_manager);
+    }
+
+    compiler.parameter_texture("filename", handle.svm_slot(true));
+    compiler.parameter(this, "interpolation");
+    compiler.add(this, "node_volume_texture");
+  }
+}
+
 /* Normal */
 
 NODE_DEFINE(NormalNode)
@@ -2304,7 +2437,7 @@ NODE_DEFINE(AnisotropicBsdfNode)
   static NodeEnum distribution_enum;
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
   distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+  distribution_enum.insert("Multiscatter_GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
   distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
   SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
 
@@ -2368,7 +2501,7 @@ NODE_DEFINE(GlossyBsdfNode)
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
   distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_ID);
   distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+  distribution_enum.insert("Multiscatter_GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
   SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
 
@@ -2459,7 +2592,7 @@ NODE_DEFINE(GlassBsdfNode)
   distribution_enum.insert("sharp", CLOSURE_BSDF_SHARP_GLASS_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);
   distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+  distribution_enum.insert("Multiscatter_GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.0f);
@@ -2738,7 +2871,7 @@ NODE_DEFINE(PrincipledBsdfNode)
 
   static NodeEnum distribution_enum;
   distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+  distribution_enum.insert("Multiscatter_GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
 
@@ -3490,9 +3623,9 @@ NODE_DEFINE(PrincipledHairBsdfNode)
 
   /* Color parametrization specified as enum. */
   static NodeEnum parametrization_enum;
-  parametrization_enum.insert("Direct coloring", NODE_PRINCIPLED_HAIR_REFLECTANCE);
-  parametrization_enum.insert("Melanin concentration", NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);
-  parametrization_enum.insert("Absorption coefficient", NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION);
+  parametrization_enum.insert("Direct_coloring", NODE_PRINCIPLED_HAIR_REFLECTANCE);
+  parametrization_enum.insert("Melanin_concentration", NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);
+  parametrization_enum.insert("Absorption_coefficient", NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION);
   SOCKET_ENUM(
       parametrization, "Parametrization", parametrization_enum, NODE_PRINCIPLED_HAIR_REFLECTANCE);
 
