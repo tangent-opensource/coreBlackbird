@@ -444,7 +444,7 @@ class VolumeTextureNode : public TextureNode {
   SHADER_NODE_NO_CLONE_CLASS(VolumeTextureNode)
 
   explicit VolumeTextureNode(const VolumeTextureNode &copy);
-  ShaderNode *clone() const override;
+  ShaderNode *clone(ShaderGraph *graph) const;
   void load_file(ImageManager *image_manager);
   void attributes(Shader *shader, AttributeRequestSet *attributes) override;
   
@@ -472,11 +472,11 @@ class VolumeTextureNode : public TextureNode {
   ImageParams image_params() const;
 
   /* Parameters */
-  ustring filename;
-  ustring grid;
-  InterpolationType interpolation;
-  float3 position;
-  float3 vector;
+  NODE_SOCKET_API(ustring, filename)
+  NODE_SOCKET_API(ustring, grid)
+  NODE_SOCKET_API(InterpolationType, interpolation)
+  NODE_SOCKET_API(float3, position)
+  NODE_SOCKET_API(float3, vector)
 
   /* Runtime. */
   ImageHandle handle;

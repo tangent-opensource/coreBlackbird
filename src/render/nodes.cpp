@@ -1918,10 +1918,11 @@ VolumeTextureNode::VolumeTextureNode(const VolumeTextureNode &copy) : TextureNod
   this->vdb_loader = copy.vdb_loader;
 }
 
-ShaderNode *VolumeTextureNode::clone() const
+ShaderNode *VolumeTextureNode::clone(ShaderGraph *graph) const
 {
   /* Similar to PointTexture node this should avoid add_image */
-  VolumeTextureNode *node = new VolumeTextureNode(*this);
+  VolumeTextureNode *node = graph->create_node<VolumeTextureNode>(*this);
+  node->handle = handle;
   return node;
 }
 
