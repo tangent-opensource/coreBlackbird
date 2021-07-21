@@ -29,13 +29,14 @@ CCL_NAMESPACE_BEGIN
  * through Object::instance_index. */
 class InstanceGroup {
 public:
-  // todo(Edo): Implement subdivision surfaces once they are internal
-  InstanceGroup(Geometry* geom, uint instances) : attributes(geom, ATTR_PRIM_GEOMETRY, instances), attr_map_offset(~0) { }
+  // todo(Edoardo): Implement subdivision surfaces once they are internal
+  InstanceGroup(Geometry* geom, size_t instances) : attributes(geom, ATTR_PRIM_GEOMETRY, instances), attr_map_offset(~0) { }
 
   AttributeSet attributes;
 
-  /* Used internally by the geometry manager */
-  size_t attr_map_offset = 0;
+  /* Used internally by the geometry manager to store the index of
+   * the attribute map for this instance group in the device buffer */
+  size_t attr_map_offset;
 };
 
 CCL_NAMESPACE_END

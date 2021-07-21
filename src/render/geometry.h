@@ -86,7 +86,9 @@ class Geometry : public Node {
   bool need_update;
   bool need_update_rebuild;
 
-  /* Used by the geometry manager */
+  /* Used by the geometry manager during device update to track the
+   * index of the geometry so that instance groups can access
+   * the geometry attribute tables */
   int geometry_index;
 
   /* Constructor/Destructor */
@@ -97,6 +99,7 @@ class Geometry : public Node {
   virtual void clear();
   virtual void compute_bounds() = 0;
   virtual void apply_transform(const Transform &tfm, const bool apply_to_motion) = 0;
+  virtual size_t num_points() const = 0;
 
   /* Attribute Requests */
   bool need_attribute(Scene *scene, AttributeStandard std);

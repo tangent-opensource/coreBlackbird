@@ -815,7 +815,7 @@ static void update_attribute_element_size(Geometry *geom,
                                           size_t *attr_uchar4_size)
 {
   if (mattr) {
-    size_t size = mattr->element_size(geom, prim) * mattr->instances;
+    size_t size = mattr->element_size(geom, prim) * mattr->instances_size();
 
     if (mattr->element == ATTR_ELEMENT_VOXEL) {
       /* pass */
@@ -859,7 +859,7 @@ static void update_attribute_element_offset(Geometry *geom,
     type = mattr->type;
 
     /* store attribute data in arrays */
-    size_t size = mattr->element_size(geom, prim) * mattr->instances;
+    size_t size = mattr->element_size(geom, prim) * mattr->instances_size();
 
     AttributeElement &element = desc.element;
     int &offset = desc.offset;

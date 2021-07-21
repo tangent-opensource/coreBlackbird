@@ -28,7 +28,7 @@ CCL_NAMESPACE_BEGIN
 /* Attribute */
 
 Attribute::Attribute(
-    ustring name, TypeDesc type, AttributeElement element, Geometry *geom, AttributePrimitive prim, uint instances)
+    ustring name, TypeDesc type, AttributeElement element, Geometry *geom, AttributePrimitive prim, size_t instances)
     : name(name), std(ATTR_STD_NONE), type(type), element(element), flags(0), instances(instances)
 {
   /* string and matrix not supported! */
@@ -332,7 +332,7 @@ void Attribute::get_uv_tiles(Geometry *geom,
 
 /* Attribute Set */
 
-AttributeSet::AttributeSet(Geometry *geometry, AttributePrimitive prim, uint instances)
+AttributeSet::AttributeSet(Geometry *geometry, AttributePrimitive prim, size_t instances)
     : geometry(geometry), prim(prim), instances(instances)
 {
 }

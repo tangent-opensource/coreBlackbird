@@ -114,6 +114,10 @@ class Hair : public Geometry {
 
   void compute_bounds() override;
   void apply_transform(const Transform &tfm, const bool apply_to_motion) override;
+  size_t num_points() const override
+  {
+    return 0;
+  }
 
   /* Curves */
   Curve get_curve(size_t i) const

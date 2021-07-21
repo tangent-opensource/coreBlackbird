@@ -93,7 +93,7 @@ class PointCloud : public Geometry {
     return point;
   }
 
-  size_t num_points() const
+  size_t num_points() const override
   {
     return points.size();
   }
