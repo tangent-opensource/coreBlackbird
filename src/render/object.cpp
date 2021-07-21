@@ -115,6 +115,7 @@ Object::Object() : Node(node_type)
 {
   particle_system = NULL;
   particle_index = 0;
+  instance_group = NULL;
   bounds = BoundBox::empty;
 }
 
