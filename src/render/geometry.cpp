@@ -339,7 +339,7 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
       }
       break;
     case ATTR_ELEMENT_FACE:
-      if (geometry_type == Geometry::MESH) {
+      if (geometry_type == Geometry::MESH || geometry_type == Geometry::VOLUME) {
         const Mesh *mesh = static_cast<const Mesh *>(this);
         if (prim == ATTR_PRIM_GEOMETRY) {
           size = mesh->num_triangles();
@@ -396,7 +396,7 @@ size_t Geometry::element_size(AttributeElement element, AttributePrimitive prim)
 
 TypeDesc Geometry::standard_type(AttributeStandard std) const
 {
-  if (geometry_type == Geometry::MESH) {
+  if (geometry_type == Geometry::MESH || geometry_type == Geometry::VOLUME) {
     switch (std) {
       case ATTR_STD_VERTEX_NORMAL:
         return TypeDesc::TypeNormal;
@@ -505,7 +505,7 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const
 
 AttributeElement Geometry::standard_element(AttributeStandard std) const
 {
-  if (geometry_type == Geometry::MESH) {
+  if (geometry_type == Geometry::MESH || geometry_type == Geometry::VOLUME) {
     switch (std) {
       case ATTR_STD_VERTEX_NORMAL:
         return ATTR_ELEMENT_VERTEX;
