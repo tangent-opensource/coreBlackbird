@@ -91,10 +91,8 @@ ccl_device_inline float primitive_volume_attribute_float(KernelGlobals *kg,
                                                          const ShaderData *sd,
                                                          const AttributeDescriptor desc)
 {
-  if (sd->object != OBJECT_NONE) {
-    if (desc.element == ATTR_ELEMENT_VOXEL) {
-      return volume_attribute_float(kg, sd, desc);
-    }
+  if (sd->object != OBJECT_NONE && desc.element == ATTR_ELEMENT_VOXEL) {
+    return volume_attribute_float(kg, sd, desc);
   }
   else {
     return 0.0f;
