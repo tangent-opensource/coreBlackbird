@@ -47,6 +47,7 @@ ccl_device_inline float primitive_attribute_float(
     } else if (desc.element == ATTR_ELEMENT_OBJECT) {
       return kernel_tex_fetch(__attributes_float, desc.offset);
     }
+    return 0.0f;
   }
 #endif
   else {
@@ -164,6 +165,7 @@ ccl_device_inline float3 primitive_attribute_float3(KernelGlobals *kg,
     } else if (desc.element == ATTR_ELEMENT_OBJECT) {
       return float4_to_float3(kernel_tex_fetch(__attributes_float3, desc.offset));
     }
+    return make_float3(0.0f, 0.0f, 0.0f);
   }
 #endif
   else {
