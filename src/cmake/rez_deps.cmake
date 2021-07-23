@@ -44,7 +44,7 @@ else()
     set(WITH_CYCLES_OSL OFF CACHE BOOL "Build Cycles with OSL support" FORCE)
 endif()
 
-if(DEFINED ENV{REZ_OPENCOLORIO_BASE})
+if(DEFINED ENV{REZ_OCIO_BASE})
     message("WITH REZ OCIO")
     set(WITH_CYCLES_OPENCOLORIO ON CACHE BOOL "Build Cycles with OpenColorIO support" FORCE)
 else()
