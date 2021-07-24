@@ -24,6 +24,7 @@ Desktop.ini
 bin-dbg
 bin-opt
 build*/
+_rez_build
 
 # OSL compiled examples
 examples/osl/*.oso
