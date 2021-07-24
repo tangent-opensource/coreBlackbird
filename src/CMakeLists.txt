@@ -432,10 +432,11 @@ endif()
 
 if(WITH_CYCLES_STANDALONE)
   add_library(Cycles INTERFACE)
+  add_library(Cycles::Cycles ALIAS Cycles)
 
   target_include_directories(Cycles
           INTERFACE
-          $<BUILD_INTERFACE:.>
+          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
           $<INSTALL_INTERFACE:include>
           )
 

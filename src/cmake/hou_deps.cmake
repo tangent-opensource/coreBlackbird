@@ -13,13 +13,21 @@ add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
 # Houdini
 message(STATUS "HOUDINI_ROOT: ${HOUDINI_ROOT}")
-set(HOUDINI_DSOLIB ${HOUDINI_ROOT}/dsolib/)
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(HOUDINI_DSOLIB "${HOUDINI_ROOT}/custom/houdini/dsolib/")
+    set(CMAKE_FIND_LIBRARY_PREFIXES "" "lib")
+else()
+    set(HOUDINI_DSOLIB ${HOUDINI_ROOT}/dsolib)
+endif()
+message(STATUS "HOUDINI_DSOLIB: ${HOUDINI_DSOLIB}")
+
 set(HOUDINI_INCLUDE ${HOUDINI_ROOT}/toolkit/include)
+message(STATUS "HOUDINI_INCLUDE: ${HOUDINI_INCLUDE}")
 
 # not every library is being linked
-set(CMAKE_BUILD_RPATH ${HOUDINI_ROOT}/dsolib)
-set(CMAKE_INSTALL_RPATH ${HOUDINI_ROOT}/dsolib)
-
+set(CMAKE_BUILD_RPATH ${HOUDINI_DSOLIB})
+set(CMAKE_INSTALL_RPATH ${HOUDINI_DSOLIB})
 
 # hboost
 # override boost searching and inject hboost
@@ -35,21 +43,27 @@ macro(find_package)
 endmacro()
 
 find_library(BOOST_FILESYSTEM_LIB
-        NAMES hboost_filesystem
+        NAMES
+        hboost_filesystem
+        hboost_filesystem-mt-x64
         PATHS ${HOUDINI_DSOLIB}
         NO_DEFAULT_PATH
         REQUIRED
         )
 
 find_library(BOOST_REGEX_LIB
-        NAMES hboost_regex
+        NAMES
+        hboost_regex
+        hboost_regex-mt-x64
         PATHS ${HOUDINI_DSOLIB}
         NO_DEFAULT_PATH
         REQUIRED
         )
 
 find_library(BOOST_SYSTEM_LIB
-        NAMES hboost_system
+        NAMES
+        hboost_system
+        hboost_system-mt-x64
         PATHS ${HOUDINI_DSOLIB}
         NO_DEFAULT_PATH
         REQUIRED
@@ -154,10 +168,11 @@ set(TIFF_LIBRARY ${TIFF_LIB})
 
 # png
 find_library(PNG_LIB
-        NAMES png
+        NAMES
+        png
+        png16
         PATHS ${HOUDINI_DSOLIB}
         NO_DEFAULT_PATH
-        REQUIRED
         )
 
 set(PNG_INCLUDE_DIRS ${HOUDINI_INCLUDE})
@@ -166,7 +181,9 @@ set(PNG_LIBRARY ${PNG_LIB})
 
 # OpenSubdiv
 find_library(OSD_OSDGPU_LIB
-        NAMES osdGPU
+        NAMES
+        osdGPU
+        osdGPU_md
         PATHS ${HOUDINI_DSOLIB}
         NO_DEFAULT_PATH
         REQUIRED
@@ -174,7 +191,9 @@ find_library(OSD_OSDGPU_LIB
 
 
 find_library(OSD_OSDCPU_LIB
-        NAMES osdCPU
+        NAMES
+        osdCPU
+        osdCPU_md
         PATHS ${HOUDINI_DSOLIB}
         NO_DEFAULT_PATH
         REQUIRED
@@ -241,7 +260,9 @@ set(JPEG_LIBRARY ${JPEG_LIB})
 
 # libz
 find_library(Z_LIB
-        NAMES z
+        NAMES
+        z
+        zdll
         PATHS ${HOUDINI_DSOLIB}
         NO_DEFAULT_PATH
         REQUIRED

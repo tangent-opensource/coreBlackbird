@@ -418,6 +418,7 @@ TypeDesc Geometry::standard_type(AttributeStandard std) const
       case ATTR_STD_POSITION_UNDISPLACED:
         return TypeDesc::TypePoint;
       case ATTR_STD_VERTEX_VELOCITY:
+      case ATTR_STD_VERTEX_ACCELERATION:
         return TypeDesc::TypeVector;
       case ATTR_STD_MOTION_VERTEX_POSITION:
         return TypeDesc::TypePoint;
@@ -526,6 +527,7 @@ AttributeElement Geometry::standard_element(AttributeStandard std) const
       case ATTR_STD_POSITION_UNDISPLACED:
         return ATTR_ELEMENT_VERTEX;
       case ATTR_STD_VERTEX_VELOCITY:
+      case ATTR_STD_VERTEX_ACCELERATION:
         return ATTR_ELEMENT_VERTEX;
       case ATTR_STD_MOTION_VERTEX_POSITION:
         return ATTR_ELEMENT_VERTEX_MOTION;
