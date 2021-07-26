@@ -213,6 +213,7 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
                                                                Ray *ray,
                                                                float3 *throughput,
                                                                ccl_addr_space Intersection *isect,
+                                                               bool &hit,
                                                                ShaderData *emission_sd,
                                                                PathRadiance *L)
 {
@@ -230,6 +231,10 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
   /* If ray position is outside of octree push it to be contained */
   if (!isect->in_volume) {
     volume_ray.P += volume_ray.D * (isect->v_t + 1e-4f /*epsilon*/);
+
+    if (hit) {
+      volume_ray.t = isect->t - isect->v_t;
+    }
   }
 
   int num_samples = kernel_data.integrator.volume_samples;
@@ -253,6 +258,8 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
       if (kernel_path_volume_bounce(kg, &volume_sd, &tp, &ps, &L->state, &volume_ray)) {
         ray->P = volume_ray.P;
         ray->D = volume_ray.D;
+
+        hit = kernel_path_scene_intersect(kg, state, ray, isect, L);
       }
     }
 #        endif /* __VOLUME_SCATTER__ */
@@ -486,7 +493,7 @@ ccl_device void kernel_branched_path_integrate(KernelGlobals *kg,
         kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, &indirect_sd, emission_sd, L);
 #      else
     kernel_branched_path_volume_octree(
-        kg, &sd, &state, buffer, &ray, &throughput, &isect, emission_sd, L);
+        kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, emission_sd, L);
 #      endif  // !__VOLUME_OCTREE__
 #    endif /* __VOLUME__ */
 
