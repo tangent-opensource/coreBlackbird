@@ -448,13 +448,16 @@ void AttributeSet::resize(bool reserve_only)
   }
 }
 
-void AttributeSet::clear(bool preserve_voxel_data)
+void AttributeSet::clear(bool preserve_voxel_data, bool preserve_custom_data)
 {
-  if (preserve_voxel_data) {
+  if (preserve_voxel_data || preserve_custom_data) {
     list<Attribute>::iterator it;
 
     for (it = attributes.begin(); it != attributes.end();) {
-      if (it->element == ATTR_ELEMENT_VOXEL || it->std == ATTR_STD_GENERATED_TRANSFORM) {
+      if (preserve_voxel_data && (it->element == ATTR_ELEMENT_VOXEL || it->std == ATTR_STD_GENERATED_TRANSFORM)) {
+        it++;
+      }
+      else if (preserve_custom_data && it->std == ATTR_STD_NONE) {
         it++;
       }
       else {

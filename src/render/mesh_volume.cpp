@@ -537,7 +537,7 @@ void GeometryManager::create_volume_mesh(Mesh *mesh, Progress &progress)
   vector<float3> face_normals;
   builder.create_mesh(vertices, indices, face_normals, face_overlap_avoidance);
 
-  mesh->clear(true);
+  mesh->clear(true, true);
   mesh->reserve_mesh(vertices.size(), indices.size() / 3);
   mesh->used_shaders.push_back(volume_shader);
   mesh->need_update_rebuild = true;
