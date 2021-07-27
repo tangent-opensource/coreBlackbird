@@ -97,6 +97,7 @@ NODE_DEFINE(Object)
   SOCKET_FLOAT(shadow_terminator_offset, "Terminator Offset", 0.0f);
   SOCKET_STRING(asset_name, "Asset Name", ustring());
   SOCKET_STRING(lightgroup, "Light Group", ustring());
+  SOCKET_FLOAT(velocity_scale, "Velocity Scale", 1.0f);
 
   SOCKET_BOOLEAN(is_shadow_catcher, "Shadow Catcher", false);
 
