@@ -85,6 +85,24 @@ ccl_device_inline AttributeDescriptor find_attribute(KernelGlobals *kg,
   desc.type = (NodeAttributeType)(attr_map.w & 0xff);
   desc.flags = (AttributeFlag)(attr_map.w >> 8);
 
+  /* Offset the index by the instance number */
+  if (desc.flags & ATTR_INSTANCED) {
+    const int instance_index = kernel_tex_fetch(__objects, sd->object).instance_index;
+    
+    if (desc.element == ATTR_ELEMENT_VERTEX || desc.element == ATTR_ELEMENT_VERTEX_MOTION) {
+      desc.offset += instance_index * kernel_tex_fetch(__objects, sd->object).numverts;
+    } else if (desc.element == ATTR_ELEMENT_CORNER || desc.element == ATTR_ELEMENT_CORNER_MOTION) {
+      /* todo(Edoardo): Implement once we have internal subdivision surfaces  */
+      desc.offset += instance_index * kernel_tex_fetch(__objects, sd->object).numfaces * 3;
+    } else if (desc.element == ATTR_ELEMENT_FACE) {
+      desc.offset += instance_index * kernel_tex_fetch(__objects, sd->object).numfaces;
+    } else if (desc.element == ATTR_ELEMENT_CURVE_KEY) {
+      desc.offset += instance_index * kernel_tex_fetch(__objects, sd->object).numkeys;
+    } else {
+      desc.offset += instance_index;
+    }
+  }
+
   return desc;
 }
 

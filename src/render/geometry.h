@@ -86,6 +86,11 @@ class Geometry : public Node {
   bool need_update;
   bool need_update_rebuild;
 
+  /* Used by the geometry manager during device update to track the
+   * index of the geometry so that instance groups can access
+   * the geometry attribute tables */
+  int geometry_index;
+
   /* Constructor/Destructor */
   explicit Geometry(const NodeType *node_type, const Type type);
   virtual ~Geometry();
@@ -94,6 +99,7 @@ class Geometry : public Node {
   virtual void clear();
   virtual void compute_bounds() = 0;
   virtual void apply_transform(const Transform &tfm, const bool apply_to_motion) = 0;
+  virtual size_t num_points() const = 0;
 
   /* Attribute Requests */
   bool need_attribute(Scene *scene, AttributeStandard std);
@@ -170,6 +176,8 @@ class GeometryManager {
   void collect_statistics(const Scene *scene, RenderStats *stats);
 
  protected:
+
+  /* Geometry  */
   bool displace(Device *device, DeviceScene *dscene, Scene *scene, Mesh *mesh, Progress &progress);
 
   void create_volume_mesh(Mesh *mesh, Progress &progress);
@@ -179,6 +187,12 @@ class GeometryManager {
   void create_motion_blur_geometry(const Scene *scene, Geometry *geom, Progress &progress);
 
   /* Attributes */
+  void fill_attributes_and_maps(Device *device,
+                                Scene *scene,
+                                DeviceScene *dscene,
+                                Progress &progress,
+                                vector<AttributeRequestSet> &attributes);
+
   void update_osl_attributes(Device *device,
                              Scene *scene,
                              vector<AttributeRequestSet> &geom_attributes);

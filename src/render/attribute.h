@@ -58,7 +58,8 @@ class Attribute {
             TypeDesc type,
             AttributeElement element,
             Geometry *geom,
-            AttributePrimitive prim);
+            AttributePrimitive prim,
+            size_t instances = 1);
   Attribute(Attribute &&other) = default;
   Attribute(const Attribute &other) = delete;
   Attribute &operator=(const Attribute &other) = delete;
@@ -70,6 +71,7 @@ class Attribute {
 
   size_t data_sizeof() const;
   size_t element_size(Geometry *geom, AttributePrimitive prim) const;
+  size_t instances_size() const { return instances; }
   size_t buffer_size(Geometry *geom, AttributePrimitive prim) const;
 
   char *data()
@@ -164,6 +166,10 @@ class Attribute {
   static AttributeStandard name_standard(const char *name);
 
   void get_uv_tiles(Geometry *geom, AttributePrimitive prim, unordered_set<int> &tiles) const;
+
+private:
+  /* Multiplier on the size of the buffer */
+  size_t instances;
 };
 
 /* Attribute Set
@@ -176,7 +182,7 @@ class AttributeSet {
   AttributePrimitive prim;
   list<Attribute> attributes;
 
-  AttributeSet(Geometry *geometry, AttributePrimitive prim);
+  AttributeSet(Geometry *geometry, AttributePrimitive prim, size_t instances = 1);
   ~AttributeSet();
 
   Attribute *add(ustring name, TypeDesc type, AttributeElement element);
@@ -193,6 +199,11 @@ class AttributeSet {
 
   void resize(bool reserve_only = false);
   void clear(bool preserve_voxel_data = false);
+
+  size_t instances_size() const { return instances; }
+
+private:
+  size_t instances;
 };
 
 /* AttributeRequest

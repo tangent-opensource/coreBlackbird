@@ -46,6 +46,7 @@ class LightManager;
 class LookupTables;
 class Geometry;
 class GeometryManager;
+class InstanceGroup;
 class Object;
 class ObjectManager;
 class ParticleSystemManager;
@@ -284,6 +285,7 @@ class Scene {
   vector<Shader *> shaders;
   vector<Light *> lights;
   vector<ParticleSystem *> particle_systems;
+  vector<InstanceGroup *> instance_groups;
 
   /* data managers */
   ImageManager *image_manager;
