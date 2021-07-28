@@ -1082,6 +1082,8 @@ typedef ccl_addr_space struct ccl_align(16) ShaderData
   float3 closure_emission_background;
   float3 closure_transparent_extinction;
 
+  float3 closure_volume_scattering;
+
   /* At the end so we can adjust size in ShaderDataTinyStorage. */
   struct ShaderClosure closure[MAX_CLOSURE];
 }

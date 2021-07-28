@@ -1669,8 +1669,8 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
     float scattering_sample = 0.0f;
 
     float3 sigma_t = make_float3(0.0f);
+    float3 sigma_s = make_float3(0.0f);
     float3 emission = make_float3(0.0f);
-    float3 albedo = make_float3(0.0f);
 
     sd->num_closure = 0;
     sd->num_closure_left = kernel_data.integrator.max_closures;
@@ -1680,33 +1680,36 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
       sd->object = root.obj_indices[i];
       sd->ob_tfm = ob.tfm;
       sd->ob_itfm = ob.itfm;
-
-      VolumeShaderCoefficients coeff ccl_optional_struct_init;
-
       sd->shader = kernel_tex_fetch(__tri_shader, root.sd_indices[i]);
 
-      if (volume_shader_sample(kg, sd, state, pos, &coeff)) {
-        scattering_sample += kernel_volume_channel_get(coeff.sigma_s, channel);
-        absorption_sample += kernel_volume_channel_get(coeff.sigma_t - coeff.sigma_s, channel);
+      shader_eval_volume_shader(kg, sd, state, state->flag);
 
-        albedo += safe_divide_color(coeff.sigma_s, coeff.sigma_t);
-        emission += coeff.emission;
-        sigma_t += coeff.sigma_t;
-      }
+      if (!(sd->flag & (SD_EXTINCTION | SD_SCATTER | SD_EMISSION)))
+        continue;
+
+      sigma_s += (sd->flag & SD_SCATTER) ? sd->closure_volume_scattering :
+                                            make_float3(0.0f, 0.0f, 0.0f);
+      sigma_t += (sd->flag & SD_EXTINCTION) ? sd->closure_transparent_extinction :
+                                              make_float3(0.0f, 0.0f, 0.0f);
+      emission += (sd->flag & SD_EMISSION) ? sd->closure_emission_background :
+                                             make_float3(0.0f, 0.0f, 0.0f);
     }
 
-    T_r *= make_float3(1.0f) - (sigma_t * inv_max_extinction);
-    T_r = clamp(T_r, make_float3(0.0f), make_float3(1.0f));
-
-    emission *= T_r;
-
     if (L && (sd->flag & SD_EMISSION)) {
+      T_r *= make_float3(1.0f) - (sigma_t * inv_max_extinction);
+      T_r = clamp(T_r, make_float3(0.0f), make_float3(1.0f));
+
+      emission *= T_r;
+
       path_radiance_accum_emission(kg, L, state, buffer, *throughput, emission, LIGHTGROUPS_NONE);
     }
 
+    scattering_sample += kernel_volume_channel_get(sigma_s, channel);
+    absorption_sample += kernel_volume_channel_get(sigma_t - sigma_s, channel);
+
     float zeta = path_state_rng_1D(kg, state, PRNG_SCATTER_DISTANCE);
     if (scattering_sample * inv_max_extinction > zeta) {
-      *throughput *= albedo;
+      *throughput *= safe_divide_color(sigma_s, sigma_t);
       result = VOLUME_PATH_SCATTERED;
       ray->P = pos;
       return result;

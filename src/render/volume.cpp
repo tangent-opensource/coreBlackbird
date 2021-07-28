@@ -115,8 +115,10 @@ void VolumeManager::device_update(DeviceScene *dscene, Scene *scene, Progress &p
 
 void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Progress &progress)
 {
-  if (!need_update || volume_objects.size() == 0)
+  if (!need_update) {
     return;
+  }
+
 #ifdef WITH_OCTREE
   octree_builder->reset_octree();
 

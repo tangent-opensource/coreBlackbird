@@ -1029,6 +1029,7 @@ ccl_device void svm_node_principled_volume(KernelGlobals *kg,
     float3 absorption_color = max(sqrt(stack_load_float3(stack, absorption_color_offset)), zero);
     float3 absorption = max(one - color, zero) * max(one - absorption_color, zero);
     volume_extinction_setup(sd, (color + absorption) * density);
+    sd->closure_volume_scattering = color * density;
   }
 
   /* Compute emission. */
