@@ -576,7 +576,6 @@ static void xml_read_mesh(const XMLReadState &state, xml_node node)
 
           assert(v0 * 2 + 1 < (int)UV.size());
           assert(v1 * 2 + 1 < (int)UV.size());
-          assert(v2 * 2 + 1 < (int)UV.size());
 
           fdata[0] = make_float2(UV[v0 * 2], UV[v0 * 2 + 1]);
           fdata[1] = make_float2(UV[v1 * 2], UV[v1 * 2 + 1]);
@@ -612,7 +611,7 @@ static void xml_read_mesh(const XMLReadState &state, xml_node node)
     if (xml_read_float_array(UV, node, "UV")) {
       ustring name = ustring("UVMap");
       Attribute *attr = mesh->subd_attributes.add(ATTR_STD_UV, name);
-      float3 *fdata = attr->data_float3();
+      float2 *fdata = attr->data_float2();
 
 #if 0
       if (subdivide_uvs) {
@@ -623,7 +622,9 @@ static void xml_read_mesh(const XMLReadState &state, xml_node node)
       index_offset = 0;
       for (size_t i = 0; i < nverts.size(); i++) {
         for (int j = 0; j < nverts[i]; j++) {
-          *(fdata++) = make_float3(UV[index_offset++]);
+          auto u = UV[index_offset++];
+          auto v = UV[index_offset++];
+          *(fdata++) = make_float2(u, v);
         }
       }
     }
