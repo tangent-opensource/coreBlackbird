@@ -391,6 +391,122 @@ static Mesh *xml_add_mesh(Scene *scene, const Transform &tfm)
   return mesh;
 }
 
+static void xml_read_mesh_attributes(const XMLReadState &state, Mesh *mesh, xml_node attribute_node)
+{
+  AttributeSet &attributes = mesh->subdivision_type == Mesh::SUBDIVISION_NONE ?
+                                 mesh->attributes :
+                                 mesh->subd_attributes;
+
+  xml_attribute name_attr = attribute_node.attribute("name");
+  if (!name_attr) {
+    return;
+  }
+
+  if (state.scene->integrator->motion_blur
+      && string_iequals(name_attr.value(), "motion_vertex_position")) {
+    vector<float3> data;
+
+    if (xml_read_float3_array(data, attribute_node, "data")) {
+      if (data.size() % mesh->verts.size() != 0) {
+        return;
+      }
+
+      mesh->motion_steps = 1 + data.size() / mesh->verts.size();
+      mesh->use_motion_blur = true;
+
+      Attribute *motion_vertex_position = attributes.add(ATTR_STD_MOTION_VERTEX_POSITION);
+      float3 *motion = motion_vertex_position->data_float3();
+
+      for (size_t i = 0; i < data.size(); ++i) {
+        motion[i] = data[i];
+      }
+    }
+  }
+
+  xml_attribute data_attr = attribute_node.attribute("data");
+  if (!data_attr) {
+    return;
+  }
+
+  // TODO: add support for standard attributes  such as P, UV etc
+
+  // custom attribute
+  xml_attribute type_attr = attribute_node.attribute("type");
+  xml_attribute elem_attr = attribute_node.attribute("element");
+  if (!type_attr || !elem_attr) {
+    return;
+  }
+
+  // type
+  TypeDesc type_desc = TypeUnknown;
+  int type_size = 0;
+  if (string_iequals(type_attr.value(), "float")) {
+    type_desc = TypeFloat;
+    type_size = 1;
+  }
+  else if (string_iequals(type_attr.value(), "float2")) {
+    type_desc = TypeFloat2;
+    type_size = 2;
+  }
+  else if (string_iequals(type_attr.value(), "color")) {
+    type_desc = TypeColor;
+    type_size = 3;
+  }
+
+  if (type_desc == TypeUnknown) {
+    fprintf(stderr, "Unknown attribute type \"%s\".\n", name_attr.value());
+    return;
+  }
+
+  // element
+  AttributeElement element = AttributeElement::ATTR_ELEMENT_NONE;
+  if (string_iequals(elem_attr.value(), "vertex")) {
+    element = AttributeElement::ATTR_ELEMENT_VERTEX;
+  }
+  if (string_iequals(elem_attr.value(), "face")) {
+    element = AttributeElement::ATTR_ELEMENT_FACE;
+  }
+  if (string_iequals(elem_attr.value(), "corner")) {
+    element = AttributeElement::ATTR_ELEMENT_CORNER;
+  }
+
+  // unknown element
+  if (element == AttributeElement::ATTR_ELEMENT_NONE) {
+    fprintf(stderr, "Unknown attribute element \"%s\".\n", name_attr.value());
+    return;
+  }
+
+  // create
+  vector<float> data;
+  if (xml_read_float_array(data, attribute_node, "data")) {
+    auto size = mesh->element_size(element, attributes.prim);
+    if (data.size() != size * type_size) {
+      fprintf(stderr, "Invalid attribute size \"%s\".\n", name_attr.value());
+      return;
+    }
+
+    Attribute *attrib = attributes.add(ustring{name_attr.value()}, type_desc, element);
+    if (type_desc == TypeFloat) {
+      auto adata = attrib->data_float();
+      for (size_t i = 0; i < size; ++i) {
+        adata[i] = data[i];
+      }
+    }
+    else if (type_desc == TypeFloat2) {
+      auto adata = attrib->data_float2();
+      for (size_t i = 0, o = 0; i < size; ++i, o += type_size) {
+        adata[i] = make_float2(data[o], data[o + 1]);
+      }
+    }
+    else if (type_desc == TypeColor) {
+      auto adata = attrib->data_float3();
+      for (size_t i = 0, o = 0; i < size; ++i, o += type_size) {
+        adata[i] = make_float3(data[o], data[o + 1], data[o + 2]);
+      }
+    }
+  }
+}
+
 static void xml_read_mesh(const XMLReadState &state, xml_node node)
 {
   /* add mesh */
@@ -523,6 +639,13 @@ static void xml_read_mesh(const XMLReadState &state, xml_node node)
     sdparams.dicing_rate = std::max(0.1f, sdparams.dicing_rate);
 
     sdparams.objecttoworld = state.tfm;
+  }
+
+  for (xml_node child_node = node.first_child(); child_node;
+       child_node = child_node.next_sibling()) {
+    if (string_iequals(child_node.name(), "attribute")) {
+      xml_read_mesh_attributes(state, mesh, child_node);
+    }
   }
 
   /* we don't yet support arbitrary attributes, for now add vertex
