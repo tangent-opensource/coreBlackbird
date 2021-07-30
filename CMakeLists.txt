@@ -99,7 +99,7 @@ option(WITH_CUDA_DYNLOAD           "Dynamically load CUDA libraries at runtime" 
 mark_as_advanced(WITH_CUDA_DYNLOAD)
 
 # ====== Tangent Rez Deps
-if(DEFINED ENV${TA_USING_REZ})
+if(DEFINED ENV{TA_USING_REZ})
     message(STATUS "Building with REZ")
     include(src/cmake/rez_deps.cmake)
 elseif(DEFINED HOUDINI_ROOT)
