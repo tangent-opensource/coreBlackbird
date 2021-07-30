@@ -26,7 +26,7 @@ CCL_NAMESPACE_BEGIN
 
 class Subpatch {
  public:
-  class Patch *patch; /* Patch this is a subpatch of. */
+  const class Patch *patch; /* Patch this is a subpatch of. */
   int inner_grid_vert_offset;
 
   struct edge_t {
@@ -66,7 +66,7 @@ class Subpatch {
     };
   };
 
-  explicit Subpatch(Patch *patch = nullptr)
+  explicit Subpatch(const Patch *patch = nullptr)
       : patch(patch),
         c00(make_float2(0.0f, 0.0f)),
         c01(make_float2(0.0f, 1.0f)),
@@ -75,7 +75,7 @@ class Subpatch {
   {
   }
 
-  Subpatch(Patch *patch, float2 c00, float2 c01, float2 c11, float2 c10)
+  Subpatch(const Patch *patch, float2 c00, float2 c01, float2 c11, float2 c10)
       : patch(patch), c00(c00), c01(c01), c11(c11), c10(c10)
   {
   }

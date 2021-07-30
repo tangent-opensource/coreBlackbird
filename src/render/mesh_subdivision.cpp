@@ -326,7 +326,7 @@ struct OsdPatch : Patch {
   {
   }
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v)
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override
   {
     const Far::PatchTable::PatchHandle *handle = osd_data->patch_map->FindPatch(patch_index, u, v);
     assert(handle);

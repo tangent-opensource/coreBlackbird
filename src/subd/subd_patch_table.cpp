@@ -88,7 +88,7 @@ template<class T> static int resolve_quadrant(T &median, T &u, T &v)
 }
 
 static void build_patch_map(PackedPatchTable &table,
-                            OpenSubdiv::Far::PatchTable *patch_table,
+                            const Far::PatchTable *patch_table,
                             int offset)
 {
   int num_faces = 0;
@@ -194,7 +194,7 @@ size_t PackedPatchTable::total_size()
          num_patches * (PATCH_PARAM_SIZE + PATCH_HANDLE_SIZE) + num_nodes * PATCH_NODE_SIZE;
 }
 
-void PackedPatchTable::pack(Far::PatchTable *patch_table, int offset)
+void PackedPatchTable::pack(const Far::PatchTable *patch_table, int offset)
 {
   num_arrays = 0;
   num_patches = 0;
