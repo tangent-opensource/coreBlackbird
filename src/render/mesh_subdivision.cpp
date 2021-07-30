@@ -316,7 +316,7 @@ class OsdData {
 
 /* ccl::Patch implementation that uses OpenSubdiv for eval */
 
-struct OsdPatch : Patch {
+struct OsdPatch final : Patch {
   OsdData *osd_data;
 
   OsdPatch()
@@ -399,7 +399,7 @@ void Mesh::tessellate(DiagSplit *split)
   /* count patches */
   int num_patches = 0;
   for (int f = 0; f < num_faces; f++) {
-    SubdFace &face = subd_faces[f];
+    const SubdFace &face = subd_faces[f];
 
     if (face.is_quad()) {
       num_patches++;
