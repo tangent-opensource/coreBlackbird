@@ -163,7 +163,7 @@ class OsdData {
   Far::PatchMap *patch_map;
 
  public:
-  OsdData() : mesh(NULL), refiner(NULL), patch_table(NULL), patch_map(NULL)
+    OsdData() : mesh(nullptr), refiner(nullptr), patch_table(nullptr), patch_map(nullptr)
   {
   }
 
@@ -597,7 +597,7 @@ void Mesh::tessellate(DiagSplit *split)
   int num_faces = subd_faces.size();
 
   Attribute *attr_vN = subd_attributes.find(ATTR_STD_VERTEX_NORMAL);
-  float3 *vN = (attr_vN) ? attr_vN->data_float3() : NULL;
+  float3 *vN = (attr_vN) ? attr_vN->data_float3() : nullptr;
 
   /* count patches */
   int num_patches = 0;
