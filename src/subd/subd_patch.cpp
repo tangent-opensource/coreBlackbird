@@ -78,7 +78,7 @@ void LinearQuadPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, flo
   }
 }
 
-BoundBox LinearQuadPatch::bound()
+BoundBox LinearQuadPatch::bound() const
 {
   BoundBox bbox = BoundBox::empty;
 
@@ -108,7 +108,7 @@ void BicubicPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float 
   }
 }
 
-BoundBox BicubicPatch::bound()
+BoundBox BicubicPatch::bound() const
 {
   BoundBox bbox = BoundBox::empty;
 

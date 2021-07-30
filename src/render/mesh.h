@@ -99,7 +99,7 @@ class Mesh : public Geometry {
     bool smooth;
     int ptex_offset;
 
-    bool is_quad()
+    bool is_quad() const
     {
       return num_corners == 4;
     }
