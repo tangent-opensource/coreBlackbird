@@ -163,7 +163,7 @@ class OsdData {
   Far::PatchMap *patch_map;
 
  public:
-    OsdData() : mesh(nullptr), refiner(nullptr), patch_table(nullptr), patch_map(nullptr)
+  OsdData() : mesh(nullptr), refiner(nullptr), patch_table(nullptr), patch_map(nullptr)
   {
   }
 
