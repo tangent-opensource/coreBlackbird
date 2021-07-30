@@ -43,14 +43,14 @@ class DiagSplit {
   /* deque is used so that element pointers remain vaild when size is changed. */
   deque<Edge> edges;
 
-  float3 to_world(const Patch *patch, float2 uv);
-  int T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve = false);
+  float3 to_world(const Patch *patch, float2 uv) const;
+  int T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve = false) const;
 
   void limit_edge_factor(int &T, const Patch *patch, float2 Pstart, float2 Pend) const;
-  void resolve_edge_factors(Subpatch &sub);
+  void resolve_edge_factors(Subpatch &sub) const;
 
   void partition_edge(
-          const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t);
+          const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t) const;
 
   void split(Subpatch &sub, int depth = 0);
 
