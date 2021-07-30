@@ -30,7 +30,7 @@ class Patch {
 
   virtual ~Patch() = default;
 
-  virtual void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) = 0;
+  virtual void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const = 0;
 
   int patch_index;
   int shader;
@@ -44,7 +44,7 @@ class LinearQuadPatch : public Patch {
   float3 hull[4];
   float3 normals[4];
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v);
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override;
   BoundBox bound();
 };
 
@@ -54,7 +54,7 @@ class BicubicPatch : public Patch {
  public:
   float3 hull[16];
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v);
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override;
   BoundBox bound();
 };
 

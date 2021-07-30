@@ -71,8 +71,8 @@ class EdgeDice {
 
   void reserve(int num_verts, int num_triangles);
 
-  void set_vert(Patch *patch, int index, float2 uv);
-  void add_triangle(Patch *patch, int v0, int v1, int v2);
+  void set_vert(const Patch *patch, int index, float2 uv);
+  void add_triangle(const Patch *patch, int v0, int v1, int v2);
 
   void stitch_triangles(Subpatch &sub, int edge);
 };
