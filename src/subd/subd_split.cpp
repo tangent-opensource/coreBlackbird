@@ -39,7 +39,7 @@ DiagSplit::DiagSplit(const SubdParams &params_) : params(params_)
 {
 }
 
-float3 DiagSplit::to_world(const Patch *patch, float2 uv)
+float3 DiagSplit::to_world(const Patch *patch, float2 uv) const
 {
   float3 P;
 
@@ -57,7 +57,7 @@ static void order_float2(float2 &a, float2 &b)
   }
 }
 
-int DiagSplit::T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve)
+int DiagSplit::T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve) const
 {
   order_float2(Pstart, Pend); /* May not be necessary, but better to be safe. */
 
@@ -109,7 +109,7 @@ int DiagSplit::T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_
 }
 
 void DiagSplit::partition_edge(
-        const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t)
+        const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t) const
 {
   if (t == DSPLIT_NON_UNIFORM) {
     *P = (Pstart + Pend) * 0.5f;
@@ -140,7 +140,7 @@ void DiagSplit::limit_edge_factor(int &T, const Patch *patch, float2 Pstart, flo
   assert(T >= 1 || T == DSPLIT_NON_UNIFORM);
 }
 
-void DiagSplit::resolve_edge_factors(Subpatch &sub)
+void DiagSplit::resolve_edge_factors(Subpatch &sub) const
 {
   /* Resolve DSPLIT_NON_UNIFORM to actual T value if splitting is no longer possible. */
   if (sub.edge_u0.T == 1 && sub.edge_u1.T == DSPLIT_NON_UNIFORM) {
