@@ -66,8 +66,8 @@ class Subpatch {
     };
   };
 
-  explicit Subpatch(const Patch *patch = nullptr)
-      : patch(patch),
+  explicit Subpatch(const Patch *_patch = nullptr)
+      : patch(_patch),
         c00(make_float2(0.0f, 0.0f)),
         c01(make_float2(0.0f, 1.0f)),
         c11(make_float2(1.0f, 1.0f)),
@@ -75,8 +75,8 @@ class Subpatch {
   {
   }
 
-  Subpatch(const Patch *patch, float2 c00, float2 c01, float2 c11, float2 c10)
-      : patch(patch), c00(c00), c01(c01), c11(c11), c10(c10)
+  Subpatch(const Patch *_patch, float2 _c00, float2 _c01, float2 _c11, float2 _c10)
+      : patch(_patch), c00(_c00), c01(_c01), c11(_c11), c10(_c10)
   {
   }
 
