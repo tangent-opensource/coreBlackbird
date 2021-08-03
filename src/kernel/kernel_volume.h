@@ -296,6 +296,77 @@ ccl_device_noinline void kernel_volume_shadow(KernelGlobals *kg,
 
 #  ifdef __VOLUME_OCTREE__
 
+ccl_device KernelOCTree *get_quadrant(float3 pos, KernelGlobals *kg)
+{
+  KernelOCTree root = kernel_tex_fetch(__octree_nodes, 0);
+
+  BoundBox root_bbox(root.bmin, root.bmax);
+  if (!root_bbox.contains(pos)) {
+    return nullptr;
+  }
+
+  KernelOCTree *node = &root;
+
+  /* First Depth */
+  int child_idx = -1;
+  if (node->has_children) {
+    for (int i = 0; i < 8; i++) {
+      KernelOCTree child = kernel_tex_fetch(__octree_nodes, node->child_idx[i]);
+      BoundBox bbox(child.bmin, child.bmax);
+
+      if (bbox.contains(pos)) {
+        node = &child;
+        child_idx = i;
+        break;
+      }
+    }
+  }
+
+  if (child_idx < 0) {
+    return nullptr;
+  }
+
+  /* Second Depth */
+  child_idx = -1;
+  if (node->has_children) {
+    for (int i = 0; i < 8; i++) {
+      KernelOCTree child = kernel_tex_fetch(__octree_nodes, node->child_idx[i]);
+      BoundBox bbox(child.bmin, child.bmax);
+
+      if (bbox.contains(pos)) {
+        node = &child;
+        child_idx = i;
+        break;
+      }
+    }
+  }
+
+  if (child_idx < 0) {
+    return nullptr;
+  }
+
+  /* Last Depth */
+  child_idx = -1;
+  if (node->has_children) {
+    for (int i = 0; i < 8; i++) {
+      KernelOCTree child = kernel_tex_fetch(__octree_nodes, node->child_idx[i]);
+      BoundBox bbox(child.bmin, child.bmax);
+
+      if (bbox.contains(pos)) {
+        node = &child;
+        child_idx = i;
+        break;
+      }
+    }
+  }
+
+  if (child_idx < 0) {
+    return nullptr;
+  }
+
+  return node;
+}
+
 /* Residual ratio tracking to estimate for volume transmission.
  See Novak et al, 2014 (https://cs.dartmouth.edu/wjarosz/publications/novak14residual.pdf),
  "Residual Ratio Tracking for Estimating Attenuation in Participating Media.
@@ -332,13 +403,20 @@ ccl_device_inline void kernel_volume_shadow_octree_rr(KernelGlobals *kg,
   float3 T_r = *throughput;
 
   float t = 0.0f;
-  float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
   float3 pos = ray->P;
+  BoundBox root_bbox(root.bmin, root.bmax);
 
   uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
 
   do {
 
+    KernelOCTree *leaf = get_quadrant(pos, kg);
+
+    if (!leaf) {
+      return;
+    }
+
+    float inv_max_extinction = 1.0f / kernel_volume_channel_get(leaf->max_extinction, channel);
     float xi = lcg_step_float_addrspace(&lcg_state);
 
     t -= logf(1 - xi) * inv_max_extinction;
@@ -350,9 +428,7 @@ ccl_device_inline void kernel_volume_shadow_octree_rr(KernelGlobals *kg,
     pos = ray->P + ray->D * t;
     shadow_sd->P = pos;
 
-    if (pos.x < root.bmin.x || pos.x > root.bmax.x || pos.y < root.bmin.y || pos.y > root.bmax.y ||
-        pos.z < root.bmin.z || pos.z > root.bmax.z) {
-
+    if (!root_bbox.contains(pos)) {
       /* Ray ended up outside root bbox */
       break;
     }
@@ -360,15 +436,15 @@ ccl_device_inline void kernel_volume_shadow_octree_rr(KernelGlobals *kg,
     /* Sum all volume extinction */
     float3 sigma_t = make_float3(0.0f, 0.0f, 0.0f);
 
-    for (int i = 0; i < root.num_objects; i++) {
-      KernelObject ob = kernel_tex_fetch(__objects, root.obj_indices[i]);
-      shadow_sd->object = root.obj_indices[i];
+    for (int i = 0; i < leaf->num_objects; i++) {
+      KernelObject ob = kernel_tex_fetch(__objects, leaf->obj_indices[i]);
+      shadow_sd->object = leaf->obj_indices[i];
       shadow_sd->ob_tfm = ob.tfm;
       shadow_sd->ob_itfm = ob.itfm;
 
       VolumeShaderCoefficients coeff ccl_optional_struct_init;
 
-      shadow_sd->shader = kernel_tex_fetch(__tri_shader, root.sd_indices[i]);
+      shadow_sd->shader = kernel_tex_fetch(__tri_shader, leaf->sd_indices[i]);
 
       if (volume_shader_sample(kg, shadow_sd, state, pos, &coeff)) {
         if (shadow_sd->flag & SD_EXTINCTION) {
@@ -1616,6 +1692,7 @@ ccl_device_inline void kernel_volume_clean_stack(KernelGlobals *kg,
 }
 
 #  ifdef __VOLUME_OCTREE__
+
 ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg,
                                                                PathState *state,
                                                                ccl_global float *buffer,
@@ -1637,8 +1714,9 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
   int channel = floorf(rphase * 3.0f);
   float3 channel_pdf = make_float3(1.0f / 3.0f);
 
+  BoundBox root_bbox(root.bmin, root.bmax);
+
   float t = 0.0f;
-  float inv_max_extinction = 1.0f / kernel_volume_channel_get(root.max_extinction, channel);
   float3 pos = ray->P;
 
   float3 T_r = make_float3(1.0f);
@@ -1646,6 +1724,14 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
   uint lcg_state = lcg_state_init_addrspace(state, 0x12345678);
 
   do {
+    KernelOCTree *leaf = get_quadrant(pos, kg);
+
+    if (!leaf) {
+      return result;
+    }
+
+    float inv_max_extinction = 1.0f / kernel_volume_channel_get(leaf->max_extinction, channel);
+
     float xi = lcg_step_float_addrspace(&lcg_state);
     float dt = -logf(1 - xi) * inv_max_extinction;
 
@@ -1658,8 +1744,7 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
     pos = ray->P + ray->D * t;
     sd->P = pos;
 
-    if (pos.x < root.bmin.x || pos.x > root.bmax.x || pos.y < root.bmin.y || pos.y > root.bmax.y ||
-        pos.z < root.bmin.z || pos.z > root.bmax.z) {
+    if (!root_bbox.contains(pos)) {
       /* Ray ended up outside root bbox */
       break;
     }
@@ -1675,12 +1760,12 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
     sd->num_closure = 0;
     sd->num_closure_left = kernel_data.integrator.max_closures;
 
-    for (int i = 0; i < root.num_objects; i++) {
-      KernelObject ob = kernel_tex_fetch(__objects, root.obj_indices[i]);
-      sd->object = root.obj_indices[i];
+    for (int i = 0; i < leaf->num_objects; i++) {
+      KernelObject ob = kernel_tex_fetch(__objects, leaf->obj_indices[i]);
+      sd->object = leaf->obj_indices[i];
       sd->ob_tfm = ob.tfm;
       sd->ob_itfm = ob.itfm;
-      sd->shader = kernel_tex_fetch(__tri_shader, root.sd_indices[i]);
+      sd->shader = kernel_tex_fetch(__tri_shader, leaf->sd_indices[i]);
 
       shader_eval_volume_shader(kg, sd, state, state->flag);
 
@@ -1688,7 +1773,7 @@ ccl_device VolumeIntegrateResult kernel_volume_traverse_octree(KernelGlobals *kg
         continue;
 
       sigma_s += (sd->flag & SD_SCATTER) ? sd->closure_volume_scattering :
-                                            make_float3(0.0f, 0.0f, 0.0f);
+                                           make_float3(0.0f, 0.0f, 0.0f);
       sigma_t += (sd->flag & SD_EXTINCTION) ? sd->closure_transparent_extinction :
                                               make_float3(0.0f, 0.0f, 0.0f);
       emission += (sd->flag & SD_EMISSION) ? sd->closure_emission_background :

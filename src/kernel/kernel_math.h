@@ -24,5 +24,6 @@
 #include "util/util_projection.h"
 #include "util/util_texture.h"
 #include "util/util_transform.h"
+#include "util/util_boundbox.h"
 
 #endif /* __KERNEL_MATH_H__ */

@@ -155,11 +155,9 @@ void VolumeManager::device_update_octree(DeviceScene *dscene, Scene *scene, Prog
     k_tree_root[node->idx].num_objects = node->num_objects;
     k_tree_root[node->idx].bmin = node->bbox.min;
     k_tree_root[node->idx].bmax = node->bbox.max;
-
-    for (int i = 0; i < 1024; i++) {
-      k_tree_root[node->idx].obj_indices[i] = node->obj_indices[i];
-      k_tree_root[node->idx].sd_indices[i] = node->sd_indices[i];
-    }
+    
+    memcpy(k_tree_root[node->idx].obj_indices, node->obj_indices, 1024 * sizeof(int));
+    memcpy(k_tree_root[node->idx].sd_indices, node->sd_indices, 1024 * sizeof(int));
 
     if (node->has_children) {
       for (int i = 0; i < 8; i++) {

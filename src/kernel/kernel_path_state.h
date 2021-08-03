@@ -104,10 +104,12 @@ ccl_device_inline void path_state_next(KernelGlobals *kg,
     state->flag |= PATH_RAY_VOLUME_SCATTER;
     state->flag &= ~PATH_RAY_TRANSPARENT_BACKGROUND;
 
+#  ifndef __VOLUME_OCTREE__
     state->volume_bounce++;
     if (state->volume_bounce >= kernel_data.integrator.max_volume_bounce) {
       state->flag |= PATH_RAY_TERMINATE_AFTER_TRANSPARENT;
     }
+#  endif
   }
   else
 #endif

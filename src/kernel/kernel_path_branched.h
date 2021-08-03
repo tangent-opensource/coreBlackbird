@@ -206,7 +206,7 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
 }
 
 #      ifdef __VOLUME_OCTREE__
-ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg,
+ccl_device_forceinline bool kernel_branched_path_volume_octree(KernelGlobals *kg,
                                                                ShaderData *sd,
                                                                PathState *state,
                                                                ccl_global float *buffer,
@@ -219,7 +219,12 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
 {
   /* Return if there is no octree intersection */
   if (!isect->has_volume) {
-    return;
+    return false;
+  }
+
+  int num_volume_samples = kernel_data.integrator.volume_samples;
+  if (state->volume_bounce >= num_volume_samples) {
+    return false;
   }
 
   Ray volume_ray = *ray;
@@ -237,33 +242,29 @@ ccl_device_forceinline void kernel_branched_path_volume_octree(KernelGlobals *kg
     }
   }
 
-  int num_samples = kernel_data.integrator.volume_samples;
-  float num_samples_inv = 1.0f / num_samples;
+  PathState ps = *state;
+  float3 tp = *throughput;
 
-  for (int j = 0; j < num_samples; j++) {
-    PathState ps = *state;
-    float3 tp = (*throughput) * num_samples_inv;
-
-    /* branch RNG state */
-    path_state_branch(&ps, j, num_samples);
-
-    /* Get the probabilistic volume scatter result */
-    VolumeIntegrateResult result = kernel_volume_traverse_octree(
-        kg, state, buffer, &volume_ray, L, &volume_sd, &tp);
+  /* Get the probabilistic volume scatter result */
+  VolumeIntegrateResult result = kernel_volume_traverse_octree(
+      kg, state, buffer, &volume_ray, L, &volume_sd, &tp);
 
 #        ifdef __VOLUME_SCATTER__
-    if (result == VOLUME_PATH_SCATTERED) {
-      kernel_path_volume_connect_light(kg, &volume_sd, emission_sd, tp, state, buffer, L);
+  if (result == VOLUME_PATH_SCATTERED) {
+    kernel_path_volume_connect_light(kg, &volume_sd, emission_sd, tp, state, buffer, L);
 
-      if (kernel_path_volume_bounce(kg, &volume_sd, &tp, &ps, &L->state, &volume_ray)) {
-        ray->P = volume_ray.P;
-        ray->D = volume_ray.D;
+    if (kernel_path_volume_bounce(kg, &volume_sd, &tp, &ps, &L->state, &volume_ray)) {
+      ray->P = volume_ray.P;
+      ray->D = volume_ray.D;
+      state->volume_bounce++;
 
-        hit = kernel_path_scene_intersect(kg, state, ray, isect, L);
-      }
+      hit = kernel_path_scene_intersect(kg, state, ray, isect, L);
+      return true;
     }
-#        endif /* __VOLUME_SCATTER__ */
   }
+#        endif /* __VOLUME_SCATTER__ */
+
+  return false;
 }
 #      endif /* __VOLUME_OCTREE__ */
 
@@ -492,119 +493,130 @@ ccl_device void kernel_branched_path_integrate(KernelGlobals *kg,
     kernel_branched_path_volume(
         kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, &indirect_sd, emission_sd, L);
 #      else
-    kernel_branched_path_volume_octree(
-        kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, emission_sd, L);
+    bool medium_interaction = false;
+
+    if (kernel_branched_path_volume_octree(
+            kg, &sd, &state, buffer, &ray, &throughput, &isect, hit, emission_sd, L)) {
+      medium_interaction = true;
+    }
 #      endif  // !__VOLUME_OCTREE__
 #    endif /* __VOLUME__ */
 
-    /* Shade background. */
-    if (!hit) {
-      kernel_path_background(kg, &state, &ray, throughput, &sd, buffer, L);
-      break;
-    }
-
-    /* Setup and evaluate shader. */
-    shader_setup_from_ray(kg, &sd, &isect, &ray);
-
-    /* Skip most work for volume bounding surface. */
-#    ifdef __VOLUME__
-    if (!(sd.flag & SD_HAS_ONLY_VOLUME)) {
-#    endif
-
-      shader_eval_surface(kg, &sd, &state, buffer, state.flag);
-      shader_merge_closures(&sd);
-
-      /* Apply shadow catcher, holdout, emission. */
-      if (!kernel_path_shader_apply(kg, &sd, &state, &ray, throughput, emission_sd, L, buffer)) {
+#    ifdef __VOLUME_OCTREE__
+    if (!medium_interaction) {
+#    endif  // !__VOLUME_OCTREE__
+      /* Shade background. */
+      if (!hit) {
+        kernel_path_background(kg, &state, &ray, throughput, &sd, buffer, L);
         break;
       }
 
-      /* transparency termination */
-      if (state.flag & PATH_RAY_TRANSPARENT) {
-        /* path termination. this is a strange place to put the termination, it's
-         * mainly due to the mixed in MIS that we use. gives too many unneeded
-         * shader evaluations, only need emission if we are going to terminate */
-        float probability = path_state_continuation_probability(kg, &state, throughput);
+      /* Setup and evaluate shader. */
+      shader_setup_from_ray(kg, &sd, &isect, &ray);
 
-        if (probability == 0.0f) {
+      /* Skip most work for volume bounding surface. */
+#    ifdef __VOLUME__
+      if (!(sd.flag & SD_HAS_ONLY_VOLUME)) {
+#    endif
+
+        shader_eval_surface(kg, &sd, &state, buffer, state.flag);
+        shader_merge_closures(&sd);
+
+        /* Apply shadow catcher, holdout, emission. */
+        if (!kernel_path_shader_apply(kg, &sd, &state, &ray, throughput, emission_sd, L, buffer)) {
           break;
         }
-        else if (probability != 1.0f) {
-          float terminate = path_state_rng_1D(kg, &state, PRNG_TERMINATE);
 
-          if (terminate >= probability)
+        /* transparency termination */
+        if (state.flag & PATH_RAY_TRANSPARENT) {
+          /* path termination. this is a strange place to put the termination, it's
+           * mainly due to the mixed in MIS that we use. gives too many unneeded
+           * shader evaluations, only need emission if we are going to terminate */
+          float probability = path_state_continuation_probability(kg, &state, throughput);
+
+          if (probability == 0.0f) {
             break;
+          }
+          else if (probability != 1.0f) {
+            float terminate = path_state_rng_1D(kg, &state, PRNG_TERMINATE);
 
-          throughput /= probability;
+            if (terminate >= probability)
+              break;
+
+            throughput /= probability;
+          }
         }
-      }
 
 #    ifdef __DENOISING_FEATURES__
-      kernel_update_denoising_features(kg, &sd, &state, L);
+        kernel_update_denoising_features(kg, &sd, &state, L);
 #    endif
 
 #    ifdef __AO__
-      /* ambient occlusion */
-      if (kernel_data.integrator.use_ambient_occlusion) {
-        kernel_branched_path_ao(kg, &sd, emission_sd, L, &state, throughput);
-      }
+        /* ambient occlusion */
+        if (kernel_data.integrator.use_ambient_occlusion) {
+          kernel_branched_path_ao(kg, &sd, emission_sd, L, &state, throughput);
+        }
 #    endif /* __AO__ */
 
 #    ifdef __SUBSURFACE__
-      /* bssrdf scatter to a different location on the same object */
-      if (sd.flag & SD_BSSRDF) {
-        kernel_branched_path_subsurface_scatter(
-            kg, &sd, &indirect_sd, emission_sd, L, &state, buffer, &ray, throughput);
-      }
+        /* bssrdf scatter to a different location on the same object */
+        if (sd.flag & SD_BSSRDF) {
+          kernel_branched_path_subsurface_scatter(
+              kg, &sd, &indirect_sd, emission_sd, L, &state, buffer, &ray, throughput);
+        }
 #    endif /* __SUBSURFACE__ */
 
-      PathState hit_state = state;
+        PathState hit_state = state;
 
 #    ifdef __EMISSION__
-      /* direct light */
-      if (kernel_data.integrator.use_direct_light) {
-        int all = (kernel_data.integrator.sample_all_lights_direct) ||
-                  (state.flag & PATH_RAY_SHADOW_CATCHER);
-        kernel_branched_path_surface_connect_light(
-            kg, &sd, emission_sd, &hit_state, buffer, throughput, 1.0f, L, all);
-      }
+        /* direct light */
+        if (kernel_data.integrator.use_direct_light) {
+          int all = (kernel_data.integrator.sample_all_lights_direct) ||
+                    (state.flag & PATH_RAY_SHADOW_CATCHER);
+          kernel_branched_path_surface_connect_light(
+              kg, &sd, emission_sd, &hit_state, buffer, throughput, 1.0f, L, all);
+        }
 #    endif /* __EMISSION__ */
 
-      /* indirect light */
-      kernel_branched_path_surface_indirect_light(
-          kg, &sd, &indirect_sd, emission_sd, throughput, 1.0f, &hit_state, buffer, L);
+        /* indirect light */
+        kernel_branched_path_surface_indirect_light(
+            kg, &sd, &indirect_sd, emission_sd, throughput, 1.0f, &hit_state, buffer, L);
 
-      /* continue in case of transparency */
-      throughput *= shader_bsdf_transparency(kg, &sd);
+        /* continue in case of transparency */
+        throughput *= shader_bsdf_transparency(kg, &sd);
 
-      if (is_zero(throughput))
-        break;
+        if (is_zero(throughput))
+          break;
 
-      /* Update Path State */
-      path_state_next(kg, &state, LABEL_TRANSPARENT);
+        /* Update Path State */
+        path_state_next(kg, &state, LABEL_TRANSPARENT);
 
 #    ifdef __VOLUME__
-    }
-    else {
-      if (!path_state_volume_next(kg, &state)) {
-        break;
       }
-    }
+      else {
+        if (!path_state_volume_next(kg, &state)) {
+          break;
+        }
+      }
 #    endif
 
-    ray.P = ray_offset(sd.P, -sd.Ng);
-    ray.t -= sd.ray_length; /* clipping works through transparent */
+      ray.P = ray_offset(sd.P, -sd.Ng);
+      ray.t -= sd.ray_length; /* clipping works through transparent */
 
 #    ifdef __RAY_DIFFERENTIALS__
-    ray.dP = sd.dP;
-    ray.dD.dx = -sd.dI.dx;
-    ray.dD.dy = -sd.dI.dy;
+      ray.dP = sd.dP;
+      ray.dD.dx = -sd.dI.dx;
+      ray.dD.dy = -sd.dI.dy;
 #    endif /* __RAY_DIFFERENTIALS__ */
 
 #    ifdef __VOLUME__
-    /* enter/exit volume */
-    kernel_volume_stack_enter_exit(kg, &sd, state.volume_stack);
+      /* enter/exit volume */
+      kernel_volume_stack_enter_exit(kg, &sd, state.volume_stack);
 #    endif /* __VOLUME__ */
+
+#    ifdef __VOLUME_OCTREE__
+    }
+#    endif  // !__VOLUME_OCTREE__
   }
 }
 
