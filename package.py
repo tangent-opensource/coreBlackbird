@@ -3,7 +3,7 @@
 name = 'cycles'
 
 
-version = '1.13.0-ta.1.14.6'
+version = '1.13.0-ta.1.14.7'
 
 authors = [
     'benjamin.skinner',
