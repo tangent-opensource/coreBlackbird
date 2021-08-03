@@ -132,7 +132,8 @@ struct Edge {
   int T;
 
   /* top is edge adjacent to start, bottom is adjacent to end. */
-  Edge *top, *bottom;
+  const Edge *top;
+  const Edge *bottom;
 
   int top_offset, bottom_offset;
   bool top_indices_decrease, bottom_indices_decrease;
