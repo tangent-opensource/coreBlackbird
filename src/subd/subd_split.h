@@ -37,7 +37,7 @@ class Mesh;
 class Patch;
 
 class DiagSplit {
-  const SubdParams params;
+  SubdParams params;
 
   vector<Subpatch> subpatches;
   /* deque is used so that element pointers remain vaild when size is changed. */
