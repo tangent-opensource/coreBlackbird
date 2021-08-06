@@ -78,7 +78,7 @@ ccl_device_forceinline bool point_intersect_test_disc(const float4 point,
   }
 
   /* Self-intersection */
-  const float avoidance_factor = 2.0 * radius * rd;
+  const float avoidance_factor = 2.0f * radius * rd;
   if (projC0 < avoidance_factor) {
     return false;
   }

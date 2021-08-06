@@ -53,6 +53,7 @@
 #  include "util/util_logging.h"
 #  include "util/util_progress.h"
 #  include "util/util_stats.h"
+#  include "util/util_hash.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -256,10 +257,23 @@ static void rtc_filter_occluded_func_thick_curve(const RTC_NAMESPACE::RTCFilterF
   rtc_filter_occluded_func(args);
 }
 
+/* Generate a pseudo random bit sequence trying to keep disjoint spans uncorrelated.
+  https://research.nvidia.com/publication/stratified-sampling-stochastic-transparency
+*/
+inline float get_opacity_stratified(uint rng_pixel_sample, uint rng_surface) {
+  // pixel_id + sample * num_samples
+  uint x = reverse_bits_32(rng_pixel_sample) + rng_surface;
+  x = x ^ (x * 0x6C50B47Cu);
+  x = x ^ (x * 0xB82F1E52u);
+  x = x ^ (x * 0xC7AFE638u);
+  x = x ^ (x * 0x8D22F6E6u);
+  return (float)(x * 0x1p-32);
+}
+
 static void rtc_filter_func_transparent_points(const RTC_NAMESPACE::RTCFilterFunctionNArguments *args)
 {
-  const RTC_NAMESPACE::RTCRay *ray = (RTCRay *)args->ray;
-  RTC_NAMESPACE::RTCHit *hit = (RTCHit *)args->hit;
+  const RTC_NAMESPACE::RTCRay *ray = (RTC_NAMESPACE::RTCRay *)args->ray;
+  RTC_NAMESPACE::RTCHit *hit = (RTC_NAMESPACE::RTCHit *)args->hit;
   CCLIntersectContext *ctx = ((IntersectContext *)args->context)->userRayExt;
   KernelGlobals *kg = ctx->kg;
 
@@ -275,8 +289,7 @@ static void rtc_filter_func_transparent_points(const RTC_NAMESPACE::RTCFilterFun
   const float opacity = kernel_tex_fetch(__points_opacity, opacity_offset);
 
   /* Unique random number per ray per geometry */
-  uint hash = (uint&)ctx->ps_rng_transparent;
-  const float rand_opacity = cmj_randfloat(hash, cmj_hash(object, prim));
+  const float rand_opacity = cmj_randfloat(ctx->rng_transparent, cmj_hash(object, prim));
 
   if (rand_opacity > opacity) {
     *args->valid = 0;
