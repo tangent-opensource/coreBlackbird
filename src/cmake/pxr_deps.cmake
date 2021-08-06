@@ -145,7 +145,6 @@ set(OPENCOLORIO_OPENCOLORIO_LIBRARY ${OPENCOLORIO_LIB})
 find_library(TIFF_LIB
         NAMES tiff
         PATHS ${USD_LIB}
-        NO_DEFAULT_PATH
         REQUIRED
         )
 
@@ -156,7 +155,6 @@ set(TIFF_LIBRARY ${TIFF_LIB})
 find_library(PNG_LIB
         NAMES png
         PATHS ${USD_LIB}
-        NO_DEFAULT_PATH
         REQUIRED
         )
 
@@ -222,7 +220,6 @@ add_definitions(-DTBB_INTERFACE_VERSION_MAJOR)
 find_library(JPEG_LIB
         NAMES jpeg
         PATHS ${USD_LIB}
-        NO_DEFAULT_PATH
         REQUIRED
         )
 

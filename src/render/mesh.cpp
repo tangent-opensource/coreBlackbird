@@ -212,7 +212,7 @@ void Mesh::reserve_subd_faces(int numfaces, int num_ngons_, int numcorners)
   subd_attributes.resize(true);
 }
 
-void Mesh::clear(bool preserve_voxel_data)
+void Mesh::clear(bool preserve_voxel_data, bool preserve_custom_data)
 {
   Geometry::clear();
 
@@ -233,7 +233,7 @@ void Mesh::clear(bool preserve_voxel_data)
   subd_creases.clear();
 
   subd_attributes.clear();
-  attributes.clear(preserve_voxel_data);
+  attributes.clear(preserve_voxel_data, preserve_custom_data);
 
   vert_to_stitching_key_map.clear();
   vert_stitching_map.clear();

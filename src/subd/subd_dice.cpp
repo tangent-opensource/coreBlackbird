@@ -56,11 +56,11 @@ void EdgeDice::reserve(int num_verts, int num_triangles)
   params.mesh->num_subd_verts += num_verts;
 }
 
-void EdgeDice::set_vert(Patch *patch, int index, float2 uv)
+void EdgeDice::set_vert(const Patch *patch, int index, float2 uv)
 {
   float3 P, N;
 
-  patch->eval(&P, NULL, NULL, &N, uv.x, uv.y);
+  patch->eval(&P, nullptr, nullptr, &N, uv.x, uv.y);
 
   assert(index < params.mesh->verts.size());
 
@@ -69,7 +69,7 @@ void EdgeDice::set_vert(Patch *patch, int index, float2 uv)
   params.mesh->vert_patch_uv[index + vert_offset] = make_float2(uv.x, uv.y);
 }
 
-void EdgeDice::add_triangle(Patch *patch, int v0, int v1, int v2)
+void EdgeDice::add_triangle(const Patch *patch, int v0, int v1, int v2)
 {
   Mesh *mesh = params.mesh;
 

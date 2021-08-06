@@ -171,6 +171,9 @@ ccl_device void kernel_adaptive_post_adjust(KernelGlobals *kg,
   for (int i = 0; i < kernel_data.film.pass_aov_color_num; i++) {
     *((ccl_global float4 *)(buffer + kernel_data.film.pass_aov_color) + i) *= sample_multiplier;
   }
+  for (int i = 0; i < kernel_data.film.num_lightgroups; i++) {
+    *((ccl_global float4 *)(buffer + kernel_data.film.pass_lightgroup) + i) *= sample_multiplier;
+  }
 }
 
 /* This is a simple box filter in two passes.

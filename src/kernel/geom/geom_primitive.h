@@ -37,12 +37,17 @@ ccl_device_inline float primitive_attribute_float(
   }
 #endif
 #ifdef __VOLUME__
-  else if (sd->object != OBJECT_NONE && desc.element == ATTR_ELEMENT_VOXEL) {
+  else if (sd->object != OBJECT_NONE) {
     if (dx)
       *dx = 0.0f;
     if (dy)
       *dy = 0.0f;
-    return volume_attribute_float(kg, sd, desc);
+    if (desc.element == ATTR_ELEMENT_VOXEL) {
+      return volume_attribute_float(kg, sd, desc);
+    } else if (desc.element == ATTR_ELEMENT_OBJECT) {
+      return kernel_tex_fetch(__attributes_float, desc.offset);
+    }
+    return 0.0f;
   }
 #endif
   else {
@@ -150,12 +155,17 @@ ccl_device_inline float3 primitive_attribute_float3(KernelGlobals *kg,
   }
 #endif
 #ifdef __VOLUME__
-  else if (sd->object != OBJECT_NONE && desc.element == ATTR_ELEMENT_VOXEL) {
+  else if (sd->object != OBJECT_NONE) {
     if (dx)
       *dx = make_float3(0.0f, 0.0f, 0.0f);
     if (dy)
       *dy = make_float3(0.0f, 0.0f, 0.0f);
-    return volume_attribute_float3(kg, sd, desc);
+    if (desc.element == ATTR_ELEMENT_VOXEL) {
+      return volume_attribute_float3(kg, sd, desc);
+    } else if (desc.element == ATTR_ELEMENT_OBJECT) {
+      return float4_to_float3(kernel_tex_fetch(__attributes_float3, desc.offset));
+    }
+    return make_float3(0.0f, 0.0f, 0.0f);
   }
 #endif
   else {

@@ -60,7 +60,7 @@ static void decasteljau_bicubic(
 
 /* Linear Quad Patch */
 
-void LinearQuadPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v)
+void LinearQuadPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const
 {
   float3 d0 = interp(hull[0], hull[1], u);
   float3 d1 = interp(hull[2], hull[3], u);
@@ -78,7 +78,7 @@ void LinearQuadPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, flo
   }
 }
 
-BoundBox LinearQuadPatch::bound()
+BoundBox LinearQuadPatch::bound() const
 {
   BoundBox bbox = BoundBox::empty;
 
@@ -90,7 +90,7 @@ BoundBox LinearQuadPatch::bound()
 
 /* Bicubic Patch */
 
-void BicubicPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v)
+void BicubicPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const
 {
   if (N) {
     float3 dPdu_, dPdv_;
@@ -108,7 +108,7 @@ void BicubicPatch::eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float 
   }
 }
 
-BoundBox BicubicPatch::bound()
+BoundBox BicubicPatch::bound() const
 {
   BoundBox bbox = BoundBox::empty;
 

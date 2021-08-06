@@ -192,7 +192,7 @@ class AttributeSet {
   void remove(Attribute *attribute);
 
   void resize(bool reserve_only = false);
-  void clear(bool preserve_voxel_data = false);
+  void clear(bool preserve_voxel_data = false, bool preserve_custom_data = false);
 };
 
 /* AttributeRequest

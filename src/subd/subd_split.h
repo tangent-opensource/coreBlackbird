@@ -43,14 +43,14 @@ class DiagSplit {
   /* deque is used so that element pointers remain vaild when size is changed. */
   deque<Edge> edges;
 
-  float3 to_world(Patch *patch, float2 uv);
-  int T(Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve = false);
+  float3 to_world(const Patch *patch, float2 uv) const;
+  int T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve = false) const;
 
-  void limit_edge_factor(int &T, Patch *patch, float2 Pstart, float2 Pend);
-  void resolve_edge_factors(Subpatch &sub);
+  void limit_edge_factor(int &T, const Patch *patch, float2 Pstart, float2 Pend) const;
+  void resolve_edge_factors(Subpatch &sub) const;
 
   void partition_edge(
-      Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t);
+          const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t) const;
 
   void split(Subpatch &sub, int depth = 0);
 
@@ -62,10 +62,10 @@ class DiagSplit {
 
   explicit DiagSplit(const SubdParams &params);
 
-  void split_patches(Patch *patches, size_t patches_byte_stride);
+  void split_patches(const Patch *patches, size_t patches_byte_stride);
 
-  void split_quad(const Mesh::SubdFace &face, Patch *patch);
-  void split_ngon(const Mesh::SubdFace &face, Patch *patches, size_t patches_byte_stride);
+  void split_quad(const Mesh::SubdFace &face, const Patch *patch);
+  void split_ngon(const Mesh::SubdFace &face, const Patch *patches, size_t patches_byte_stride);
 
   void post_split();
 };

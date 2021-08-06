@@ -99,7 +99,7 @@ class Mesh : public Geometry {
     bool smooth;
     int ptex_offset;
 
-    bool is_quad()
+    bool is_quad() const
     {
       return num_corners == 4;
     }
@@ -177,7 +177,7 @@ class Mesh : public Geometry {
   void reserve_mesh(int numverts, int numfaces);
   void resize_subd_faces(int numfaces, int num_ngons, int numcorners);
   void reserve_subd_faces(int numfaces, int num_ngons, int numcorners);
-  void clear(bool preserve_voxel_data);
+  void clear(bool preserve_voxel_data, bool preserve_custom_data = false);
   void clear() override;
   void add_vertex(float3 P);
   void add_vertex_slow(float3 P);
