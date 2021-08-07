@@ -206,8 +206,6 @@ static void xml_read_camera(XMLReadState &state, xml_node node)
 
   // dicing camera
   Camera *dicing_cam = state.scene->dicing_camera;
-  dicing_cam->width = cam->width;
-  dicing_cam->height = cam->height;
   dicing_cam->set_full_width(cam->get_full_width());
   dicing_cam->set_full_height(cam->get_full_height());
 
