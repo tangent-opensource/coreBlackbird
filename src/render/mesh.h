@@ -102,7 +102,7 @@ class Mesh : public Geometry {
     bool smooth;
     int ptex_offset;
 
-    bool is_quad()
+    bool is_quad() const
     {
       return num_corners == 4;
     }
@@ -261,7 +261,7 @@ class Mesh : public Geometry {
   }
 
  protected:
-  void clear(bool preserve_shaders, bool preserve_voxel_data);
+  void clear(bool preserve_shaders, bool preserve_voxel_data, bool preserve_custom_data);
 };
 
 CCL_NAMESPACE_END

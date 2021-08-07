@@ -20,24 +20,7 @@
 #include "util/util_array.h"
 #include "util/util_types.h"
 
-#ifdef WITH_OPENSUBDIV
-#  ifdef _MSC_VER
-#    include "iso646.h"
-#  endif
-
-#  include <opensubdiv/far/patchTable.h>
-#endif
-
 CCL_NAMESPACE_BEGIN
-
-#ifdef WITH_OPENSUBDIV
-using namespace OpenSubdiv;
-#else
-/* forward declare for when OpenSubdiv is unavailable */
-namespace Far {
-struct PatchTable;
-}
-#endif
 
 #define PATCH_ARRAY_SIZE 4
 #define PATCH_PARAM_SIZE 2
@@ -53,10 +36,8 @@ struct PackedPatchTable {
   size_t num_nodes;
 
   /* calculated size from num_* members */
-  size_t total_size();
-
-  void pack(Far::PatchTable *patch_table, int offset = 0);
-  void copy_adjusting_offsets(uint *dest, int doffset);
+  size_t total_size() const;
+  void copy_adjusting_offsets(uint *dest, int doffset) const;
 };
 
 CCL_NAMESPACE_END

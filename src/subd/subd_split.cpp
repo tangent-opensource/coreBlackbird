@@ -39,11 +39,11 @@ DiagSplit::DiagSplit(const SubdParams &params_) : params(params_)
 {
 }
 
-float3 DiagSplit::to_world(Patch *patch, float2 uv)
+float3 DiagSplit::to_world(const Patch *patch, float2 uv) const
 {
   float3 P;
 
-  patch->eval(&P, NULL, NULL, NULL, uv.x, uv.y);
+  patch->eval(&P, nullptr, nullptr, nullptr, uv.x, uv.y);
   if (params.camera)
     P = transform_point(&params.objecttoworld, P);
 
@@ -57,7 +57,7 @@ static void order_float2(float2 &a, float2 &b)
   }
 }
 
-int DiagSplit::T(Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve)
+int DiagSplit::T(const Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolve) const
 {
   order_float2(Pstart, Pend); /* May not be necessary, but better to be safe. */
 
@@ -109,7 +109,7 @@ int DiagSplit::T(Patch *patch, float2 Pstart, float2 Pend, bool recursive_resolv
 }
 
 void DiagSplit::partition_edge(
-    Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t)
+        const Patch *patch, float2 *P, int *t0, int *t1, float2 Pstart, float2 Pend, int t) const
 {
   if (t == DSPLIT_NON_UNIFORM) {
     *P = (Pstart + Pend) * 0.5f;
@@ -126,7 +126,7 @@ void DiagSplit::partition_edge(
   }
 }
 
-void DiagSplit::limit_edge_factor(int &T, Patch *patch, float2 Pstart, float2 Pend)
+void DiagSplit::limit_edge_factor(int &T, const Patch *patch, float2 Pstart, float2 Pend) const
 {
   int max_t = 1 << params.max_level;
   int max_t_for_edge = int(max_t * len(Pstart - Pend));
@@ -140,7 +140,7 @@ void DiagSplit::limit_edge_factor(int &T, Patch *patch, float2 Pstart, float2 Pe
   assert(T >= 1 || T == DSPLIT_NON_UNIFORM);
 }
 
-void DiagSplit::resolve_edge_factors(Subpatch &sub)
+void DiagSplit::resolve_edge_factors(Subpatch &sub) const
 {
   /* Resolve DSPLIT_NON_UNIFORM to actual T value if splitting is no longer possible. */
   if (sub.edge_u0.T == 1 && sub.edge_u1.T == DSPLIT_NON_UNIFORM) {
@@ -337,14 +337,14 @@ Edge *DiagSplit::alloc_edge()
   return &edges.back();
 }
 
-void DiagSplit::split_patches(Patch *patches, size_t patches_byte_stride)
+void DiagSplit::split_patches(const Patch *patches, size_t patches_byte_stride)
 {
   int patch_index = 0;
 
   for (int f = 0; f < params.mesh->get_num_subd_faces(); f++) {
-    Mesh::SubdFace face = params.mesh->get_subd_face(f);
+    const Mesh::SubdFace &face = params.mesh->get_subd_face(f);
 
-    Patch *patch = (Patch *)(((char *)patches) + patch_index * patches_byte_stride);
+    auto *patch = (const Patch *)(((char *)patches) + patch_index * patches_byte_stride);
 
     if (face.is_quad()) {
       patch_index++;
@@ -396,7 +396,7 @@ static Edge *create_edge_from_corner(DiagSplit *split,
   return edge;
 }
 
-void DiagSplit::split_quad(const Mesh::SubdFace &face, Patch *patch)
+void DiagSplit::split_quad(const Mesh::SubdFace &face, const Patch *patch)
 {
   Subpatch subpatch(patch);
 
@@ -477,13 +477,13 @@ static Edge *create_split_edge_from_corner(DiagSplit *split,
   return edge;
 }
 
-void DiagSplit::split_ngon(const Mesh::SubdFace &face, Patch *patches, size_t patches_byte_stride)
+void DiagSplit::split_ngon(const Mesh::SubdFace &face, const Patch *patches, size_t patches_byte_stride)
 {
   Edge *prev_edge_u0 = nullptr;
   Edge *first_edge_v0 = nullptr;
 
   for (int corner = 0; corner < face.num_corners; corner++) {
-    Patch *patch = (Patch *)(((char *)patches) + corner * patches_byte_stride);
+    auto patch = (const Patch *)(((char *)patches) + corner * patches_byte_stride);
 
     Subpatch subpatch(patch);
 

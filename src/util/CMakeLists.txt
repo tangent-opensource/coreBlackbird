@@ -177,3 +177,7 @@ include_directories(SYSTEM ${INC_SYS})
 add_definitions(${GL_DEFINITIONS})
 
 cycles_add_library(cycles_util "${LIB}" ${SRC} ${SRC_HEADERS})
+
+if(${WITH_CYCLES_STANDALONE_GUI})
+  target_link_libraries(cycles_util GL GLU)
+endif()

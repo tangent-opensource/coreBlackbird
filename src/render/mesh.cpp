@@ -291,7 +291,7 @@ void Mesh::clear_non_sockets()
   patch_table = NULL;
 }
 
-void Mesh::clear(bool preserve_shaders, bool preserve_voxel_data)
+void Mesh::clear(bool preserve_shaders, bool preserve_voxel_data, bool preserve_custom_data)
 {
   Geometry::clear(preserve_shaders);
 
@@ -315,7 +315,7 @@ void Mesh::clear(bool preserve_shaders, bool preserve_voxel_data)
   subd_creases_weight.clear();
 
   subd_attributes.clear();
-  attributes.clear(preserve_voxel_data);
+  attributes.clear(preserve_voxel_data, preserve_custom_data);
 
   subdivision_type = SubdivisionType::SUBDIVISION_NONE;
 
@@ -324,7 +324,7 @@ void Mesh::clear(bool preserve_shaders, bool preserve_voxel_data)
 
 void Mesh::clear(bool preserve_shaders)
 {
-  clear(preserve_shaders, false);
+  clear(preserve_shaders, false, false);
 }
 
 void Mesh::add_vertex(float3 P)

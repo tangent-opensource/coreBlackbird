@@ -198,7 +198,7 @@ class AttributeSet {
   void remove(Attribute *attribute);
 
   void resize(bool reserve_only = false);
-  void clear(bool preserve_voxel_data = false);
+  void clear(bool preserve_voxel_data = false, bool preserve_custom_data = false);
 
   /* Update the attributes in this AttributeSet with the ones from the new set,
    * and remove any attribute not found on the new set from this. */

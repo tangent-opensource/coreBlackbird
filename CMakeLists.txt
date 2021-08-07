@@ -100,14 +100,15 @@ option(WITH_CUDA_DYNLOAD           "Dynamically load CUDA libraries at runtime" 
 mark_as_advanced(WITH_CUDA_DYNLOAD)
 
 # ====== Tangent Rez Deps
-option(BUILD_WITH_REZ "Build with rez" ON)
-
-if(${BUILD_WITH_REZ})
+if(DEFINED ENV{TA_USING_REZ})
+    message(STATUS "Building with REZ")
     include(src/cmake/rez_deps.cmake)
 elseif(DEFINED HOUDINI_ROOT)
+    message(STATUS "Building with Houdini")
     include(src/cmake/hou_deps.cmake)
-elseif(${BUILD_WITH_USD})
-	include(src/cmake/pxr_deps.cmake)
+elseif(DEFINED USD_ROOT)
+    message(STATUS "Building with Pixar")
+    include(src/cmake/pxr_deps.cmake)
 else()
     set(USE_OPENGL TRUE)
     add_definitions(-DUSE_OPENGL)

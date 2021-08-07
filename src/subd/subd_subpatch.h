@@ -26,7 +26,7 @@ CCL_NAMESPACE_BEGIN
 
 class Subpatch {
  public:
-  class Patch *patch; /* Patch this is a subpatch of. */
+  const class Patch *patch; /* Patch this is a subpatch of. */
   int inner_grid_vert_offset;
 
   struct edge_t {
@@ -66,7 +66,7 @@ class Subpatch {
     };
   };
 
-  explicit Subpatch(Patch *patch = nullptr)
+  explicit Subpatch(const Patch *patch = nullptr)
       : patch(patch),
         c00(zero_float2()),
         c01(make_float2(0.0f, 1.0f)),
@@ -75,8 +75,8 @@ class Subpatch {
   {
   }
 
-  Subpatch(Patch *patch, float2 c00, float2 c01, float2 c11, float2 c10)
-      : patch(patch), c00(c00), c01(c01), c11(c11), c10(c10)
+  Subpatch(const Patch *_patch, float2 _c00, float2 _c01, float2 _c11, float2 _c10)
+      : patch(_patch), c00(_c00), c01(_c01), c11(_c11), c10(_c10)
   {
   }
 
@@ -132,7 +132,8 @@ struct Edge {
   int T;
 
   /* top is edge adjacent to start, bottom is adjacent to end. */
-  Edge *top, *bottom;
+  const Edge *top;
+  const Edge *bottom;
 
   int top_offset, bottom_offset;
   bool top_indices_decrease, bottom_indices_decrease;

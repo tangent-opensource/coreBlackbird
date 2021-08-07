@@ -21,6 +21,56 @@
 
 CCL_NAMESPACE_BEGIN
 
+#ifdef __VOLUME__
+/* Volume Attributes
+ *
+ * Read geometry attributes for volume shading. This is distinct from surface
+ * attributes for performance, mainly for GPU performance to avoid bringing in
+ * heavy volume interpolation code. */
+
+ccl_device_inline bool primitive_is_volume_attribute(const ShaderData *sd,
+                                                     const AttributeDescriptor desc)
+{
+  return (sd->object != OBJECT_NONE && desc.element == ATTR_ELEMENT_VOXEL);
+}
+
+ccl_device_inline float primitive_volume_attribute_float(KernelGlobals *kg,
+                                                         const ShaderData *sd,
+                                                         const AttributeDescriptor desc)
+{
+  if (primitive_is_volume_attribute(sd, desc)) {
+    return volume_attribute_value_to_float(volume_attribute_float4(kg, sd, desc));
+  }
+  else {
+    return 0.0f;
+  }
+}
+
+ccl_device_inline float3 primitive_volume_attribute_float3(KernelGlobals *kg,
+                                                           const ShaderData *sd,
+                                                           const AttributeDescriptor desc)
+{
+  if (primitive_is_volume_attribute(sd, desc)) {
+    return volume_attribute_value_to_float3(volume_attribute_float4(kg, sd, desc));
+  }
+  else {
+    return make_float3(0.0f, 0.0f, 0.0f);
+  }
+}
+
+ccl_device_inline float4 primitive_volume_attribute_float4(KernelGlobals *kg,
+                                                           const ShaderData *sd,
+                                                           const AttributeDescriptor desc)
+{
+  if (primitive_is_volume_attribute(sd, desc)) {
+    return volume_attribute_float4(kg, sd, desc);
+  }
+  else {
+    return make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+  }
+}
+#endif
+
 /* Surface Attributes
  *
  * Read geometry attributes for surface shading. This is distinct from volume
@@ -44,6 +94,20 @@ ccl_device_inline float primitive_surface_attribute_float(
 #ifdef __POINTCLOUD__
   else if (sd->type & PRIMITIVE_ALL_POINT) {
     return point_attribute_float(kg, sd, desc, dx, dy);
+  }
+#endif
+#ifdef __VOLUME__
+  else if (sd->object != OBJECT_NONE) {
+    if (dx)
+      *dx = 0.0f;
+    if (dy)
+      *dy = 0.0f;
+    if (desc.element == ATTR_ELEMENT_VOXEL) {
+      return primitive_volume_attribute_float(kg, sd, desc);
+    } else if (desc.element == ATTR_ELEMENT_OBJECT) {
+      return kernel_tex_fetch(__attributes_float, desc.offset);
+    }
+    return 0.0f;
   }
 #endif
   else {
@@ -108,6 +172,20 @@ ccl_device_inline float3 primitive_surface_attribute_float3(KernelGlobals *kg,
     return point_attribute_float3(kg, sd, desc, dx, dy);
   }
 #endif
+#ifdef __VOLUME__
+  else if (sd->object != OBJECT_NONE) {
+    if (dx)
+      *dx = make_float3(0.0f, 0.0f, 0.0f);
+    if (dy)
+      *dy = make_float3(0.0f, 0.0f, 0.0f);
+    if (desc.element == ATTR_ELEMENT_VOXEL) {
+      return primitive_volume_attribute_float3(kg, sd, desc);
+    } else if (desc.element == ATTR_ELEMENT_OBJECT) {
+      return float4_to_float3(kernel_tex_fetch(__attributes_float3, desc.offset));
+    }
+    return make_float3(0.0f, 0.0f, 0.0f);
+  }
+#endif
   else {
     if (dx)
       *dx = make_float3(0.0f, 0.0f, 0.0f);
@@ -147,56 +225,6 @@ ccl_device_inline float4 primitive_surface_attribute_float4(KernelGlobals *kg,
     return make_float4(0.0f, 0.0f, 0.0f, 0.0f);
   }
 }
-
-#ifdef __VOLUME__
-/* Volume Attributes
- *
- * Read geometry attributes for volume shading. This is distinct from surface
- * attributes for performance, mainly for GPU performance to avoid bringing in
- * heavy volume interpolation code. */
-
-ccl_device_inline bool primitive_is_volume_attribute(const ShaderData *sd,
-                                                     const AttributeDescriptor desc)
-{
-  return (sd->object != OBJECT_NONE && desc.element == ATTR_ELEMENT_VOXEL);
-}
-
-ccl_device_inline float primitive_volume_attribute_float(KernelGlobals *kg,
-                                                         const ShaderData *sd,
-                                                         const AttributeDescriptor desc)
-{
-  if (primitive_is_volume_attribute(sd, desc)) {
-    return volume_attribute_value_to_float(volume_attribute_float4(kg, sd, desc));
-  }
-  else {
-    return 0.0f;
-  }
-}
-
-ccl_device_inline float3 primitive_volume_attribute_float3(KernelGlobals *kg,
-                                                           const ShaderData *sd,
-                                                           const AttributeDescriptor desc)
-{
-  if (primitive_is_volume_attribute(sd, desc)) {
-    return volume_attribute_value_to_float3(volume_attribute_float4(kg, sd, desc));
-  }
-  else {
-    return make_float3(0.0f, 0.0f, 0.0f);
-  }
-}
-
-ccl_device_inline float4 primitive_volume_attribute_float4(KernelGlobals *kg,
-                                                           const ShaderData *sd,
-                                                           const AttributeDescriptor desc)
-{
-  if (primitive_is_volume_attribute(sd, desc)) {
-    return volume_attribute_float4(kg, sd, desc);
-  }
-  else {
-    return make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-  }
-}
-#endif
 
 /* Default UV coordinate */
 

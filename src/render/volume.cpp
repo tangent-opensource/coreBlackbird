@@ -54,7 +54,7 @@ Volume::Volume() : Mesh(get_node_type(), Geometry::VOLUME)
 
 void Volume::clear(bool preserve_shaders)
 {
-  Mesh::clear(preserve_shaders, true);
+  Mesh::clear(preserve_shaders, true, true);
 }
 
 struct QuadData {
@@ -605,9 +605,11 @@ void GeometryManager::create_volume_mesh(Volume *volume, Progress &progress)
   vector<float3> face_normals;
   builder.create_mesh(vertices, indices, face_normals, face_overlap_avoidance);
 
+  volume->clear(false);
   volume->reserve_mesh(vertices.size(), indices.size() / 3);
   volume->used_shaders.clear();
   volume->used_shaders.push_back_slow(volume_shader);
+  volume->need_update_rebuild = true;
 
   for (size_t i = 0; i < vertices.size(); ++i) {
     volume->add_vertex(vertices[i]);

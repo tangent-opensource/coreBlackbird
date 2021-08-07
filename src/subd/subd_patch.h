@@ -30,7 +30,7 @@ class Patch {
 
   virtual ~Patch() = default;
 
-  virtual void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) = 0;
+  virtual void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const = 0;
 
   int patch_index;
   int shader;
@@ -39,23 +39,23 @@ class Patch {
 
 /* Linear Quad Patch */
 
-class LinearQuadPatch : public Patch {
+class LinearQuadPatch final : public Patch {
  public:
   float3 hull[4];
   float3 normals[4];
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v);
-  BoundBox bound();
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override;
+  BoundBox bound() const;
 };
 
 /* Bicubic Patch */
 
-class BicubicPatch : public Patch {
+class BicubicPatch final : public Patch {
  public:
   float3 hull[16];
 
-  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v);
-  BoundBox bound();
+  void eval(float3 *P, float3 *dPdu, float3 *dPdv, float3 *N, float u, float v) const override;
+  BoundBox bound() const;
 };
 
 CCL_NAMESPACE_END

@@ -144,6 +144,9 @@ if(WITH_OPENCOLORIO)
   if(WIN32)
     add_definitions(-DOpenColorIO_SKIP_IMPORTS)
   endif()
+  list(APPEND LIB
+    ${OPENCOLORIO_OPENCOLORIO_LIBRARY}
+  )
 endif()
 
 if(WITH_OPENVDB)
