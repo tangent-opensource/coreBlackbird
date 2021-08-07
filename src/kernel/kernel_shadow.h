@@ -95,7 +95,7 @@ ccl_device bool shadow_blocked_opaque(KernelGlobals *kg,
                                       Intersection *isect,
                                       float3 *shadow)
 {
-  const bool blocked = scene_intersect(kg, ray, visibility & PATH_RAY_SHADOW_OPAQUE, isect);
+  const bool blocked = scene_intersect(kg, ray, visibility & PATH_RAY_SHADOW_OPAQUE, isect, 0);
 #ifdef __VOLUME__
   if (!blocked && state->volume_stack[0].shader != SHADER_NONE) {
     /* Apply attenuation from current volume shader. */

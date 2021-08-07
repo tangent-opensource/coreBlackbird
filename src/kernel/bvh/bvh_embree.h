@@ -49,6 +49,9 @@ struct CCLIntersectContext {
   int local_object_id;
   uint *lcg_state;
 
+  /* for transparent rays */
+  uint rng_transparent;
+
   CCLIntersectContext(KernelGlobals *kg_, RayType type_)
   {
     kg = kg_;
@@ -59,6 +62,7 @@ struct CCLIntersectContext {
     local_isect = NULL;
     local_object_id = -1;
     lcg_state = NULL;
+    rng_transparent = 0;
   }
 };
 
@@ -98,6 +102,26 @@ ccl_device_inline void kernel_embree_setup_rayhit(const Ray &ray,
   rayhit.hit.primID = RTC_INVALID_GEOMETRY_ID;
 }
 
+ccl_device_forceinline void kernel_embree_convert_hit_ids(KernelGlobals *kg,
+                                                          const RTC_NAMESPACE::RTCHit *hit,
+                                                          int *prim,
+                                                          int *object)
+{
+  if (hit->instID[0] != RTC_INVALID_GEOMETRY_ID) {
+    RTC_NAMESPACE::RTCScene inst_scene = (RTC_NAMESPACE::RTCScene)rtcGetGeometryUserData(
+        rtcGetGeometry(kernel_data.bvh.scene, hit->instID[0]));
+    *prim = hit->primID +
+            (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(inst_scene, hit->geomID)) +
+            kernel_tex_fetch(__object_node, hit->instID[0] / 2);
+    *object = hit->instID[0] / 2;
+  }
+  else {
+    *prim = hit->primID +
+            (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(kernel_data.bvh.scene, hit->geomID));
+    *object = OBJECT_NONE;
+  }
+}
+
 ccl_device_inline void kernel_embree_convert_hit(KernelGlobals *kg,
                                                  const RTC_NAMESPACE::RTCRay *ray,
                                                  const RTC_NAMESPACE::RTCHit *hit,
@@ -108,19 +132,7 @@ ccl_device_inline void kernel_embree_convert_hit(KernelGlobals *kg,
   isect->v = is_hair ? hit->v : hit->u;
   isect->t = ray->tfar;
   isect->Ng = make_float3(hit->Ng_x, hit->Ng_y, hit->Ng_z);
-  if (hit->instID[0] != RTC_INVALID_GEOMETRY_ID) {
-    RTC_NAMESPACE::RTCScene inst_scene = (RTC_NAMESPACE::RTCScene)rtcGetGeometryUserData(
-        rtcGetGeometry(kernel_data.bvh.scene, hit->instID[0]));
-    isect->prim = hit->primID +
-                  (intptr_t)rtcGetGeometryUserData(rtcGetGeometry(inst_scene, hit->geomID)) +
-                  kernel_tex_fetch(__object_node, hit->instID[0] / 2);
-    isect->object = hit->instID[0] / 2;
-  }
-  else {
-    isect->prim = hit->primID + (intptr_t)rtcGetGeometryUserData(
-                                    rtcGetGeometry(kernel_data.bvh.scene, hit->geomID));
-    isect->object = OBJECT_NONE;
-  }
+  kernel_embree_convert_hit_ids(kg, hit, &isect->prim, &isect->object);
   isect->type = kernel_tex_fetch(__prim_type, isect->prim);
 }
 

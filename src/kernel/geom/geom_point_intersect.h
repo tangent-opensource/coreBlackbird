@@ -66,12 +66,20 @@ ccl_device_forceinline bool point_intersect_test_disc(const float4 point,
   const float3 center = float4_to_float3(point);
   const float radius = point.w;
 
-  const float rd2 = 1.f / dot(dir, dir);
+  const float d2 = dot(dir, dir);
+  const float rd2 = 1.f / d2;
+  const float rd = 1.f / sqrt(d2);
 
   const float3 c0 = center - P;
   const float projC0 = dot(c0, dir) * rd2;
 
   if (*t <= projC0 || projC0 < 0.f) {
+    return false;
+  }
+
+  /* Self-intersection */
+  const float avoidance_factor = 2.0f * radius * rd;
+  if (projC0 < avoidance_factor) {
     return false;
   }
 

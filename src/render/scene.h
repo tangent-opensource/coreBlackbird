@@ -92,6 +92,8 @@ class DeviceScene {
   /* pointcloud */
   device_vector<float4> points;
   device_vector<uint> points_shader;
+  device_vector<float> points_opacity;
+  device_vector<uint> object_opacity_offset;
 
   /* objects */
   device_vector<KernelObject> objects;

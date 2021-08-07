@@ -69,7 +69,8 @@ ccl_device_forceinline bool kernel_path_scene_intersect(KernelGlobals *kg,
     ray->t = kernel_data.background.ao_distance;
   }
 
-  bool hit = scene_intersect(kg, ray, visibility, isect);
+  const uint rng_transparent = state->sample + state->rng_hash * kernel_data.integrator.aa_samples;
+  bool hit = scene_intersect(kg, ray, visibility, isect, (uint &)rng_transparent);
 
 #ifdef __KERNEL_DEBUG__
   if (state->flag & PATH_RAY_CAMERA) {
